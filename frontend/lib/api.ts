@@ -59,7 +59,13 @@ export async function getApiKeys(): Promise<ApiKeyStatus[]> {
 
 export async function upsertApiKey(provider: string, key: string): Promise<ApiKeyStatus> {
   const r = await fetchWithAuth("/api-keys", { method: "POST", body: JSON.stringify({ provider, key }) });
-  if (!r.ok) throw new Error("Failed to save API key");
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    const detail = body?.detail ?? `HTTP ${r.status}`;
+    if (r.status === 401) throw new Error(`Session expired — please sign out and back in (${detail})`);
+    if (r.status === 403) throw new Error(`Admin access required`);
+    throw new Error(`Failed to save: ${detail}`);
+  }
   return r.json();
 }
 
