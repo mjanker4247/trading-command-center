@@ -12,10 +12,12 @@ from sqlalchemy import select
 
 @pytest.fixture(autouse=True)
 async def clear_api_keys():
-    """Truncate api_keys before each test so provider-not-configured assertions hold."""
+    """Truncate api_keys before and after each test so provider-not-configured assertions hold."""
     async with engine.begin() as conn:
         await conn.execute(text("TRUNCATE api_keys RESTART IDENTITY CASCADE"))
     yield
+    async with engine.begin() as conn:
+        await conn.execute(text("TRUNCATE api_keys RESTART IDENTITY CASCADE"))
 
 
 async def _token(client, email="lp@test.com"):
@@ -28,7 +30,8 @@ async def _seed_api_key(provider: str, url: str):
     """Insert an api_key row directly, bypassing admin auth."""
     async with AsyncSession(engine) as session:
         result = await session.execute(select(User).limit(1))
-        user = result.scalar_one()
+        user = result.scalar_one_or_none()
+        assert user is not None, "_seed_api_key: no user in DB — did you call _token() first?"
         session.add(ApiKey(provider=provider, encrypted_key=encrypt_key(url), is_valid=True, created_by=user.id))
         await session.commit()
 
