@@ -1,14 +1,17 @@
 "use client";
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { createRun } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createRun, getProviderModels } from "@/lib/api";
 
 const ANALYSTS = ["market", "social", "news", "fundamentals", "technical"];
+const LOCAL_PROVIDERS = ["ollama", "vllm"];
 
 const PLACEHOLDERS: Record<string, string> = {
   openai: "gpt-4o",
   anthropic: "claude-opus-4-5",
   google: "gemini-2.0-flash",
+  ollama: "llama3",
+  vllm: "mistralai/Mistral-7B-Instruct-v0.3",
 };
 
 interface Props {
@@ -22,6 +25,25 @@ export function RunForm({ onSuccess }: Props) {
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("");
   const [quickResearch, setQuickResearch] = useState(false);
+
+  const isLocal = LOCAL_PROVIDERS.includes(provider);
+
+  const { data: models = [], isLoading: modelsLoading, isError: modelsError } = useQuery({
+    queryKey: ["models", provider],
+    queryFn: () => getProviderModels(provider),
+    enabled: isLocal,
+    retry: false,
+  });
+
+  useEffect(() => {
+    setModel("");
+  }, [provider]);
+
+  useEffect(() => {
+    if (isLocal && models.length > 0 && !model) {
+      setModel(models[0]);
+    }
+  }, [models, isLocal]);
 
   const mutation = useMutation({
     mutationFn: createRun,
@@ -108,18 +130,49 @@ export function RunForm({ onSuccess }: Props) {
           <option value="openai">openai</option>
           <option value="anthropic">anthropic</option>
           <option value="google">google</option>
+          <option value="ollama">ollama (local)</option>
+          <option value="vllm">vllm (local)</option>
         </select>
       </div>
 
       <div className="mb-4">
         <label className="block text-slate-400 text-xs mb-1">LLM Model</label>
-        <input
-          type="text"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder={PLACEHOLDERS[provider]}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
-        />
+        {isLocal ? (
+          modelsLoading ? (
+            <select disabled className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-500 text-sm">
+              <option>Loading models…</option>
+            </select>
+          ) : modelsError || models.length === 0 ? (
+            <>
+              <input
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder={PLACEHOLDERS[provider]}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+              />
+              <p className="text-amber-400 text-xs mt-1">Server unreachable — enter model name manually</p>
+            </>
+          ) : (
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )
+        ) : (
+          <input
+            type="text"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder={PLACEHOLDERS[provider]}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          />
+        )}
       </div>
 
       <div className="mb-6">
