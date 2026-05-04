@@ -49,3 +49,17 @@ async def test_upsert_vllm_url_marks_valid_when_server_responds(httpx_mock):
         )
         assert r.status_code == 200
         assert r.json()["is_valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_upsert_vllm_url_marks_invalid_when_server_down(httpx_mock):
+    httpx_mock.add_exception(Exception("connection refused"), url="http://localhost:8081/health")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _admin_token(client)
+        r = await client.post(
+            "/api-keys",
+            json={"provider": "vllm", "key": "http://localhost:8081"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200
+        assert r.json()["is_valid"] is False
