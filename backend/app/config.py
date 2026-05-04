@@ -1,6 +1,8 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     database_url: str = "postgresql://agentfloor:agentfloor@localhost:5432/agentfloor"
     jwt_secret: str = "dev-secret-change-in-production"
     encryption_key: str = "0" * 64
@@ -12,8 +14,5 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "noreply@agentfloor.local"
     frontend_url: str = "http://localhost:3000"
-
-    class Config:
-        env_file = ".env"
 
 settings = Settings()
