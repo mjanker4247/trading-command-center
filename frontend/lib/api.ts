@@ -86,3 +86,9 @@ export async function updateUserRole(id: string, role: string): Promise<User> {
 export async function deleteUser(id: string): Promise<void> {
   await fetchWithAuth(`/users/${id}`, { method: "DELETE" });
 }
+
+export async function getProviderModels(provider: string): Promise<string[]> {
+  const r = await fetchWithAuth(`/llm-providers/${provider}/models`);
+  if (!r.ok) throw new Error(`Could not fetch models for ${provider}`);
+  return r.json();
+}
