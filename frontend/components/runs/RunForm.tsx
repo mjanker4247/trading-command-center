@@ -43,7 +43,7 @@ export function RunForm({ onSuccess }: Props) {
     if (isLocal && models.length > 0 && !model) {
       setModel(models[0]);
     }
-  }, [models, isLocal]);
+  }, [models, isLocal, model]);
 
   const mutation = useMutation({
     mutationFn: createRun,
