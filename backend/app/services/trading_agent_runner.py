@@ -40,8 +40,6 @@ class _SyncEmitter(BaseCallbackHandler):
 
 
 async def execute_run(run_id: str, config: dict) -> None:
-    from tradingagents.graph.trading_graph import TradingAgentsGraph
-    from langchain_core.runnables import RunnableConfig
     from app.database import AsyncSessionLocal
     from app.models.run import Run, RunStatus, RunVerdict
     from app.models.agent_event import AgentEvent, EventType
@@ -94,8 +92,9 @@ async def execute_run(run_id: str, config: dict) -> None:
     process_task = asyncio.create_task(_process())
 
     try:
+        from tradingagents.graph.trading_graph import TradingAgentsGraph
+        from langchain_core.runnables import RunnableConfig
         graph = TradingAgentsGraph()
-        # NOTE: adjust constructor args based on Task 10 Step 1 discovery
         lc_config = RunnableConfig(callbacks=[emitter])
         result = await asyncio.to_thread(
             graph.propagate,
