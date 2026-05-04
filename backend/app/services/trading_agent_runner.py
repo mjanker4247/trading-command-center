@@ -1,0 +1,149 @@
+import asyncio
+from queue import Queue as SyncQueue
+from datetime import datetime, timezone
+from langchain_core.callbacks import BaseCallbackHandler
+
+AGENT_NODES = {
+    "fundamentals_analyst", "sentiment_analyst", "news_analyst",
+    "technical_analyst", "bull_researcher", "bear_researcher",
+    "trader", "risk_manager",
+}
+
+
+class _SyncEmitter(BaseCallbackHandler):
+    """Sync LangChain callback that enqueues events into a thread-safe queue."""
+
+    def __init__(self, queue: SyncQueue):
+        self._q = queue
+        self._current: str | None = None
+
+    def on_chain_start(self, serialized, inputs, **kwargs):
+        name = (kwargs.get("name") or "").lower().replace(" ", "_")
+        if name in AGENT_NODES:
+            self._current = name
+            self._q.put_nowait({"type": "started", "agent": name})
+
+    def on_llm_new_token(self, token: str, **kwargs):
+        if self._current:
+            self._q.put_nowait({"type": "token", "agent": self._current, "token": token})
+
+    def on_chain_end(self, outputs, **kwargs):
+        if self._current:
+            summary = str(outputs)[:500] if outputs else ""
+            self._q.put_nowait({"type": "completed", "agent": self._current, "summary": summary})
+            self._current = None
+
+    def on_chain_error(self, error, **kwargs):
+        agent = self._current or ""
+        self._q.put_nowait({"type": "error", "agent": agent, "message": str(error)})
+        self._current = None
+
+
+async def execute_run(run_id: str, config: dict) -> None:
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from langchain_core.runnables import RunnableConfig
+    from app.database import AsyncSessionLocal
+    from app.models.run import Run, RunStatus, RunVerdict
+    from app.models.agent_event import AgentEvent, EventType
+    from app.models.report import Report
+    from app.services.websocket_manager import ws_manager
+
+    sync_q: SyncQueue = SyncQueue()
+    async_q: asyncio.Queue = asyncio.Queue()
+    sequence = [0]
+
+    async def _drain():
+        while True:
+            await asyncio.sleep(0.05)
+            while not sync_q.empty():
+                await async_q.put(sync_q.get_nowait())
+
+    async def _process():
+        while True:
+            event = await async_q.get()
+            if event is None:
+                break
+            sequence[0] += 1
+            event["sequence"] = sequence[0]
+            async with AsyncSessionLocal() as db:
+                db.add(AgentEvent(
+                    run_id=run_id,
+                    agent_name=event.get("agent", ""),
+                    event_type=EventType(event["type"]),
+                    payload=event,
+                    sequence=sequence[0],
+                ))
+                await db.commit()
+            await ws_manager.broadcast(run_id, event)
+
+    async def _set_status(status: RunStatus, verdict: RunVerdict | None = None):
+        async with AsyncSessionLocal() as db:
+            run = await db.get(Run, run_id)
+            run.status = status
+            if verdict:
+                run.verdict = verdict
+            if status == RunStatus.running:
+                run.started_at = datetime.now(timezone.utc)
+            elif status in (RunStatus.completed, RunStatus.aborted, RunStatus.failed):
+                run.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+    await _set_status(RunStatus.running)
+    emitter = _SyncEmitter(sync_q)
+    drain_task = asyncio.create_task(_drain())
+    process_task = asyncio.create_task(_process())
+
+    try:
+        graph = TradingAgentsGraph()
+        # NOTE: adjust constructor args based on Task 10 Step 1 discovery
+        lc_config = RunnableConfig(callbacks=[emitter])
+        result = await asyncio.to_thread(
+            graph.propagate,
+            config["ticker"],
+            config["analysis_date"],
+            config=lc_config,
+        )
+        await async_q.put(None)  # sentinel
+        await process_task
+
+        verdict = _parse_verdict(result)
+        async with AsyncSessionLocal() as db:
+            db.add(Report(
+                run_id=run_id,
+                trader_decision=str(result.get("trader_decision", "")),
+                verdict=verdict,
+                suggested_entry=result.get("suggested_entry"),
+                suggested_stop=result.get("suggested_stop"),
+                suggested_target=result.get("suggested_target"),
+                risk_assessment=str(result.get("risk_assessment", "")),
+                raw_report=result if isinstance(result, dict) else {},
+            ))
+            await db.commit()
+
+        await _set_status(RunStatus.completed, verdict)
+        await ws_manager.broadcast(run_id, {"type": "run_completed", "run_id": run_id})
+
+    except asyncio.CancelledError:
+        drain_task.cancel()
+        process_task.cancel()
+        await _set_status(RunStatus.aborted)
+        await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
+
+    except Exception as exc:
+        drain_task.cancel()
+        process_task.cancel()
+        await _set_status(RunStatus.failed)
+        await ws_manager.broadcast(run_id, {"type": "error", "message": str(exc)})
+
+    finally:
+        drain_task.cancel()
+
+
+def _parse_verdict(result: dict) -> "RunVerdict":
+    from app.models.run import RunVerdict
+    raw = str(result.get("decision", result.get("action", "hold"))).lower()
+    if "buy" in raw:
+        return RunVerdict.buy
+    if "sell" in raw:
+        return RunVerdict.sell
+    return RunVerdict.hold
