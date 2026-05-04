@@ -39,6 +39,34 @@ class _SyncEmitter(BaseCallbackHandler):
         self._current = None
 
 
+async def _build_llm(provider: str, model: str):
+    """Return a ChatOpenAI configured for local inference, or None for cloud providers."""
+    if provider not in ("ollama", "vllm"):
+        return None
+
+    from app.database import AsyncSessionLocal
+    from app.models.api_key import ApiKey
+    from app.services.encryption import decrypt_key
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        row = (await db.execute(select(ApiKey).where(ApiKey.provider == provider))).scalar_one_or_none()
+
+    if not row:
+        return None
+
+    from langchain_openai import ChatOpenAI
+    base_url = decrypt_key(row.encrypted_key).rstrip("/")
+    if not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+
+    return ChatOpenAI(
+        base_url=base_url,
+        model=model,
+        api_key="ollama",
+    )
+
+
 async def execute_run(run_id: str, config: dict) -> None:
     from app.database import AsyncSessionLocal
     from app.models.run import Run, RunStatus, RunVerdict
@@ -94,7 +122,19 @@ async def execute_run(run_id: str, config: dict) -> None:
     try:
         from tradingagents.graph.trading_graph import TradingAgentsGraph
         from langchain_core.runnables import RunnableConfig
-        graph = TradingAgentsGraph()
+
+        llm = await _build_llm(config.get("llm_provider", ""), config.get("llm_model", ""))
+
+        try:
+            graph = TradingAgentsGraph(llm=llm) if llm else TradingAgentsGraph()
+        except TypeError:
+            # TradingAgentsGraph does not accept an llm arg — fall back to env-var patching
+            import os
+            if llm is not None:
+                os.environ["OPENAI_BASE_URL"] = llm.openai_api_base or ""
+                os.environ["OPENAI_API_KEY"] = "ollama"
+            graph = TradingAgentsGraph()
+
         lc_config = RunnableConfig(callbacks=[emitter])
         result = await asyncio.to_thread(
             graph.propagate,
