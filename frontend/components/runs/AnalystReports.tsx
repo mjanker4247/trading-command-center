@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Report } from "@/lib/types";
+import { Markdown } from "@/components/ui/Markdown";
 
 interface Props {
   report: Report | undefined;
@@ -24,10 +25,10 @@ export function AnalystReports({ report, analysts }: Props) {
   }
 
   const activeAnalyst = activeTab || analysts[0] || "";
-  const content = report.raw_report?.[activeAnalyst];
+  const content = report.raw_report?.[`${activeAnalyst}_report`] ?? report.raw_report?.[activeAnalyst];
   const display =
     content === undefined || content === null
-      ? "No report available."
+      ? null
       : typeof content === "string"
       ? content
       : JSON.stringify(content, null, 2);
@@ -42,17 +43,19 @@ export function AnalystReports({ report, analysts }: Props) {
             onClick={() => setActiveTab(analyst)}
             className={
               (activeTab || analysts[0]) === analyst
-                ? "px-3 py-2 text-sm border-b-2 border-blue-400 text-blue-400 whitespace-nowrap"
-                : "px-3 py-2 text-sm text-slate-500 hover:text-slate-300 whitespace-nowrap border-b-2 border-transparent"
+                ? "px-3 py-2 text-sm border-b-2 border-blue-400 text-blue-400 whitespace-nowrap capitalize"
+                : "px-3 py-2 text-sm text-slate-500 hover:text-slate-300 whitespace-nowrap border-b-2 border-transparent capitalize"
             }
           >
             {analyst}
           </button>
         ))}
       </div>
-      <pre className="text-slate-300 text-xs whitespace-pre-wrap break-words">
-        {display}
-      </pre>
+      {display ? (
+        <Markdown>{display}</Markdown>
+      ) : (
+        <p className="text-slate-500 text-sm">No report available.</p>
+      )}
     </div>
   );
 }
