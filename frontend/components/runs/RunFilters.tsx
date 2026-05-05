@@ -3,6 +3,7 @@
 interface FilterValues {
   ticker: string;
   status: string;
+  verdict: string;
 }
 
 interface RunFiltersProps {
@@ -28,12 +29,22 @@ export function RunFilters({ value, onChange }: RunFiltersProps) {
         onChange={(e) => onChange({ ...value, status: e.target.value })}
         className={inputClass}
       >
-        <option value="">All</option>
+        <option value="">All statuses</option>
         <option value="pending">pending</option>
         <option value="running">running</option>
         <option value="completed">completed</option>
         <option value="aborted">aborted</option>
         <option value="failed">failed</option>
+      </select>
+      <select
+        value={value.verdict}
+        onChange={(e) => onChange({ ...value, verdict: e.target.value })}
+        className={inputClass}
+      >
+        <option value="">All verdicts</option>
+        <option value="buy">buy</option>
+        <option value="sell">sell</option>
+        <option value="hold">hold</option>
       </select>
     </div>
   );

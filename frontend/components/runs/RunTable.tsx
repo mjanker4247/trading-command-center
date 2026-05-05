@@ -5,6 +5,13 @@ import { useMutation } from "@tanstack/react-query";
 import { archiveRun, deleteRun } from "@/lib/api";
 import type { Run } from "@/lib/types";
 
+function formatDuration(startedAt: string | null, completedAt: string | null): string {
+  if (!startedAt || !completedAt) return "—";
+  const secs = Math.round((new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000);
+  if (secs < 60) return `${secs}s`;
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+}
+
 interface RunTableProps {
   runs: Run[];
   archived: boolean;
@@ -57,7 +64,10 @@ function RunRow({ run, archived, onMutate }: { run: Run; archived: boolean; onMu
 
   return (
     <tr className="border-t border-slate-800 hover:bg-slate-800/40">
-      <td className="px-4 py-3 text-slate-200 font-mono">{run.ticker}</td>
+      <td className="px-4 py-3">
+        <span className="text-slate-200 font-mono">{run.ticker}</span>
+        {run.label && <p className="text-slate-500 text-xs mt-0.5">{run.label}</p>}
+      </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
           {run.status === "running" && (
@@ -79,9 +89,11 @@ function RunRow({ run, archived, onMutate }: { run: Run; archived: boolean; onMu
         <PriceSummary run={run} />
       </td>
       <td className="px-4 py-3 text-slate-400 text-xs">{run.analysts.join(", ")}</td>
+      <td className="px-4 py-3 text-slate-400 text-xs font-mono">{run.llm_model}</td>
       <td className="px-4 py-3 text-slate-400 text-xs">
         {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
       </td>
+      <td className="px-4 py-3 text-slate-400 text-xs">{formatDuration(run.started_at, run.completed_at)}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <Link href={`/runs/${run.id}`} className="text-blue-400 hover:underline text-xs">
@@ -138,14 +150,16 @@ export function RunTable({ runs, archived, onMutate }: RunTableProps) {
             <th className="text-left px-4 py-3">Verdict</th>
             <th className="text-left px-4 py-3">Prices</th>
             <th className="text-left px-4 py-3">Analysts</th>
+            <th className="text-left px-4 py-3">Model</th>
             <th className="text-left px-4 py-3">Started</th>
+            <th className="text-left px-4 py-3">Duration</th>
             <th className="text-left px-4 py-3">Actions</th>
           </tr>
         </thead>
         <tbody>
           {runs.length === 0 ? (
             <tr>
-              <td colSpan={7} className="text-center text-slate-500 px-4 py-8">
+              <td colSpan={9} className="text-center text-slate-500 px-4 py-8">
                 {archived ? "No archived runs." : "No runs yet."}
               </td>
             </tr>
