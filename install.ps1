@@ -15,6 +15,8 @@ function Write-Fatal   { param($m) Write-Host "[agentfloor] ERROR: $m" -Foregrou
 Write-Info "[1/7] Checking Docker..."
 try { $null = docker version 2>&1 } catch { Write-Fatal "Docker not found. Install Docker Desktop from https://docker.com then re-run." }
 try { $null = docker compose version 2>&1 } catch { Write-Fatal "Docker Compose plugin not found. Install Docker Desktop." }
+$dockerVer = (docker version --format '{{.Server.Version}}' 2>$null) -replace '\..*'
+if ([int]$dockerVer -lt 24) { Write-Fatal "Docker >= 24 required (found $dockerVer). Please upgrade Docker Desktop." }
 Write-Success "Docker OK"
 
 # ── 2/7  install directory ─────────────────────────────────────────────────
@@ -80,11 +82,12 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 "@ | Set-Content $EnvFile -Encoding UTF8
 
-    # Restrict .env to current user only
-    $acl = Get-Acl $EnvFile
+    # Restrict .env to current user only (equivalent to chmod 600)
+    $acl = New-Object System.Security.AccessControl.FileSecurity
     $acl.SetAccessRuleProtection($true, $false)
     $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-        $env:USERNAME, "ReadWrite", "Allow")
+        [System.Security.Principal.WindowsIdentity]::GetCurrent().User,
+        "ReadWrite", "Allow")
     $acl.AddAccessRule($rule)
     Set-Acl $EnvFile $acl
 } else {
@@ -115,7 +118,7 @@ $AliasBlock = @'
 
 # AgentFloor management function — added by installer
 function agentfloor {
-    param([string]$Command)
+    param([string]$Command, [Parameter(ValueFromRemainingArguments=$true)][string[]]$Rest)
     $ef = "$env:USERPROFILE\.agentfloor\.env"
     $dc = "$env:USERPROFILE\.agentfloor\docker-compose.yml"
     switch ($Command) {
@@ -124,7 +127,7 @@ function agentfloor {
             docker compose --env-file $ef -f $dc up -d
         }
         "logs"   { docker compose --env-file $ef -f $dc logs -f }
-        default  { docker compose --env-file $ef -f $dc $args }
+        default  { docker compose --env-file $ef -f $dc $Command @Rest }
     }
 }
 '@
