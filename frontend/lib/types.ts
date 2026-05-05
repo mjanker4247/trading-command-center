@@ -16,10 +16,14 @@ export interface Run {
   label: string | null;
   status: "pending" | "running" | "completed" | "aborted" | "failed";
   verdict: "buy" | "sell" | "hold" | null;
+  archived: boolean;
   created_by: string;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  suggested_entry: string | null;
+  suggested_stop: string | null;
+  suggested_target: string | null;
 }
 
 export interface AgentEventPayload {
