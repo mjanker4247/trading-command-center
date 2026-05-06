@@ -6,14 +6,19 @@ import { signOut, useSession } from "next-auth/react";
 const NAV = [
   { href: "/runs/new", label: "New Run" },
   { href: "/runs", label: "History" },
+  { href: "/watchlist", label: "Watchlist" },
+  { href: "/runs/performance", label: "Performance" },
   { href: "/settings", label: "Settings" },
 ];
 
 export function TopNav() {
   const path = usePathname();
   const { data: session } = useSession();
-  const isActive = (href: string) =>
-    path === href || (href !== "/runs/new" && path.startsWith(href) && href !== "/runs/new");
+  const isActive = (href: string) => {
+    if (path === href) return true;
+    if (href === "/runs") return path.startsWith("/runs/") && !path.startsWith("/runs/performance") && path !== "/runs/new";
+    return false;
+  };
 
   return (
     <nav className="bg-navy-700 border-b border-slate-800 px-4 py-2 flex items-center gap-4 sticky top-0 z-50">
