@@ -52,11 +52,6 @@ function buildCron(freq: Frequency, hour: number, minute: number, days: number[]
   return null;
 }
 
-function describeCron(cron: string | null): string {
-  if (!cron) return "Manual trigger only";
-  return cron;
-}
-
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function fmtHour(h: number) {
   const ampm = h < 12 ? "AM" : "PM";
