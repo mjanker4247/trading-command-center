@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Query
@@ -29,6 +30,14 @@ class ReportResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RunWithReport(BaseModel):
+    run: RunResponse
+    report: ReportResponse | None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 router = APIRouter()
 
@@ -130,6 +139,28 @@ async def get_run_stats(db: AsyncSession = Depends(get_db), _user: User = Depend
         "failed": row.failed or 0,
         "avg_duration_secs": round(avg_dur),
     }
+
+
+@router.get("/runs/compare")
+async def compare_runs(
+    a: UUID = Query(...),
+    b: UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    async def load(run_id: UUID) -> RunWithReport:
+        result = await db.execute(
+            select(Run).where(Run.id == run_id).options(selectinload(Run.report))
+        )
+        run = result.scalar_one_or_none()
+        if not run:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Run {run_id} not found")
+        report_result = await db.execute(select(Report).where(Report.run_id == run_id))
+        report = report_result.scalar_one_or_none()
+        return RunWithReport(run=_run_to_response(run), report=report)
+
+    run_a, run_b = await asyncio.gather(load(a), load(b))
+    return {"a": run_a, "b": run_b}
 
 
 @router.get("/runs/{run_id}", response_model=RunResponse)

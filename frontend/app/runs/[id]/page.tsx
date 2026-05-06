@@ -34,7 +34,14 @@ export default function RunResultsPage() {
           <Link href="/runs" className="text-blue-400 hover:underline text-sm">
             ← Back to History
           </Link>
-          <DownloadMenu run={run} report={report} />
+          <div className="flex items-center gap-3">
+            {run && (
+              <Link href={`/runs/compare?a=${id}&b=`} className="text-slate-400 hover:text-blue-400 text-sm">
+                Compare →
+              </Link>
+            )}
+            <DownloadMenu run={run} report={report} />
+          </div>
         </div>
 
         {isRunning && (

@@ -72,3 +72,13 @@ export interface CreateRunRequest {
   analysts: string[];
   label?: string;
 }
+
+export interface RunWithReport {
+  run: Run;
+  report: Report | null;
+}
+
+export interface CompareResult {
+  a: RunWithReport;
+  b: RunWithReport;
+}
