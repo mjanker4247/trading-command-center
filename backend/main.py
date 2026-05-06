@@ -7,6 +7,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.run import Run, RunStatus
 from app.routers import auth, runs, api_keys, users, llm_providers, watchlist
+from app.services.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -18,7 +19,9 @@ async def lifespan(_app: FastAPI):
             .values(status=RunStatus.failed, completed_at=datetime.now(timezone.utc))
         )
         await db.commit()
+    await start_scheduler()
     yield
+    await stop_scheduler()
 
 
 app = FastAPI(title="AgentFloor API", lifespan=lifespan)
