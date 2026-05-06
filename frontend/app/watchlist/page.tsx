@@ -23,20 +23,183 @@ const PLACEHOLDERS: Record<string, string> = {
   vllm: "mistralai/Mistral-7B-Instruct-v0.3",
 };
 
-const CRON_PRESETS = [
-  { label: "Daily 9am", value: "0 9 * * *" },
-  { label: "Daily 4pm", value: "0 16 * * *" },
-  { label: "Weekly Mon 9am", value: "0 9 * * 1" },
-  { label: "Weekly Fri 4pm", value: "0 16 * * 5" },
-  { label: "Manual only", value: "" },
-  { label: "Custom…", value: "__custom__" },
+const DAYS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
 ];
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = [0, 15, 30, 45];
+
+type Frequency = "daily" | "weekdays" | "weekly" | "custom_days" | "manual";
+
+function buildCron(freq: Frequency, hour: number, minute: number, days: number[]): string | null {
+  if (freq === "manual") return null;
+  const h = hour;
+  const m = minute;
+  if (freq === "daily") return `${m} ${h} * * *`;
+  if (freq === "weekdays") return `${m} ${h} * * 1-5`;
+  if (freq === "weekly") return `${m} ${h} * * ${days[0] ?? 1}`;
+  if (freq === "custom_days") {
+    if (days.length === 0) return null;
+    return `${m} ${h} * * ${days.sort((a, b) => a - b).join(",")}`;
+  }
+  return null;
+}
+
+function describeCron(cron: string | null): string {
+  if (!cron) return "Manual trigger only";
+  return cron;
+}
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+function fmtHour(h: number) {
+  const ampm = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:00 ${ampm}`;
+}
+
+// ─── Schedule Builder ────────────────────────────────────────────────────────
+
+interface ScheduleBuilderProps {
+  onChange: (cron: string | null) => void;
+}
+
+function ScheduleBuilder({ onChange }: ScheduleBuilderProps) {
+  const [freq, setFreq] = useState<Frequency>("weekly");
+  const [hour, setHour] = useState(9);
+  const [minute, setMinute] = useState(0);
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]); // Mon default
+
+  const showDayPicker = freq === "weekly" || freq === "custom_days";
+  const multiDay = freq === "custom_days";
+
+  const cron = buildCron(freq, hour, minute, selectedDays);
+
+  useEffect(() => { onChange(cron); }, [freq, hour, minute, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function toggleDay(val: number) {
+    if (multiDay) {
+      setSelectedDays((prev) =>
+        prev.includes(val)
+          ? prev.length > 1 ? prev.filter((d) => d !== val) : prev
+          : [...prev, val]
+      );
+    } else {
+      setSelectedDays([val]);
+    }
+  }
+
+  const selectCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500";
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Row 1: frequency + time */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-400">Frequency</label>
+          <select value={freq} onChange={(e) => setFreq(e.target.value as Frequency)} className={selectCls}>
+            <option value="daily">Every day</option>
+            <option value="weekdays">Weekdays (Mon – Fri)</option>
+            <option value="weekly">Weekly (pick one day)</option>
+            <option value="custom_days">Custom days</option>
+            <option value="manual">Manual only</option>
+          </select>
+        </div>
+
+        {freq !== "manual" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400">Hour</label>
+              <select value={hour} onChange={(e) => setHour(Number(e.target.value))} className={selectCls}>
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>{fmtHour(h)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400">Minute</label>
+              <select value={minute} onChange={(e) => setMinute(Number(e.target.value))} className={selectCls}>
+                {MINUTES.map((m) => (
+                  <option key={m} value={m}>:{pad(m)}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Row 2: day picker */}
+      {showDayPicker && (
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-400">
+            {multiDay ? "Days (select multiple)" : "Day"}
+          </label>
+          <div className="flex gap-2">
+            {DAYS.map(({ label, value }) => {
+              const active = selectedDays.includes(value);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleDay(value)}
+                  className={`w-10 h-9 rounded-lg text-xs font-semibold border transition-colors ${
+                    active
+                      ? "bg-blue-600 border-blue-500 text-white"
+                      : "bg-navy-900 border-slate-700 text-slate-400 hover:border-slate-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Cron preview */}
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-xs text-slate-500">Schedule:</span>
+        <code className="text-xs text-blue-300 bg-navy-900 border border-slate-800 px-2 py-0.5 rounded">
+          {cron ?? "manual trigger"}
+        </code>
+        {cron && (
+          <span className="text-xs text-slate-500">
+            {freq === "daily" && `Runs every day at ${fmtHour(hour)}${minute > 0 ? `:${pad(minute)}` : ""}`}
+            {freq === "weekdays" && `Runs Mon–Fri at ${fmtHour(hour)}${minute > 0 ? `:${pad(minute)}` : ""}`}
+            {freq === "weekly" && `Runs every ${DAYS.find((d) => d.value === selectedDays[0])?.label ?? ""} at ${fmtHour(hour)}${minute > 0 ? `:${pad(minute)}` : ""}`}
+            {freq === "custom_days" && `Runs on ${selectedDays.map((v) => DAYS.find((d) => d.value === v)?.label).join(", ")} at ${fmtHour(hour)}${minute > 0 ? `:${pad(minute)}` : ""}`}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── CronLabel (table display) ───────────────────────────────────────────────
 
 function CronLabel({ cron }: { cron: string | null }) {
   if (!cron) return <span className="text-slate-500 text-xs">Manual only</span>;
-  const preset = CRON_PRESETS.find((p) => p.value === cron);
-  return <span className="text-slate-300 text-xs">{preset?.label ?? cron}</span>;
+  // try to produce a human label from known patterns
+  const daily = cron.match(/^(\d+) (\d+) \* \* \*$/);
+  if (daily) return <span className="text-slate-300 text-xs">Daily {fmtHour(Number(daily[2]))}{Number(daily[1]) > 0 ? `:${pad(Number(daily[1]))}` : ""}</span>;
+  const wdays = cron.match(/^(\d+) (\d+) \* \* 1-5$/);
+  if (wdays) return <span className="text-slate-300 text-xs">Weekdays {fmtHour(Number(wdays[2]))}</span>;
+  const weekly = cron.match(/^(\d+) (\d+) \* \* (\d)$/);
+  if (weekly) {
+    const day = DAYS.find((d) => d.value === Number(weekly[3]));
+    return <span className="text-slate-300 text-xs">{day?.label ?? `Day ${weekly[3]}`} {fmtHour(Number(weekly[2]))}</span>;
+  }
+  return <span className="text-slate-300 text-xs font-mono">{cron}</span>;
 }
+
+// ─── Add Item Form ────────────────────────────────────────────────────────────
 
 function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemRequest) => void; isPending: boolean }) {
   const [ticker, setTicker] = useState("");
@@ -44,12 +207,9 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
   const [model, setModel] = useState("");
   const [depth, setDepth] = useState<"quick" | "standard" | "deep">("standard");
   const [analysts, setAnalysts] = useState<string[]>(["market", "social", "news", "fundamentals", "technical"]);
-  const [schedulePreset, setSchedulePreset] = useState("0 9 * * 1");
-  const [customCron, setCustomCron] = useState("");
+  const [cron, setCron] = useState<string | null>("0 9 * * 1");
 
   const isLocal = LOCAL_PROVIDERS.includes(provider);
-  const isCustom = schedulePreset === "__custom__";
-  const finalCron = isCustom ? (customCron.trim() || null) : (schedulePreset || null);
 
   const { data: models = [], isLoading: modelsLoading } = useQuery({
     queryKey: ["models", provider],
@@ -74,33 +234,25 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
       llm_model: model || PLACEHOLDERS[provider] || "",
       depth,
       analysts,
-      schedule_cron: finalCron,
+      schedule_cron: cron,
     });
     setTicker("");
   }
 
+  const inputCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500";
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      {/* Row 1: ticker + provider + model + depth */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {/* Ticker */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-400">Ticker</label>
-          <input
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            placeholder="AAPL"
-            className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-          />
+          <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" className={inputCls} />
         </div>
 
-        {/* Provider */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-400">Provider</label>
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-            className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-          >
+          <select value={provider} onChange={(e) => setProvider(e.target.value)} className={inputCls}>
             <option value="openai">openai</option>
             <option value="anthropic">anthropic</option>
             <option value="google">google</option>
@@ -109,39 +261,22 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
           </select>
         </div>
 
-        {/* Model */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-400">Model</label>
           {modelsLoading ? (
-            <select disabled className="bg-navy-900 border border-slate-700 text-slate-500 text-sm rounded-lg px-3 py-2">
-              <option>Loading…</option>
-            </select>
+            <select disabled className={`${inputCls} text-slate-500`}><option>Loading…</option></select>
           ) : models.length > 0 ? (
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-            >
+            <select value={model} onChange={(e) => setModel(e.target.value)} className={inputCls}>
               {models.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           ) : (
-            <input
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder={PLACEHOLDERS[provider]}
-              className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-            />
+            <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={PLACEHOLDERS[provider]} className={inputCls} />
           )}
         </div>
 
-        {/* Depth */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-400">Depth</label>
-          <select
-            value={depth}
-            onChange={(e) => setDepth(e.target.value as "quick" | "standard" | "deep")}
-            className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-          >
+          <select value={depth} onChange={(e) => setDepth(e.target.value as "quick" | "standard" | "deep")} className={inputCls}>
             <option value="quick">Quick</option>
             <option value="standard">Standard</option>
             <option value="deep">Deep</option>
@@ -149,19 +284,15 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
         </div>
       </div>
 
-      {/* Analysts */}
+      {/* Row 2: analysts */}
       <div className="flex flex-col gap-1">
         <label className="text-xs text-slate-400">Analysts</label>
         <div className="flex flex-wrap gap-2">
           {ANALYSTS.map((a) => {
-            const selected = analysts.includes(a);
+            const sel = analysts.includes(a);
             return (
-              <button
-                key={a}
-                type="button"
-                onClick={() => toggleAnalyst(a)}
-                className={`px-3 py-1 rounded border text-xs capitalize ${selected ? "bg-blue-700 text-white border-blue-600" : "bg-navy-900 text-slate-400 border-slate-700"}`}
-              >
+              <button key={a} type="button" onClick={() => toggleAnalyst(a)}
+                className={`px-3 py-1 rounded border text-xs capitalize ${sel ? "bg-blue-700 text-white border-blue-600" : "bg-navy-900 text-slate-400 border-slate-700"}`}>
                 {a}
               </button>
             );
@@ -169,52 +300,27 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
         </div>
       </div>
 
-      {/* Schedule */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-slate-400">Schedule</label>
-          <select
-            value={schedulePreset}
-            onChange={(e) => setSchedulePreset(e.target.value)}
-            className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-          >
-            {CRON_PRESETS.map((p) => (
-              <option key={p.label} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {isCustom && (
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400">Cron expression</label>
-            <input
-              value={customCron}
-              onChange={(e) => setCustomCron(e.target.value)}
-              placeholder="0 9 * * 1-5"
-              className="bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 focus:outline-none focus:border-blue-500 font-mono"
-            />
-            <p className="text-xs text-slate-500">min hour dom month dow</p>
-          </div>
-        )}
-
-        <button
-          onClick={handleAdd}
-          disabled={!ticker || analysts.length === 0 || isPending}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg self-end"
-        >
-          {isPending ? "Adding…" : "Add to Watchlist"}
-        </button>
+      {/* Row 3: schedule builder */}
+      <div className="border-t border-slate-800 pt-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-3">Schedule</p>
+        <ScheduleBuilder onChange={setCron} />
       </div>
+
+      {/* Add button */}
+      <button
+        onClick={handleAdd}
+        disabled={!ticker || analysts.length === 0 || isPending}
+        className="self-start bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg"
+      >
+        {isPending ? "Adding…" : "Add to Watchlist"}
+      </button>
     </div>
   );
 }
 
-function ItemRow({
-  item,
-  onRemove,
-  onToggle,
-  onRunNow,
-}: {
+// ─── Item Row ─────────────────────────────────────────────────────────────────
+
+function ItemRow({ item, onRemove, onToggle, onRunNow }: {
   item: WatchlistItem;
   onRemove: () => void;
   onToggle: () => void;
@@ -237,28 +343,23 @@ function ItemRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex gap-2">
-          <button onClick={onRunNow} className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-800 rounded">
-            Run now
-          </button>
+          <button onClick={onRunNow} className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-800 rounded">Run now</button>
           <button onClick={onToggle} className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded">
             {item.enabled ? "Pause" : "Resume"}
           </button>
-          <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-red-900 rounded">
-            Remove
-          </button>
+          <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-red-900 rounded">Remove</button>
         </div>
       </td>
     </tr>
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function WatchlistPage() {
   const qc = useQueryClient();
 
-  const { data: watchlist, isLoading } = useQuery({
-    queryKey: ["watchlist"],
-    queryFn: getWatchlist,
-  });
+  const { data: watchlist, isLoading } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
 
   const addMutation = useMutation({
     mutationFn: (req: AddWatchlistItemRequest) => addWatchlistItem(req),
@@ -271,8 +372,7 @@ export default function WatchlistPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      updateWatchlistItem(id, { enabled }),
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateWatchlistItem(id, { enabled }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
@@ -297,9 +397,7 @@ export default function WatchlistPage() {
         <div className="bg-navy-800 border border-slate-700 rounded-xl p-5">
           <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-4">Add Ticker</p>
           <AddItemForm onAdd={(req) => addMutation.mutate(req)} isPending={addMutation.isPending} />
-          {addMutation.error && (
-            <p className="text-red-400 text-sm mt-3">{String(addMutation.error)}</p>
-          )}
+          {addMutation.error && <p className="text-red-400 text-sm mt-3">{String(addMutation.error)}</p>}
         </div>
 
         {isLoading && <div className="text-slate-400 text-sm">Loading watchlist…</div>}
@@ -307,9 +405,7 @@ export default function WatchlistPage() {
         {watchlist && (
           <div className="bg-navy-800 border border-slate-700 rounded-xl overflow-hidden">
             {watchlist.items.length === 0 ? (
-              <p className="text-slate-500 text-sm text-center py-10">
-                No tickers yet. Add one above to start tracking.
-              </p>
+              <p className="text-slate-500 text-sm text-center py-10">No tickers yet. Add one above to start tracking.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-navy-900">
