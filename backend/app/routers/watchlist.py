@@ -151,6 +151,20 @@ async def remove_watchlist_item(
     await reload_jobs()
 
 
+@router.get("/watchlist/scheduler/jobs")
+async def get_scheduler_jobs(_user: User = Depends(get_current_user)):
+    """Return currently registered APScheduler job IDs and next run times."""
+    from app.services.scheduler import _scheduler
+    if not _scheduler:
+        return {"running": False, "jobs": []}
+    schedules = await _scheduler.get_schedules()
+    jobs = [
+        {"id": s.id, "next_fire_time": str(s.next_fire_time) if hasattr(s, "next_fire_time") else None}
+        for s in schedules if s.id.startswith("wl_")
+    ]
+    return {"running": True, "state": str(_scheduler._state), "jobs": jobs}
+
+
 @router.post("/watchlist/items/{item_id}/run", status_code=status.HTTP_201_CREATED)
 async def trigger_watchlist_run(
     item_id: UUID,
