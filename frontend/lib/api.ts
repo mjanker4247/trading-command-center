@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -148,5 +148,39 @@ export async function getRunOutcome(runId: string): Promise<RunOutcome> {
 export async function getPerformanceStats(): Promise<PerformanceStats> {
   const r = await fetchWithAuth("/runs/performance");
   if (!r.ok) throw new Error("Failed to fetch performance stats");
+  return r.json();
+}
+
+export async function getWatchlist(): Promise<Watchlist> {
+  const r = await fetchWithAuth("/watchlist");
+  if (!r.ok) throw new Error("Failed to fetch watchlist");
+  return r.json();
+}
+
+export async function addWatchlistItem(req: AddWatchlistItemRequest): Promise<WatchlistItem> {
+  const r = await fetchWithAuth("/watchlist/items", { method: "POST", body: JSON.stringify(req) });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Failed to add ticker");
+  }
+  return r.json();
+}
+
+export async function updateWatchlistItem(
+  itemId: string,
+  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts">>
+): Promise<WatchlistItem> {
+  const r = await fetchWithAuth(`/watchlist/items/${itemId}`, { method: "PATCH", body: JSON.stringify(req) });
+  if (!r.ok) throw new Error("Failed to update item");
+  return r.json();
+}
+
+export async function removeWatchlistItem(itemId: string): Promise<void> {
+  await fetchWithAuth(`/watchlist/items/${itemId}`, { method: "DELETE" });
+}
+
+export async function triggerWatchlistRun(itemId: string): Promise<{ run_id: string }> {
+  const r = await fetchWithAuth(`/watchlist/items/${itemId}/run`, { method: "POST" });
+  if (!r.ok) throw new Error("Failed to trigger run");
   return r.json();
 }

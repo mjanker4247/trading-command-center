@@ -98,6 +98,38 @@ export interface RunOutcome {
   updated_at: string;
 }
 
+export interface WatchlistItem {
+  id: string;
+  watchlist_id: string;
+  ticker: string;
+  llm_provider: string;
+  llm_model: string;
+  depth: string;
+  analysts: string[];
+  schedule_cron: string | null;
+  enabled: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  added_at: string;
+}
+
+export interface Watchlist {
+  id: string;
+  created_by: string;
+  name: string;
+  items: WatchlistItem[];
+  created_at: string;
+}
+
+export interface AddWatchlistItemRequest {
+  ticker: string;
+  llm_provider: string;
+  llm_model: string;
+  depth: string;
+  analysts: string[];
+  schedule_cron?: string | null;
+}
+
 export interface PerformanceStats {
   total: number;
   accuracy_7d: number | null;
