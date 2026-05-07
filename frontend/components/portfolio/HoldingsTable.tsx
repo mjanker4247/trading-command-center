@@ -1,14 +1,15 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addHolding, updateHolding, deleteHolding } from "@/lib/api";
-import type { PortfolioHolding } from "@/lib/types";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { addHolding, updateHolding, deleteHolding, addWatchlistItem, getWatchlist, getProviderModels } from "@/lib/api";
+import type { PortfolioHolding, FundamentalsData } from "@/lib/types";
 
 interface HoldingsTableProps {
   portfolioId: string;
   holdings: PortfolioHolding[];
   priceUnavailableReason: string | null;
+  fundamentals?: Record<string, FundamentalsData>;
 }
 
 interface DraftRow {
@@ -16,6 +17,15 @@ interface DraftRow {
   shares: string;
   avg_cost: string;
 }
+
+interface WatchDraft {
+  llm_provider: string;
+  llm_model: string;
+  depth: string;
+}
+
+const PROVIDERS = ["openai", "anthropic", "google", "groq", "ollama", "vllm"];
+const DEPTHS = ["quick", "standard", "deep"] as const;
 
 function fmtMoney(n: number | null): string {
   if (n == null) return "—";
@@ -27,6 +37,19 @@ function fmtPnl(pnl: number | null, pct: number | null): string {
   const sign = pnl >= 0 ? "+" : "";
   const pctStr = pct != null ? ` (${pnl >= 0 ? "+" : ""}${pct.toFixed(2)}%)` : "";
   return `${sign}${fmtMoney(pnl)}${pctStr}`;
+}
+
+function fmtNum(n: number | null, decimals = 2, suffix = ""): string {
+  if (n == null) return "—";
+  return `${n.toFixed(decimals)}${suffix}`;
+}
+
+function fmtLargeNum(n: number | null): string {
+  if (n == null) return "—";
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  return `$${n.toFixed(0)}`;
 }
 
 const verdictBadge: Record<string, string> = {
@@ -66,12 +89,135 @@ function EditInput({
   );
 }
 
-export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }: HoldingsTableProps) {
+function WatchButton({ ticker }: { ticker: string }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<WatchDraft>({ llm_provider: "openai", llm_model: "", depth: "standard" });
+  const [success, setSuccess] = useState(false);
+
+  const { data: watchlist } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
+  const watched = watchlist?.items.some((i) => i.ticker.toUpperCase() === ticker.toUpperCase()) ?? false;
+
+  const { data: models = [] } = useQuery({
+    queryKey: ["provider-models", draft.llm_provider],
+    queryFn: () => getProviderModels(draft.llm_provider),
+    enabled: open,
+  });
+
+  useEffect(() => {
+    if (models.length > 0 && !draft.llm_model) {
+      setDraft((d) => ({ ...d, llm_model: models[0] }));
+    }
+  }, [models, draft.llm_model]);
+
+  const addMutation = useMutation({
+    mutationFn: () =>
+      addWatchlistItem({
+        ticker,
+        llm_provider: draft.llm_provider,
+        llm_model: draft.llm_model || (models[0] ?? ""),
+        depth: draft.depth,
+        analysts: [],
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      setOpen(false);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    },
+  });
+
+  if (watched || success) {
+    return (
+      <span className="text-xs text-slate-500 cursor-default" title="Already on watchlist">
+        ★ Watching
+      </span>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-xs text-slate-400 hover:text-yellow-400 transition-colors"
+        title="Add to watchlist"
+      >
+        Watch
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <select
+        value={draft.llm_provider}
+        onChange={(e) => setDraft((d) => ({ ...d, llm_provider: e.target.value, llm_model: "" }))}
+        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+      >
+        {PROVIDERS.map((p) => (
+          <option key={p} value={p}>{p}</option>
+        ))}
+      </select>
+      <select
+        value={draft.llm_model}
+        onChange={(e) => setDraft((d) => ({ ...d, llm_model: e.target.value }))}
+        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none max-w-[140px]"
+      >
+        {models.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+      <select
+        value={draft.depth}
+        onChange={(e) => setDraft((d) => ({ ...d, depth: e.target.value }))}
+        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+      >
+        {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <button
+        onClick={() => addMutation.mutate()}
+        disabled={addMutation.isPending}
+        className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
+      >
+        {addMutation.isPending ? "Adding…" : "Add"}
+      </button>
+      <button onClick={() => setOpen(false)} className="text-xs text-slate-500 hover:text-slate-300">✕</button>
+    </div>
+  );
+}
+
+function FundamentalsRow({ data, colSpan }: { data: FundamentalsData; colSpan: number }) {
+  const metrics: Array<{ label: string; value: string }> = [
+    { label: "P/E", value: fmtNum(data.pe_ratio) },
+    { label: "Beta", value: fmtNum(data.beta) },
+    { label: "52w High", value: data.week52_high != null ? `$${data.week52_high.toFixed(2)}` : "—" },
+    { label: "52w Low", value: data.week52_low != null ? `$${data.week52_low.toFixed(2)}` : "—" },
+    { label: "Div Yield", value: fmtNum(data.dividend_yield, 2, "%") },
+    { label: "EPS (TTM)", value: data.eps_ttm != null ? `$${data.eps_ttm.toFixed(2)}` : "—" },
+    { label: "Mkt Cap", value: fmtLargeNum(data.market_cap) },
+  ];
+
+  return (
+    <tr className="border-t border-slate-700/50 bg-slate-800/20">
+      <td colSpan={colSpan} className="px-6 py-2">
+        <div className="flex flex-wrap gap-4">
+          {metrics.map((m) => (
+            <div key={m.label} className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wide">{m.label}</span>
+              <span className="text-xs text-slate-300 font-mono">{m.value}</span>
+            </div>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, fundamentals }: HoldingsTableProps) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
   const [addingNew, setAddingNew] = useState(false);
   const [newDraft, setNewDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const newTickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,6 +226,15 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }:
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ["portfolio-current", portfolioId] });
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   const updateMutation = useMutation({
@@ -137,6 +292,9 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }:
     if (e.key === "Escape") { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); }
   }
 
+  const hasFundamentals = fundamentals && Object.keys(fundamentals).length > 0;
+  const colSpan = 9; // total columns
+
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_finnhub_key" && (
@@ -150,6 +308,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }:
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
             <tr>
+              {hasFundamentals && <th className="w-6 px-2 py-3" />}
               <th className="text-left px-4 py-3">Ticker</th>
               <th className="text-right px-4 py-3">Shares</th>
               <th className="text-right px-4 py-3">Avg Cost</th>
@@ -163,137 +322,162 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }:
           <tbody>
             {holdings.length === 0 && !addingNew ? (
               <tr>
-                <td colSpan={8} className="text-center text-slate-500 px-4 py-8">
+                <td colSpan={colSpan} className="text-center text-slate-500 px-4 py-8">
                   No holdings. Add a row below or upload a CSV.
                 </td>
               </tr>
             ) : (
               holdings.map((h) => {
                 const isEditing = editingId === h.id;
+                const isExpanded = expandedIds.has(h.id);
+                const fundData = fundamentals?.[h.ticker] ?? null;
                 const pnl = h.unrealized_pnl;
                 const pnlColor = pnl == null ? "text-slate-500" : pnl >= 0 ? "text-green-400" : "text-red-400";
                 const verdictKey = h.last_run?.verdict?.toLowerCase() ?? "";
                 const badgeClass = verdictBadge[verdictKey] ?? "bg-slate-700 text-slate-300 border border-slate-600";
 
                 return (
-                  <tr key={h.id} className="border-t border-slate-800 hover:bg-slate-800/30">
-                    {/* Ticker */}
-                    <td className="px-4 py-2">
-                      {isEditing ? (
-                        <EditInput
-                          autoFocus
-                          value={editDraft.ticker}
-                          onChange={(v) => setEditDraft((d) => ({ ...d, ticker: v }))}
-                          onKeyDown={handleEditKey}
-                          className="w-24 uppercase"
-                        />
-                      ) : h.last_run ? (
-                        <Link href={`/runs/${h.last_run.run_id}`} className="font-mono text-purple-400 hover:underline">
-                          {h.ticker}
-                        </Link>
-                      ) : (
-                        <span className="font-mono text-purple-400">{h.ticker}</span>
+                  <>
+                    <tr key={h.id} className="border-t border-slate-800 hover:bg-slate-800/30">
+                      {/* Expand toggle */}
+                      {hasFundamentals && (
+                        <td className="px-2 py-2">
+                          {fundData && (
+                            <button
+                              onClick={() => toggleExpand(h.id)}
+                              className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+                              title="Show fundamentals"
+                            >
+                              {isExpanded ? "▾" : "▸"}
+                            </button>
+                          )}
+                        </td>
                       )}
-                    </td>
 
-                    {/* Shares */}
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {isEditing ? (
-                        <EditInput
-                          value={editDraft.shares}
-                          onChange={(v) => setEditDraft((d) => ({ ...d, shares: v }))}
-                          onKeyDown={handleEditKey}
-                          className="w-24 text-right"
-                        />
-                      ) : (
-                        <span className="text-slate-300">{h.shares.toLocaleString("en-US")}</span>
-                      )}
-                    </td>
-
-                    {/* Avg Cost */}
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {isEditing ? (
-                        <EditInput
-                          value={editDraft.avg_cost}
-                          onChange={(v) => setEditDraft((d) => ({ ...d, avg_cost: v }))}
-                          onKeyDown={handleEditKey}
-                          placeholder="—"
-                          className="w-24 text-right"
-                        />
-                      ) : (
-                        <span className="text-slate-400">{fmtMoney(h.avg_cost)}</span>
-                      )}
-                    </td>
-
-                    {/* Current Price (read-only) */}
-                    <td className="px-4 py-2 text-right text-slate-300 tabular-nums">{fmtMoney(h.current_price)}</td>
-
-                    {/* Market Value (read-only) */}
-                    <td className="px-4 py-2 text-right text-slate-300 tabular-nums">{fmtMoney(h.market_value)}</td>
-
-                    {/* Unrealized P&L (read-only) */}
-                    <td className={`px-4 py-2 text-right tabular-nums ${pnlColor}`}>
-                      {fmtPnl(pnl, h.unrealized_pnl_pct)}
-                    </td>
-
-                    {/* Last Analysis */}
-                    <td className="px-4 py-2">
-                      {h.last_run ? (
-                        <div className="flex items-center gap-2">
-                          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
-                            {(h.last_run.verdict ?? "").toUpperCase()}
-                          </span>
-                          <Link href={`/runs/${h.last_run.run_id}`} className="text-xs text-slate-400 hover:text-slate-200">
-                            {daysAgo(h.last_run.analysis_date)}d ago →
+                      {/* Ticker */}
+                      <td className="px-4 py-2">
+                        {isEditing ? (
+                          <EditInput
+                            autoFocus
+                            value={editDraft.ticker}
+                            onChange={(v) => setEditDraft((d) => ({ ...d, ticker: v }))}
+                            onKeyDown={handleEditKey}
+                            className="w-24 uppercase"
+                          />
+                        ) : h.last_run ? (
+                          <Link href={`/runs/${h.last_run.run_id}`} className="font-mono text-purple-400 hover:underline">
+                            {h.ticker}
                           </Link>
-                        </div>
-                      ) : (
-                        <span className="text-slate-500 text-xs">Not analyzed</span>
-                      )}
-                    </td>
+                        ) : (
+                          <span className="font-mono text-purple-400">{h.ticker}</span>
+                        )}
+                      </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-2">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={saveEdit}
-                            disabled={updateMutation.isPending}
-                            className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
-                          >
-                            {updateMutation.isPending ? "Saving…" : "Save"}
-                          </button>
-                          <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-300">
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/runs/new?ticker=${encodeURIComponent(h.ticker)}`}
-                            className="text-xs text-slate-400 hover:text-blue-400 transition-colors"
-                          >
-                            Analyze
-                          </Link>
-                          <button
-                            onClick={() => startEdit(h)}
-                            className="text-xs text-slate-500 hover:text-slate-200 transition-colors"
-                            title="Edit"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteMutation.mutate(h.id)}
-                            disabled={deleteMutation.isPending}
-                            className="text-xs text-slate-600 hover:text-red-400 transition-colors disabled:opacity-50"
-                            title="Delete"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                      {/* Shares */}
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {isEditing ? (
+                          <EditInput
+                            value={editDraft.shares}
+                            onChange={(v) => setEditDraft((d) => ({ ...d, shares: v }))}
+                            onKeyDown={handleEditKey}
+                            className="w-24 text-right"
+                          />
+                        ) : (
+                          <span className="text-slate-300">{h.shares.toLocaleString("en-US")}</span>
+                        )}
+                      </td>
+
+                      {/* Avg Cost */}
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {isEditing ? (
+                          <EditInput
+                            value={editDraft.avg_cost}
+                            onChange={(v) => setEditDraft((d) => ({ ...d, avg_cost: v }))}
+                            onKeyDown={handleEditKey}
+                            placeholder="—"
+                            className="w-24 text-right"
+                          />
+                        ) : (
+                          <span className="text-slate-400">{fmtMoney(h.avg_cost)}</span>
+                        )}
+                      </td>
+
+                      {/* Current Price (read-only) */}
+                      <td className="px-4 py-2 text-right text-slate-300 tabular-nums">{fmtMoney(h.current_price)}</td>
+
+                      {/* Market Value (read-only) */}
+                      <td className="px-4 py-2 text-right text-slate-300 tabular-nums">{fmtMoney(h.market_value)}</td>
+
+                      {/* Unrealized P&L (read-only) */}
+                      <td className={`px-4 py-2 text-right tabular-nums ${pnlColor}`}>
+                        {fmtPnl(pnl, h.unrealized_pnl_pct)}
+                      </td>
+
+                      {/* Last Analysis */}
+                      <td className="px-4 py-2">
+                        {h.last_run ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
+                              {(h.last_run.verdict ?? "").toUpperCase()}
+                            </span>
+                            <Link href={`/runs/${h.last_run.run_id}`} className="text-xs text-slate-400 hover:text-slate-200">
+                              {daysAgo(h.last_run.analysis_date)}d ago →
+                            </Link>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-xs">Not analyzed</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-2">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={saveEdit}
+                              disabled={updateMutation.isPending}
+                              className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
+                            >
+                              {updateMutation.isPending ? "Saving…" : "Save"}
+                            </button>
+                            <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <Link
+                              href={`/runs/new?ticker=${encodeURIComponent(h.ticker)}`}
+                              className="text-xs text-slate-400 hover:text-blue-400 transition-colors"
+                            >
+                              Analyze
+                            </Link>
+                            <WatchButton ticker={h.ticker} />
+                            <button
+                              onClick={() => startEdit(h)}
+                              className="text-xs text-slate-500 hover:text-slate-200 transition-colors"
+                              title="Edit"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteMutation.mutate(h.id)}
+                              disabled={deleteMutation.isPending}
+                              className="text-xs text-slate-600 hover:text-red-400 transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+
+                    {/* Fundamentals expand row */}
+                    {isExpanded && fundData && (
+                      <FundamentalsRow key={`${h.id}-fund`} data={fundData} colSpan={colSpan} />
+                    )}
+                  </>
                 );
               })
             )}
@@ -301,6 +485,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason }:
             {/* New row draft */}
             {addingNew && (
               <tr className="border-t border-slate-700 bg-slate-800/20">
+                {hasFundamentals && <td className="px-2 py-2" />}
                 <td className="px-4 py-2">
                   <EditInput
                     autoFocus

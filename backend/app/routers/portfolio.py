@@ -3,7 +3,7 @@ import csv
 import io
 import time
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -16,6 +16,7 @@ import httpx
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.portfolio import Portfolio, PortfolioSnapshot, PortfolioHolding
+from app.models.portfolio_insight import PortfolioInsight, InsightStatus, InsightTrigger, InsightStance
 from app.models.user import User
 from app.models.run import Run, RunStatus
 from app.models.api_key import ApiKey
@@ -529,3 +530,432 @@ async def delete_holding(
     if snap:
         snap.row_count = max(0, snap.row_count - 1)
     await db.commit()
+
+
+# ── Portfolio Insights ────────────────────────────────────────────────────────
+
+class InsightGenerateRequest(BaseModel):
+    llm_provider: str
+    llm_model: str
+
+
+class InsightResponse(BaseModel):
+    id: UUID
+    portfolio_id: UUID
+    generated_at: datetime
+    status: InsightStatus
+    trigger: InsightTrigger
+    llm_provider: str
+    llm_model: str
+    health_score: Optional[int]
+    overall_stance: Optional[InsightStance]
+    summary: Optional[str]
+    action_items: Optional[list]
+    risk_alerts: Optional[list]
+    sector_analysis: Optional[dict]
+    strengths: Optional[list]
+    weaknesses: Optional[list]
+    holdings_snapshot: Optional[dict]
+    error: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+
+
+async def _verify_portfolio_access(portfolio_id: UUID, user_id, db: AsyncSession) -> Portfolio:
+    result = await db.execute(select(Portfolio).where(Portfolio.id == portfolio_id, Portfolio.user_id == user_id))
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    return p
+
+
+@router.post("/portfolio/{portfolio_id}/insights/generate", response_model=InsightResponse, status_code=202)
+async def generate_insight(
+    portfolio_id: UUID,
+    body: InsightGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    # Allow only one running insight per portfolio at a time
+    existing = await db.execute(
+        select(PortfolioInsight)
+        .where(
+            PortfolioInsight.portfolio_id == portfolio_id,
+            PortfolioInsight.status.in_([InsightStatus.pending, InsightStatus.running]),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="An insight generation is already in progress")
+
+    insight = PortfolioInsight(
+        portfolio_id=portfolio_id,
+        status=InsightStatus.pending,
+        trigger=InsightTrigger.manual,
+        llm_provider=body.llm_provider,
+        llm_model=body.llm_model,
+    )
+    db.add(insight)
+    await db.commit()
+    await db.refresh(insight)
+
+    # Fire and forget — insight runner updates status as it progresses
+    from app.services.portfolio_insight_runner import generate_portfolio_insight
+    asyncio.create_task(generate_portfolio_insight(str(insight.id)))
+
+    return insight
+
+
+@router.get("/portfolio/{portfolio_id}/insights/latest", response_model=Optional[InsightResponse])
+async def get_latest_insight(
+    portfolio_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight)
+        .where(PortfolioInsight.portfolio_id == portfolio_id)
+        .order_by(desc(PortfolioInsight.generated_at))
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/portfolio/{portfolio_id}/insights", response_model=list[InsightResponse])
+async def list_insights(
+    portfolio_id: UUID,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight)
+        .where(PortfolioInsight.portfolio_id == portfolio_id)
+        .order_by(desc(PortfolioInsight.generated_at))
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+@router.get("/portfolio/{portfolio_id}/insights/{insight_id}", response_model=InsightResponse)
+async def get_insight(
+    portfolio_id: UUID,
+    insight_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight).where(
+            PortfolioInsight.id == insight_id,
+            PortfolioInsight.portfolio_id == portfolio_id,
+        )
+    )
+    insight = result.scalar_one_or_none()
+    if not insight:
+        raise HTTPException(status_code=404, detail="Insight not found")
+    return insight
+
+
+# ── Batch Analyze ─────────────────────────────────────────────────────────────
+
+class BatchAnalyzeRequest(BaseModel):
+    llm_provider: str
+    llm_model: str
+    depth: str = "standard"
+    analysts: list[str] = ["market", "social", "news", "fundamentals", "technical"]
+    staleness_days: int = 7
+
+
+class BatchAnalyzeResult(BaseModel):
+    queued: list[dict]   # [{ticker, run_id}]
+    skipped: list[str]   # tickers that already have a recent/active run
+
+
+@router.post("/portfolio/{portfolio_id}/runs/batch", response_model=BatchAnalyzeResult)
+async def batch_analyze_holdings(
+    portfolio_id: UUID,
+    body: BatchAnalyzeRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from app.models.run import Run, RunStatus
+    from app.services.job_manager import start_run
+
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    snap_result = await db.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .options(selectinload(PortfolioSnapshot.holdings))
+        .order_by(desc(PortfolioSnapshot.uploaded_at))
+        .limit(1)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if not snapshot or not snapshot.holdings:
+        raise HTTPException(status_code=404, detail="No holdings found — upload a CSV first")
+
+    cutoff = date.today() - timedelta(days=body.staleness_days)
+    queued: list[dict] = []
+    skipped: list[str] = []
+
+    for holding in snapshot.holdings:
+        recent = (await db.execute(
+            select(Run).where(
+                Run.created_by == user.id,
+                Run.ticker == holding.ticker,
+                Run.status.in_([RunStatus.completed, RunStatus.running, RunStatus.pending]),
+                Run.analysis_date >= cutoff,
+            ).limit(1)
+        )).scalar_one_or_none()
+
+        if recent:
+            skipped.append(holding.ticker)
+            continue
+
+        run = Run(
+            created_by=user.id,
+            ticker=holding.ticker,
+            analysis_date=date.today(),
+            llm_provider=body.llm_provider,
+            llm_model=body.llm_model,
+            depth=body.depth,
+            analysts=body.analysts,
+            label=f"Portfolio batch: {holding.ticker}",
+        )
+        db.add(run)
+        await db.flush()
+        queued.append({"ticker": holding.ticker, "run_id": str(run.id)})
+
+    await db.commit()
+
+    for item in queued:
+        await start_run(item["run_id"], {
+            "ticker": item["ticker"],
+            "analysis_date": str(date.today()),
+            "llm_provider": body.llm_provider,
+            "llm_model": body.llm_model,
+            "depth": body.depth,
+            "analysts": body.analysts,
+        })
+
+    return BatchAnalyzeResult(queued=queued, skipped=skipped)
+
+
+# ── Earnings Calendar ─────────────────────────────────────────────────────────
+
+_earnings_cache: dict[str, tuple[list, float]] = {}
+_EARNINGS_TTL = 21600  # 6 hours
+
+
+async def _fetch_earnings(ticker: str, api_key: str, days_ahead: int) -> list[dict]:
+    cache_key = f"{ticker}:{days_ahead}"
+    now = time.time()
+    if cache_key in _earnings_cache:
+        data, expiry = _earnings_cache[cache_key]
+        if now < expiry:
+            return data
+    try:
+        today = date.today()
+        to_date = today + timedelta(days=days_ahead)
+        url = (
+            f"https://finnhub.io/api/v1/calendar/earnings"
+            f"?from={today}&to={to_date}&symbol={ticker}&token={api_key}"
+        )
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            raw = r.json().get("earningsCalendar", [])
+        data = [
+            {
+                "ticker": e.get("symbol", ticker),
+                "date": e.get("date"),
+                "hour": e.get("hour"),
+                "eps_estimate": e.get("epsEstimate"),
+                "revenue_estimate": e.get("revenueEstimate"),
+                "eps_actual": e.get("epsActual"),
+                "revenue_actual": e.get("revenueActual"),
+            }
+            for e in raw
+        ]
+    except Exception:
+        data = []
+    _earnings_cache[cache_key] = (data, now + _EARNINGS_TTL)
+    return data
+
+
+@router.get("/portfolio/{portfolio_id}/earnings")
+async def get_portfolio_earnings(
+    portfolio_id: UUID,
+    days_ahead: int = 30,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    snap_result = await db.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .options(selectinload(PortfolioSnapshot.holdings))
+        .order_by(desc(PortfolioSnapshot.uploaded_at))
+        .limit(1)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if not snapshot or not snapshot.holdings:
+        return {"price_unavailable_reason": None, "events": []}
+
+    av_key = await _get_finnhub_key(db)
+    if not av_key:
+        return {"price_unavailable_reason": "no_finnhub_key", "events": []}
+
+    all_events: list[dict] = []
+    results = await asyncio.gather(
+        *[_fetch_earnings(h.ticker, av_key, days_ahead) for h in snapshot.holdings]
+    )
+    for events in results:
+        all_events.extend(events)
+
+    all_events.sort(key=lambda x: x.get("date") or "")
+    return {"price_unavailable_reason": None, "events": all_events}
+
+
+# ── Fundamentals ──────────────────────────────────────────────────────────────
+
+_fundamentals_cache: dict[str, tuple[dict, float]] = {}
+_FUNDAMENTALS_TTL = 21600  # 6 hours
+
+
+async def _fetch_fundamentals(ticker: str, api_key: str) -> dict:
+    now = time.time()
+    if ticker in _fundamentals_cache:
+        data, expiry = _fundamentals_cache[ticker]
+        if now < expiry:
+            return data
+    try:
+        url = f"https://finnhub.io/api/v1/stock/metric?symbol={ticker}&metric=all&token={api_key}"
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            m = r.json().get("metric", {})
+        data = {
+            "pe_ratio": m.get("peAnnual") or m.get("peTTM"),
+            "beta": m.get("beta"),
+            "week52_high": m.get("52WeekHigh"),
+            "week52_low": m.get("52WeekLow"),
+            "dividend_yield": m.get("dividendYieldIndicatedAnnual"),
+            "eps_ttm": m.get("epsBasicExclExtraItemsTTM"),
+            "market_cap": m.get("marketCapitalization"),
+        }
+    except Exception:
+        data = {}
+    _fundamentals_cache[ticker] = (data, now + _FUNDAMENTALS_TTL)
+    return data
+
+
+@router.get("/portfolio/{portfolio_id}/fundamentals")
+async def get_portfolio_fundamentals(
+    portfolio_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    snap_result = await db.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .options(selectinload(PortfolioSnapshot.holdings))
+        .order_by(desc(PortfolioSnapshot.uploaded_at))
+        .limit(1)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if not snapshot or not snapshot.holdings:
+        return {"price_unavailable_reason": None, "data": {}}
+
+    av_key = await _get_finnhub_key(db)
+    if not av_key:
+        return {"price_unavailable_reason": "no_finnhub_key", "data": {}}
+
+    tickers = [h.ticker for h in snapshot.holdings]
+    results = await asyncio.gather(*[_fetch_fundamentals(t, av_key) for t in tickers])
+    return {"price_unavailable_reason": None, "data": dict(zip(tickers, results))}
+
+
+# ── News Feed ─────────────────────────────────────────────────────────────────
+
+_news_cache: dict[str, tuple[list, float]] = {}
+_NEWS_TTL = 3600  # 1 hour
+
+
+async def _fetch_news(ticker: str, api_key: str, days: int) -> list[dict]:
+    cache_key = f"{ticker}:{days}"
+    now = time.time()
+    if cache_key in _news_cache:
+        data, expiry = _news_cache[cache_key]
+        if now < expiry:
+            return data
+    try:
+        today = date.today()
+        from_date = today - timedelta(days=days)
+        url = (
+            f"https://finnhub.io/api/v1/company-news"
+            f"?symbol={ticker}&from={from_date}&to={today}&token={api_key}"
+        )
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            raw = r.json()
+        data = [
+            {
+                "ticker": ticker,
+                "datetime": item.get("datetime"),
+                "headline": item.get("headline", ""),
+                "summary": (item.get("summary") or "")[:300],
+                "url": item.get("url", ""),
+                "source": item.get("source", ""),
+                "image": item.get("image", ""),
+            }
+            for item in (raw if isinstance(raw, list) else [])
+            if item.get("headline")
+        ]
+    except Exception:
+        data = []
+    _news_cache[cache_key] = (data, now + _NEWS_TTL)
+    return data
+
+
+@router.get("/portfolio/{portfolio_id}/news")
+async def get_portfolio_news(
+    portfolio_id: UUID,
+    days: int = 7,
+    limit: int = 40,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    snap_result = await db.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .options(selectinload(PortfolioSnapshot.holdings))
+        .order_by(desc(PortfolioSnapshot.uploaded_at))
+        .limit(1)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if not snapshot or not snapshot.holdings:
+        return {"price_unavailable_reason": None, "articles": []}
+
+    av_key = await _get_finnhub_key(db)
+    if not av_key:
+        return {"price_unavailable_reason": "no_finnhub_key", "articles": []}
+
+    results = await asyncio.gather(
+        *[_fetch_news(h.ticker, av_key, days) for h in snapshot.holdings]
+    )
+    all_articles: list[dict] = []
+    for articles in results:
+        all_articles.extend(articles)
+
+    all_articles.sort(key=lambda x: x.get("datetime") or 0, reverse=True)
+    return {"price_unavailable_reason": None, "articles": all_articles[:limit]}

@@ -1,0 +1,137 @@
+"use client";
+import { useQuery } from "@tanstack/react-query";
+import { getPortfolioEarnings } from "@/lib/api";
+import type { EarningsEvent, PortfolioHolding } from "@/lib/types";
+
+interface Props {
+  portfolioId: string;
+  holdings: PortfolioHolding[];
+}
+
+const STALE_DAYS = 7;
+
+function daysAgo(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
+function daysUntil(dateStr: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  return Math.round((target.getTime() - now.getTime()) / 86400000);
+}
+
+function fmtNum(n: number | null, prefix = ""): string {
+  if (n == null) return "—";
+  return `${prefix}${n.toFixed(2)}`;
+}
+
+export function EarningsPanel({ portfolioId, holdings }: Props) {
+  const { data: events = [], isLoading, isError } = useQuery({
+    queryKey: ["portfolio-earnings", portfolioId],
+    queryFn: () => getPortfolioEarnings(portfolioId, 60),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const staleSet = new Set(
+    holdings
+      .filter((h) => !h.last_run || daysAgo(h.last_run.analysis_date) > STALE_DAYS)
+      .map((h) => h.ticker),
+  );
+
+  if (isLoading) {
+    return <div className="text-slate-400 text-sm py-8 text-center">Loading earnings calendar…</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="text-slate-400 text-sm py-6 text-center">
+        Could not load earnings data. Add a Finnhub API key in Settings.
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="text-slate-500 text-sm py-8 text-center">
+        No upcoming earnings found for your holdings in the next 60 days.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-500">
+        Upcoming earnings dates for your holdings (next 60 days). Dates flagged{" "}
+        <span className="text-yellow-400">yellow</span> have stale or missing analysis.
+      </p>
+      <div className="overflow-x-auto rounded border border-slate-800">
+        <table className="w-full text-sm">
+          <thead className="bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-4 py-3">Ticker</th>
+              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-right px-4 py-3">Days Away</th>
+              <th className="text-right px-4 py-3">EPS Est.</th>
+              <th className="text-right px-4 py-3">EPS Actual</th>
+              <th className="text-right px-4 py-3">Rev. Est. ($B)</th>
+              <th className="text-right px-4 py-3">Quarter</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((e, i) => {
+              const days = daysUntil(e.date);
+              const isStale = staleSet.has(e.ticker);
+              const isPast = days < 0;
+              return (
+                <tr
+                  key={`${e.ticker}-${e.date}-${i}`}
+                  className={`border-t border-slate-800 ${isPast ? "opacity-50" : "hover:bg-slate-800/30"}`}
+                >
+                  <td className={`px-4 py-2 font-mono font-semibold ${isStale && !isPast ? "text-yellow-400" : "text-purple-400"}`}>
+                    {e.ticker}
+                    {isStale && !isPast && (
+                      <span className="ml-1.5 text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded px-1">
+                        STALE
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-slate-300">{e.date}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    <span
+                      className={
+                        isPast
+                          ? "text-slate-500"
+                          : days <= 7
+                          ? "text-orange-400 font-semibold"
+                          : days <= 14
+                          ? "text-yellow-400"
+                          : "text-slate-300"
+                      }
+                    >
+                      {isPast ? `${Math.abs(days)}d ago` : `${days}d`}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-slate-300">{fmtNum(e.eps_estimate, "$")}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {e.eps_actual != null ? (
+                      <span className={e.eps_actual >= (e.eps_estimate ?? 0) ? "text-green-400" : "text-red-400"}>
+                        {fmtNum(e.eps_actual, "$")}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-slate-300">
+                    {e.revenue_estimate != null ? (e.revenue_estimate / 1e9).toFixed(2) : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-right text-slate-400 text-xs">{e.quarter_ending ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

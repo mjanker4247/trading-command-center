@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -283,4 +283,69 @@ export async function deleteHolding(portfolioId: string, holdingId: string): Pro
     method: "DELETE",
   });
   if (!r.ok) throw new Error("Failed to delete holding");
+}
+
+// Portfolio Insights
+export async function generateInsight(portfolioId: string, req: GenerateInsightRequest): Promise<PortfolioInsight> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/insights/generate`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Failed to start insight generation");
+  }
+  return r.json();
+}
+
+export async function getLatestInsight(portfolioId: string): Promise<PortfolioInsight | null> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/insights/latest`);
+  if (!r.ok) throw new Error("Failed to fetch insight");
+  const data = await r.json();
+  return data ?? null;
+}
+
+export async function listInsights(portfolioId: string, limit = 10): Promise<PortfolioInsight[]> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/insights?limit=${limit}`);
+  if (!r.ok) throw new Error("Failed to fetch insights");
+  return r.json();
+}
+
+export async function getInsight(portfolioId: string, insightId: string): Promise<PortfolioInsight> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/insights/${insightId}`);
+  if (!r.ok) throw new Error("Insight not found");
+  return r.json();
+}
+
+export async function batchAnalyzePortfolio(
+  portfolioId: string,
+  req: { llm_provider: string; llm_model: string; depth: string; staleness_days?: number },
+): Promise<BatchRunResult> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/runs/batch`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Failed to start batch analysis");
+  }
+  return r.json();
+}
+
+export async function getPortfolioEarnings(portfolioId: string, daysAhead = 30): Promise<EarningsEvent[]> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/earnings?days_ahead=${daysAhead}`);
+  if (!r.ok) throw new Error("Failed to fetch earnings");
+  return r.json();
+}
+
+export async function getPortfolioFundamentals(portfolioId: string): Promise<Record<string, FundamentalsData>> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/fundamentals`);
+  if (!r.ok) throw new Error("Failed to fetch fundamentals");
+  return r.json();
+}
+
+export async function getPortfolioNews(portfolioId: string, days = 7): Promise<NewsArticle[]> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/news?days=${days}`);
+  if (!r.ok) throw new Error("Failed to fetch news");
+  return r.json();
 }
