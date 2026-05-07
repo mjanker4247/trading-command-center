@@ -335,17 +335,23 @@ export async function batchAnalyzePortfolio(
 export async function getPortfolioEarnings(portfolioId: string, daysAhead = 30): Promise<EarningsEvent[]> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/earnings?days_ahead=${daysAhead}`);
   if (!r.ok) throw new Error("Failed to fetch earnings");
-  return r.json();
+  const data = await r.json();
+  if (data.price_unavailable_reason === "no_finnhub_key") throw new Error("no_finnhub_key");
+  return data.events ?? [];
 }
 
 export async function getPortfolioFundamentals(portfolioId: string): Promise<Record<string, FundamentalsData>> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/fundamentals`);
   if (!r.ok) throw new Error("Failed to fetch fundamentals");
-  return r.json();
+  const data = await r.json();
+  if (data.price_unavailable_reason === "no_finnhub_key") throw new Error("no_finnhub_key");
+  return data.data ?? {};
 }
 
 export async function getPortfolioNews(portfolioId: string, days = 7): Promise<NewsArticle[]> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/news?days=${days}`);
   if (!r.ok) throw new Error("Failed to fetch news");
-  return r.json();
+  const data = await r.json();
+  if (data.price_unavailable_reason === "no_finnhub_key") throw new Error("no_finnhub_key");
+  return data.articles ?? [];
 }
