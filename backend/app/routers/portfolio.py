@@ -284,8 +284,8 @@ async def get_current_holdings(
         if market_value is not None:
             total_market_value += market_value
             has_price = True
-        if h.avg_cost is not None:
-            total_cost += h.avg_cost * h.shares
+            if h.avg_cost is not None:
+                total_cost += h.avg_cost * h.shares
 
         enriched.append(HoldingResponse(
             ticker=h.ticker,
