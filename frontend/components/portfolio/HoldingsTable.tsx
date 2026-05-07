@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { PortfolioHolding } from "@/lib/types";
 
 interface HoldingsTableProps {
@@ -35,8 +34,6 @@ function daysAgo(dateStr: string): number {
 }
 
 export function HoldingsTable({ holdings, priceUnavailableReason }: HoldingsTableProps) {
-  const router = useRouter();
-
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_av_key" && (
@@ -131,7 +128,7 @@ export function HoldingsTable({ holdings, priceUnavailableReason }: HoldingsTabl
                           <span
                             className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass}`}
                           >
-                            {h.last_run.verdict.toUpperCase()}
+                            {(h.last_run.verdict ?? "").toUpperCase()}
                           </span>
                           <Link
                             href={`/runs/${h.last_run.run_id}`}
@@ -147,12 +144,12 @@ export function HoldingsTable({ holdings, priceUnavailableReason }: HoldingsTabl
 
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(h.ticker)}`)}
+                      <Link
+                        href={`/runs/new?ticker=${encodeURIComponent(h.ticker)}`}
                         className="text-xs text-slate-400 hover:text-blue-400 transition-colors"
                       >
                         Analyze
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 );
