@@ -148,10 +148,7 @@ async def execute_run(run_id: str, config: dict) -> None:
         provider = config.get("llm_provider", "openai")
         model = config.get("llm_model", "")
         depth = config.get("depth", "standard")
-        # TradingAgents only supports these four analysts; "technical" is not in the library.
-        _SUPPORTED_ANALYSTS = {"market", "social", "news", "fundamentals"}
-        raw_analysts = config.get("analysts") or ["market", "social", "news", "fundamentals"]
-        analysts = [a for a in raw_analysts if a in _SUPPORTED_ANALYSTS] or ["market", "social", "news", "fundamentals"]
+        analysts = config.get("analysts") or ["market", "social", "news", "fundamentals", "technical"]
         depth_params = _DEPTH_PARAMS.get(depth, _DEPTH_PARAMS["standard"])
         ta_provider = _PROVIDER_MAP.get(provider, provider)
 
