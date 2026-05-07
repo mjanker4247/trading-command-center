@@ -1,9 +1,10 @@
 import pytest
+from pathlib import Path
 from httpx import AsyncClient, ASGITransport
 from main import app
 from app.services.auth import create_invite_token
 
-FIXTURES_DIR = "tests/fixtures"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 async def _register_and_login(client: AsyncClient, email: str, password: str = "password123") -> str:
@@ -58,7 +59,7 @@ async def test_upload_moomoo_csv():
         token = await _register_and_login(client, "moomoo@example.com")
         portfolio_id = await _create_portfolio(client, token)
 
-        with open(f"{FIXTURES_DIR}/moomoo_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "moomoo_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("moomoo.csv", f, "text/csv")},
@@ -86,7 +87,7 @@ async def test_upload_fidelity_csv():
         token = await _register_and_login(client, "fidelity@example.com")
         portfolio_id = await _create_portfolio(client, token)
 
-        with open(f"{FIXTURES_DIR}/fidelity_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "fidelity_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("fidelity.csv", f, "text/csv")},
@@ -111,7 +112,7 @@ async def test_upload_schwab_csv():
         token = await _register_and_login(client, "schwab@example.com")
         portfolio_id = await _create_portfolio(client, token)
 
-        with open(f"{FIXTURES_DIR}/schwab_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "schwab_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("schwab.csv", f, "text/csv")},
@@ -136,7 +137,7 @@ async def test_upload_generic_csv():
         token = await _register_and_login(client, "generic@example.com")
         portfolio_id = await _create_portfolio(client, token)
 
-        with open(f"{FIXTURES_DIR}/generic_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "generic_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("generic.csv", f, "text/csv")},
@@ -163,7 +164,7 @@ async def test_two_sequential_uploads_two_snapshots():
         portfolio_id = await _create_portfolio(client, token)
 
         # First upload: moomoo (AAPL, NVDA)
-        with open(f"{FIXTURES_DIR}/moomoo_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "moomoo_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("moomoo.csv", f, "text/csv")},
@@ -172,7 +173,7 @@ async def test_two_sequential_uploads_two_snapshots():
         assert r.status_code == 200
 
         # Second upload: fidelity (AAPL, MSFT)
-        with open(f"{FIXTURES_DIR}/fidelity_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "fidelity_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("fidelity.csv", f, "text/csv")},
@@ -203,7 +204,7 @@ async def test_snapshot_delete_rolls_back_to_previous():
         portfolio_id = await _create_portfolio(client, token)
 
         # First upload: moomoo (AAPL, NVDA)
-        with open(f"{FIXTURES_DIR}/moomoo_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "moomoo_positions.csv", "rb") as f:
             r1 = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("moomoo.csv", f, "text/csv")},
@@ -212,7 +213,7 @@ async def test_snapshot_delete_rolls_back_to_previous():
         assert r1.status_code == 200
 
         # Second upload: fidelity (AAPL, MSFT)
-        with open(f"{FIXTURES_DIR}/fidelity_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "fidelity_positions.csv", "rb") as f:
             r2 = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("fidelity.csv", f, "text/csv")},
@@ -225,6 +226,7 @@ async def test_snapshot_delete_rolls_back_to_previous():
         assert r_snaps.status_code == 200
         snapshots = r_snaps.json()
         assert len(snapshots) == 2
+        assert snapshots[0]["uploaded_at"] >= snapshots[1]["uploaded_at"]
         latest_snap_id = snapshots[0]["id"]
 
         # Delete the latest snapshot
@@ -250,7 +252,7 @@ async def test_get_current_no_av_key():
         token = await _register_and_login(client, "noavkey@example.com")
         portfolio_id = await _create_portfolio(client, token)
 
-        with open(f"{FIXTURES_DIR}/generic_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "generic_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("generic.csv", f, "text/csv")},
@@ -274,7 +276,7 @@ async def test_export_csv():
         portfolio_id = await _create_portfolio(client, token)
 
         # Upload generic (3 holdings: AAPL, NVDA, TSLA)
-        with open(f"{FIXTURES_DIR}/generic_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "generic_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("generic.csv", f, "text/csv")},
@@ -310,13 +312,14 @@ async def test_authorization_other_user_cannot_access():
         })
         assert r_b.status_code == 200, r_b.text
         r_b_login = await client.post("/auth/login", json={"email": "userb@example.com", "password": "password123"})
+        assert r_b_login.status_code == 200, r_b_login.text
         token_b = r_b_login.json()["access_token"]
 
         # User A creates a portfolio
         portfolio_id = await _create_portfolio(client, token_a)
 
         # Upload something so /current has data
-        with open(f"{FIXTURES_DIR}/generic_positions.csv", "rb") as f:
+        with open(FIXTURES_DIR / "generic_positions.csv", "rb") as f:
             r = await client.post(
                 f"/portfolio/{portfolio_id}/upload",
                 files={"file": ("generic.csv", f, "text/csv")},
