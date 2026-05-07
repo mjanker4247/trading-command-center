@@ -197,3 +197,46 @@ export interface PortfolioCurrentResponse {
   totals: PortfolioTotals;
   holdings: PortfolioHolding[];
 }
+
+export type InsightStatus = "pending" | "running" | "completed" | "failed";
+export type InsightTrigger = "scheduled" | "manual";
+export type InsightStance = "bullish" | "bearish" | "neutral" | "mixed";
+
+export interface InsightActionItem {
+  ticker: string;
+  action: "BUY_MORE" | "TRIM" | "EXIT" | "WATCH" | "REANALYZE";
+  priority: "high" | "medium" | "low";
+  rationale: string;
+}
+
+export interface InsightRiskAlert {
+  type: "concentration" | "drawdown" | "stale_analysis" | "no_analysis" | "sector_overweight" | "correlated_positions";
+  severity: "critical" | "warning" | "info";
+  description: string;
+  affected_tickers: string[];
+}
+
+export interface PortfolioInsight {
+  id: string;
+  portfolio_id: string;
+  generated_at: string;
+  status: InsightStatus;
+  trigger: InsightTrigger;
+  llm_provider: string;
+  llm_model: string;
+  health_score: number | null;
+  overall_stance: InsightStance | null;
+  summary: string | null;
+  action_items: InsightActionItem[] | null;
+  risk_alerts: InsightRiskAlert[] | null;
+  sector_analysis: Record<string, number> | null;
+  strengths: string[] | null;
+  weaknesses: string[] | null;
+  holdings_snapshot: Record<string, unknown> | null;
+  error: string | null;
+}
+
+export interface GenerateInsightRequest {
+  llm_provider: string;
+  llm_model: string;
+}

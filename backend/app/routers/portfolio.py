@@ -16,6 +16,7 @@ import httpx
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.portfolio import Portfolio, PortfolioSnapshot, PortfolioHolding
+from app.models.portfolio_insight import PortfolioInsight, InsightStatus, InsightTrigger
 from app.models.user import User
 from app.models.run import Run, RunStatus
 from app.models.api_key import ApiKey
@@ -529,3 +530,130 @@ async def delete_holding(
     if snap:
         snap.row_count = max(0, snap.row_count - 1)
     await db.commit()
+
+
+# ── Portfolio Insights ────────────────────────────────────────────────────────
+
+class InsightGenerateRequest(BaseModel):
+    llm_provider: str
+    llm_model: str
+
+
+class InsightResponse(BaseModel):
+    id: UUID
+    portfolio_id: UUID
+    generated_at: datetime
+    status: str
+    trigger: str
+    llm_provider: str
+    llm_model: str
+    health_score: Optional[int]
+    overall_stance: Optional[str]
+    summary: Optional[str]
+    action_items: Optional[list]
+    risk_alerts: Optional[list]
+    sector_analysis: Optional[dict]
+    strengths: Optional[list]
+    weaknesses: Optional[list]
+    holdings_snapshot: Optional[dict]
+    error: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+
+
+async def _verify_portfolio_access(portfolio_id: UUID, user_id, db: AsyncSession) -> Portfolio:
+    result = await db.execute(select(Portfolio).where(Portfolio.id == portfolio_id, Portfolio.user_id == user_id))
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    return p
+
+
+@router.post("/portfolio/{portfolio_id}/insights/generate", response_model=InsightResponse, status_code=202)
+async def generate_insight(
+    portfolio_id: UUID,
+    body: InsightGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    # Allow only one running insight per portfolio at a time
+    existing = await db.execute(
+        select(PortfolioInsight)
+        .where(
+            PortfolioInsight.portfolio_id == portfolio_id,
+            PortfolioInsight.status.in_([InsightStatus.pending, InsightStatus.running]),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="An insight generation is already in progress")
+
+    insight = PortfolioInsight(
+        portfolio_id=portfolio_id,
+        status=InsightStatus.pending,
+        trigger=InsightTrigger.manual,
+        llm_provider=body.llm_provider,
+        llm_model=body.llm_model,
+    )
+    db.add(insight)
+    await db.commit()
+    await db.refresh(insight)
+
+    # Fire and forget — insight runner updates status as it progresses
+    from app.services.portfolio_insight_runner import generate_portfolio_insight
+    asyncio.create_task(generate_portfolio_insight(str(insight.id)))
+
+    return insight
+
+
+@router.get("/portfolio/{portfolio_id}/insights/latest", response_model=Optional[InsightResponse])
+async def get_latest_insight(
+    portfolio_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight)
+        .where(PortfolioInsight.portfolio_id == portfolio_id)
+        .order_by(desc(PortfolioInsight.generated_at))
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/portfolio/{portfolio_id}/insights", response_model=list[InsightResponse])
+async def list_insights(
+    portfolio_id: UUID,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight)
+        .where(PortfolioInsight.portfolio_id == portfolio_id)
+        .order_by(desc(PortfolioInsight.generated_at))
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+@router.get("/portfolio/{portfolio_id}/insights/{insight_id}", response_model=InsightResponse)
+async def get_insight(
+    portfolio_id: UUID,
+    insight_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+    result = await db.execute(
+        select(PortfolioInsight).where(
+            PortfolioInsight.id == insight_id,
+            PortfolioInsight.portfolio_id == portfolio_id,
+        )
+    )
+    insight = result.scalar_one_or_none()
+    if not insight:
+        raise HTTPException(status_code=404, detail="Insight not found")
+    return insight

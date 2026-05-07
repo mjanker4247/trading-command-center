@@ -13,6 +13,7 @@ class Portfolio(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     snapshots = relationship("PortfolioSnapshot", back_populates="portfolio", cascade="all, delete-orphan")
+    insights = relationship("PortfolioInsight", back_populates="portfolio", cascade="all, delete-orphan")
 
 
 class PortfolioSnapshot(Base):

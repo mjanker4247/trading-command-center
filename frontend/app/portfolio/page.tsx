@@ -15,11 +15,15 @@ import { PortfolioSwitcher } from "@/components/portfolio/PortfolioSwitcher";
 import { PortfolioHeader } from "@/components/portfolio/PortfolioHeader";
 import { UploadDrawer } from "@/components/portfolio/UploadDrawer";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
+import { InsightsDashboard } from "@/components/portfolio/InsightsDashboard";
+
+type Tab = "holdings" | "insights";
 
 export default function PortfolioPage() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("holdings");
 
   const { data: portfolios = [], isLoading: loadingPortfolios } = useQuery({
     queryKey: ["portfolios"],
@@ -71,6 +75,7 @@ export default function PortfolioPage() {
   });
 
   const selectedPortfolio = portfolios.find((p) => p.id === selectedId) ?? null;
+  const hasHoldings = (current?.holdings?.length ?? 0) > 0;
 
   async function handleExport() {
     if (!selectedId || !selectedPortfolio) return;
@@ -93,7 +98,7 @@ export default function PortfolioPage() {
           <PortfolioSwitcher
             portfolios={portfolios}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={(id) => { setSelectedId(id); setTab("holdings"); }}
             onCreate={(name) => createMutation.mutate(name)}
             onDelete={(id) => deleteMutation.mutate(id)}
           />
@@ -128,11 +133,47 @@ export default function PortfolioPage() {
         )}
 
         {selectedId && !loadingCurrent && current && (
-          <HoldingsTable
-            portfolioId={selectedId}
-            holdings={current.holdings}
-            priceUnavailableReason={current.price_unavailable_reason}
-          />
+          <>
+            {/* Tab bar */}
+            <div className="flex gap-1 border-b border-slate-800">
+              <button
+                onClick={() => setTab("holdings")}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  tab === "holdings"
+                    ? "border-purple-500 text-white"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Holdings
+              </button>
+              <button
+                onClick={() => setTab("insights")}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
+                  tab === "insights"
+                    ? "border-purple-500 text-white"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <span>AI Insights</span>
+                <span className="text-purple-400 text-xs">✦</span>
+              </button>
+            </div>
+
+            {tab === "holdings" && (
+              <HoldingsTable
+                portfolioId={selectedId}
+                holdings={current.holdings}
+                priceUnavailableReason={current.price_unavailable_reason}
+              />
+            )}
+
+            {tab === "insights" && (
+              <InsightsDashboard
+                portfolioId={selectedId}
+                hasHoldings={hasHoldings}
+              />
+            )}
+          </>
         )}
       </main>
     </div>
