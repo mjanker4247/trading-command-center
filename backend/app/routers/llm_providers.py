@@ -30,6 +30,17 @@ _STATIC_MODELS: dict[str, list[str]] = {
         "gemini-2.0-flash", "gemini-2.0-flash-lite",
         "gemini-1.5-pro", "gemini-1.5-flash",
     ],
+    "groq": [
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "deepseek-r1-distill-llama-70b",
+        "qwen-qwq-32b",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+        "compound-beta",
+    ],
 }
 
 

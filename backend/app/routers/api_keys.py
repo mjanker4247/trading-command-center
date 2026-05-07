@@ -67,6 +67,9 @@ async def _validate_key(provider: str, key: str) -> bool:
             if provider == "openai":
                 r = await client.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {key}"}, timeout=5)
                 return r.status_code == 200
+            if provider == "groq":
+                r = await client.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {key}"}, timeout=5)
+                return r.status_code == 200
             if provider == "alpha_vantage":
                 # TIME_SERIES_INTRADAY is now premium; use GLOBAL_QUOTE (free tier)
                 r = await client.get(f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=IBM&apikey={key}", timeout=5)

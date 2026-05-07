@@ -12,6 +12,7 @@ const CLOUD_PROVIDERS: { provider: string; label: string; placeholder: string }[
   { provider: "openai",    label: "OpenAI",    placeholder: "sk-…" },
   { provider: "anthropic", label: "Anthropic", placeholder: "sk-ant-…" },
   { provider: "google",    label: "Google",    placeholder: "AIza…" },
+  { provider: "groq",      label: "Groq",      placeholder: "gsk_…" },
 ];
 
 const LOCAL_PROVIDERS: { provider: "ollama" | "vllm"; label: string }[] = [

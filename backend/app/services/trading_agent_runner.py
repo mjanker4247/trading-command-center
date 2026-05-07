@@ -23,7 +23,8 @@ _PROVIDER_MAP: dict[str, str] = {
     "anthropic": "anthropic",
     "google": "google_genai",
     "ollama": "ollama",
-    "vllm": "openai",  # vLLM is OpenAI-compatible
+    "vllm": "openai",   # vLLM is OpenAI-compatible
+    "groq": "openai",   # Groq is OpenAI-compatible
 }
 
 _DEPTH_PARAMS: dict[str, dict] = {
@@ -66,6 +67,7 @@ _CLOUD_KEY_ENV: dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "google": "GOOGLE_API_KEY",
+    "groq": "GROQ_API_KEY",
 }
 
 
@@ -146,7 +148,10 @@ async def execute_run(run_id: str, config: dict) -> None:
         provider = config.get("llm_provider", "openai")
         model = config.get("llm_model", "")
         depth = config.get("depth", "standard")
-        analysts = config.get("analysts") or ["market", "social", "news", "fundamentals", "technical"]
+        # TradingAgents only supports these four analysts; "technical" is not in the library.
+        _SUPPORTED_ANALYSTS = {"market", "social", "news", "fundamentals"}
+        raw_analysts = config.get("analysts") or ["market", "social", "news", "fundamentals"]
+        analysts = [a for a in raw_analysts if a in _SUPPORTED_ANALYSTS] or ["market", "social", "news", "fundamentals"]
         depth_params = _DEPTH_PARAMS.get(depth, _DEPTH_PARAMS["standard"])
         ta_provider = _PROVIDER_MAP.get(provider, provider)
 
@@ -162,7 +167,11 @@ async def execute_run(run_id: str, config: dict) -> None:
         # Patch env vars needed by TradingAgents: API keys for cloud providers,
         # server URLs for local inference.
         env_patch: dict[str, str] = {}
-        if provider in _CLOUD_KEY_ENV and stored_key:
+        if provider == "groq" and stored_key:
+            # Groq uses OpenAI-compatible API at a different base URL
+            env_patch["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
+            env_patch["OPENAI_API_KEY"] = stored_key
+        elif provider in _CLOUD_KEY_ENV and stored_key:
             env_patch[_CLOUD_KEY_ENV[provider]] = stored_key
         elif provider == "ollama" and stored_key:
             env_patch["OLLAMA_HOST"] = stored_key.rstrip("/")
