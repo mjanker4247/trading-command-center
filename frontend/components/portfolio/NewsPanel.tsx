@@ -4,6 +4,7 @@ import { getPortfolioNews } from "@/lib/api";
 
 interface Props {
   portfolioId: string;
+  priceUnavailableReason: string | null;
 }
 
 const TICKER_COLORS = [
@@ -22,12 +23,23 @@ function timeAgo(unixTs: number): string {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-export function NewsPanel({ portfolioId }: Props) {
+const NO_KEY_MSG = (
+  <div className="text-slate-400 text-sm py-6 text-center">
+    Could not load news. Add a <a href="/settings" className="text-blue-400 hover:underline">Finnhub API key in Settings</a>.
+  </div>
+);
+
+export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
+  const noKey = priceUnavailableReason === "no_finnhub_key";
+
   const { data: articles = [], isLoading, isError } = useQuery({
     queryKey: ["portfolio-news", portfolioId],
     queryFn: () => getPortfolioNews(portfolioId, 7),
     staleTime: 1000 * 60 * 15,
+    enabled: !noKey,
   });
+
+  if (noKey) return NO_KEY_MSG;
 
   // Assign stable colors to each ticker
   const tickerList = Array.from(new Set(articles.map((a) => a.ticker)));

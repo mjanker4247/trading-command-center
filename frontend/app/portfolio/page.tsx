@@ -364,11 +364,15 @@ export default function PortfolioPage() {
               <EarningsPanel
                 portfolioId={selectedId}
                 holdings={current.holdings}
+                priceUnavailableReason={current.price_unavailable_reason}
               />
             )}
 
             {tab === "news" && (
-              <NewsPanel portfolioId={selectedId} />
+              <NewsPanel
+                portfolioId={selectedId}
+                priceUnavailableReason={current.price_unavailable_reason}
+              />
             )}
           </>
         )}

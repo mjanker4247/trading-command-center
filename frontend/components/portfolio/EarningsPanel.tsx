@@ -6,6 +6,7 @@ import type { PortfolioHolding } from "@/lib/types";
 interface Props {
   portfolioId: string;
   holdings: PortfolioHolding[];
+  priceUnavailableReason: string | null;
 }
 
 const STALE_DAYS = 7;
@@ -26,12 +27,23 @@ function fmtNum(n: number | null, prefix = ""): string {
   return `${prefix}${n.toFixed(2)}`;
 }
 
-export function EarningsPanel({ portfolioId, holdings }: Props) {
+const NO_KEY_MSG = (
+  <div className="text-slate-400 text-sm py-6 text-center">
+    Could not load earnings data. Add a <a href="/settings" className="text-blue-400 hover:underline">Finnhub API key in Settings</a>.
+  </div>
+);
+
+export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }: Props) {
+  const noKey = priceUnavailableReason === "no_finnhub_key";
+
   const { data: events = [], isLoading, isError } = useQuery({
     queryKey: ["portfolio-earnings", portfolioId],
     queryFn: () => getPortfolioEarnings(portfolioId, 60),
     staleTime: 1000 * 60 * 30,
+    enabled: !noKey,
   });
+
+  if (noKey) return NO_KEY_MSG;
 
   const staleSet = new Set(
     holdings
