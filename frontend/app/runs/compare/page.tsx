@@ -103,7 +103,7 @@ function CompareContent() {
   if (!a) {
     return (
       <p className="text-slate-400 text-sm">
-        Start from a run's detail page and click <span className="text-slate-300">Compare →</span>, or
+        Start from a run&apos;s detail page and click <span className="text-slate-300">Compare →</span>, or
         select two runs from{" "}
         <Link href="/runs" className="text-blue-400 hover:underline">
           Run History
