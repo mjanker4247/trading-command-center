@@ -240,3 +240,39 @@ export interface GenerateInsightRequest {
   llm_provider: string;
   llm_model: string;
 }
+
+export interface EarningsEvent {
+  date: string;
+  ticker: string;
+  eps_estimate: number | null;
+  eps_actual: number | null;
+  revenue_estimate: number | null;
+  revenue_actual: number | null;
+  quarter_ending: string | null;
+}
+
+export interface FundamentalsData {
+  pe_ratio: number | null;
+  beta: number | null;
+  week52_high: number | null;
+  week52_low: number | null;
+  dividend_yield: number | null;
+  eps_ttm: number | null;
+  market_cap: number | null;
+}
+
+export interface NewsArticle {
+  ticker: string;
+  datetime: number;
+  headline: string;
+  source: string;
+  url: string;
+  summary: string;
+  image: string;
+}
+
+export interface BatchRunResult {
+  queued: string[];
+  skipped: string[];
+  message: string;
+}
