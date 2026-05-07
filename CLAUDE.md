@@ -72,7 +72,7 @@ Local Postgres from `docker compose up db` is mapped to **port 5433** (not 5432)
 | `/api-keys` | `api_keys.py` | Encrypted provider key storage |
 | `/users` | `users.py` | Profile, team admin |
 | `/llm-providers` | `llm_providers.py` | Static model lists + live local server queries (Ollama/vLLM) |
-| (none) | `watchlist.py` | Watchlist CRUD, schedule management, manual run trigger |
+| (none) | `watchlist.py` | Watchlist CRUD, schedule management, manual run trigger, scheduler diagnostics (`GET /watchlist/scheduler/jobs`) |
 
 CORS is restricted to `settings.frontend_url`.
 
@@ -110,7 +110,7 @@ CORS is restricted to `settings.frontend_url`.
 - `/runs/new` — launch a new run (analyst selection, LLM config, depth)
 - `/runs/[id]/live` — live monitor with WebSocket event feed + pipeline status
 - `/runs/[id]` — results viewer (verdict, per-analyst tabs, bull/bear debate, outcome price grid, download menu)
-- `/runs/compare` — side-by-side comparison of two runs (`?a=<id>&b=<id>`)
+- `/runs/compare` — side-by-side comparison of two runs. Entry points: (1) check up to two completed runs on the history page — a banner with "Compare 2 runs →" appears; (2) click "Compare →" on any run detail page — the compare page shows a run picker when only `?a=<id>` is in the URL. Full comparison loads at `?a=<id>&b=<id>`.
 - `/runs/performance` — accuracy stats (7d/14d/30d/90d) and outcomes table across all completed runs
 - `/watchlist` — ticker watchlist with visual schedule builder; per-item manual run trigger
 - `/settings` — API key management (including Alpha Vantage for outcome tracking) + team admin (admin-only)
@@ -122,7 +122,7 @@ CORS is restricted to `settings.frontend_url`.
 
 **Data fetching:** TanStack Query v5 (`useQuery` / `useMutation`). `QueryClient` and `SessionProvider` are set up in `app/providers.tsx`, which wraps `app/layout.tsx`.
 
-**Components (`components/runs/`):** `TraderDecision`, `AnalystReports`, `BullBearDebate`, `DownloadMenu` (JSON/Markdown/PDF dropdown), `ComparisonPanel` (side-by-side run columns with agreement badge), `OutcomeCard` (price grid at +7/14/30/90d), `PipelinePanel`, `AgentFeed`, `AgentSidebar`, `RunTable`, `RunFilters`, `RunForm`, `StatsBar`.
+**Components (`components/runs/`):** `TraderDecision`, `AnalystReports`, `BullBearDebate`, `DownloadMenu` (JSON/Markdown/PDF dropdown), `ComparisonPanel` (side-by-side run columns with agreement badge), `OutcomeCard` (price grid at +7/14/30/90d), `PipelinePanel`, `AgentFeed`, `AgentSidebar`, `RunTable` (accepts optional `selectedIds`/`onSelectionChange` for checkbox multi-select; caps at 2 with FIFO replacement; only completed runs are selectable), `RunFilters`, `RunForm`, `StatsBar`.
 
 ### Deployment
 

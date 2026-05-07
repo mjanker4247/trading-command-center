@@ -25,7 +25,7 @@ AgentFloor wraps TradingAgents in a production-quality web application so that m
 | **Structured reports** | Verdict (BUY / SELL / HOLD), price levels, per-analyst reports, bull/bear debate |
 | **Export** | Download any completed report as **PDF**, **Markdown**, or **JSON** |
 | **Watchlist & scheduling** | Track tickers with recurring schedules (daily, weekdays, weekly, custom days) — runs fire automatically via APScheduler |
-| **Run comparison** | Open two completed runs side-by-side to compare verdicts, analyst views, and debate |
+| **Run comparison** | Select two completed runs via checkboxes in the history table and click "Compare 2 runs →", or open any run and click "Compare →" to pick a second run from a list — no URL editing required |
 | **Outcome tracking** | After each run, prices are fetched at +7d/+14d/+30d/+90d via Alpha Vantage; a performance page shows accuracy stats across all runs |
 | **Multiple LLM providers** | OpenAI, Anthropic, Google, Groq, and more — configurable per run; Ollama/vLLM for local inference |
 | **Secure API key storage** | Provider keys stored encrypted at rest |
