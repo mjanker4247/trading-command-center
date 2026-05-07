@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import time
@@ -264,16 +265,21 @@ async def get_current_holdings(
                     analysis_date=str(run.analysis_date),
                 )
 
+    # Fetch all prices concurrently — cache hits are instant, misses run in parallel
+    tickers = [h.ticker for h in snapshot.holdings]
+    if av_key:
+        prices = await asyncio.gather(*[_fetch_price(t, av_key) for t in tickers])
+    else:
+        prices = [None] * len(tickers)
+    price_map: dict[str, Optional[float]] = dict(zip(tickers, prices))
+
     enriched: list[HoldingResponse] = []
     total_market_value: float = 0.0
     total_cost: float = 0.0
     has_price = False
 
     for h in snapshot.holdings:
-        price: Optional[float] = None
-        if av_key:
-            price = await _fetch_price(h.ticker, av_key)
-
+        price = price_map[h.ticker]
         market_value: Optional[float] = h.shares * price if price is not None else None
         unrealized_pnl: Optional[float] = None
         unrealized_pnl_pct: Optional[float] = None
