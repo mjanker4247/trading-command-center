@@ -44,7 +44,7 @@ export default function PortfolioPage() {
     if (selectedId != null && !loadingCurrent && current !== undefined && current.snapshot === null) {
       setUploadOpen(true);
     }
-  }, [selectedId, current]);
+  }, [selectedId, current, loadingCurrent]);
 
   const createMutation = useMutation({
     mutationFn: (name: string) => createPortfolio(name),
