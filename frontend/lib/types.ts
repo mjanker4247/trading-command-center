@@ -109,6 +109,7 @@ export interface WatchlistItem {
   schedule_cron: string | null;
   enabled: boolean;
   last_run_at: string | null;
+  last_run_id: string | null;
   next_run_at: string | null;
   added_at: string;
 }

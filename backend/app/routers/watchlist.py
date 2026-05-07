@@ -42,6 +42,7 @@ class WatchlistItemResponse(BaseModel):
     schedule_cron: str | None
     enabled: bool
     last_run_at: datetime | None
+    last_run_id: UUID | None
     next_run_at: datetime | None
     added_at: datetime
 
@@ -194,6 +195,7 @@ async def trigger_watchlist_run(
     )
     db.add(run)
     item.last_run_at = datetime.now(timezone.utc)
+    item.last_run_id = run.id
     await db.commit()
     await db.refresh(run)
     await start_run(str(run.id), {

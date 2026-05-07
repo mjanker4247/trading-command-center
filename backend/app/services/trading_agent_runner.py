@@ -225,6 +225,25 @@ async def execute_run(run_id: str, config: dict) -> None:
         await _set_status(RunStatus.completed, verdict)
         await ws_manager.broadcast(run_id, {"type": "run_completed", "run_id": run_id})
 
+        # Fire-and-forget completion email; failure never affects run status
+        try:
+            from app.models.user import User
+            from app.services.email import send_run_complete_email
+            from app.config import settings as _cfg
+            async with AsyncSessionLocal() as db:
+                run_row = await db.get(Run, run_id)
+                user_row = await db.get(User, run_row.created_by)
+                if user_row and run_row.verdict:
+                    await send_run_complete_email(
+                        to=user_row.email,
+                        ticker=run_row.ticker,
+                        verdict=run_row.verdict.value,
+                        run_id=run_id,
+                        frontend_url=_cfg.frontend_url,
+                    )
+        except Exception:
+            pass
+
     except asyncio.TimeoutError:
         import logging
         from app.config import settings as _cfg

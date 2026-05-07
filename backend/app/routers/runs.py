@@ -226,6 +226,29 @@ async def compare_runs(
     return {"a": run_a, "b": run_b}
 
 
+class RunUpdateRequest(BaseModel):
+    label: str | None = None
+
+
+@router.patch("/runs/{run_id}", response_model=RunResponse)
+async def update_run(
+    run_id: UUID,
+    req: RunUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    run = await db.get(Run, run_id)
+    if not run:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    if str(run.created_by) != str(user.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+    if "label" in req.model_fields_set or req.label is not None:
+        run.label = req.label or None
+    await db.commit()
+    await db.refresh(run)
+    return _run_to_response(run)
+
+
 @router.get("/runs/{run_id}", response_model=RunResponse)
 async def get_run(run_id: UUID, db: AsyncSession = Depends(get_db), _user: User = Depends(get_current_user)):
     result = await db.execute(

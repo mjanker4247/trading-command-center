@@ -14,18 +14,41 @@ const PLACEHOLDERS: Record<string, string> = {
   vllm: "mistralai/Mistral-7B-Instruct-v0.3",
 };
 
-interface Props {
-  onSuccess: (runId: string) => void;
+const POPULAR_TICKERS = [
+  "AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BRK.B","JPM","V",
+  "UNH","XOM","LLY","JNJ","MA","PG","MRK","HD","AVGO","CVX",
+  "PEP","ABBV","KO","COST","WMT","BAC","MCD","ACN","CRM","TMO",
+  "NFLX","AMD","ADBE","ORCL","QCOM","TXN","DHR","AMGN","NEE","PM",
+  "INTC","RTX","HON","IBM","GE","BA","CAT","SBUX","NOW","PYPL",
+  "COIN","PLTR","SNOW","UBER","ABNB","SHOP","SQ","ROKU","ZM","DDOG",
+];
+
+export interface RunFormInitialValues {
+  ticker?: string;
+  provider?: string;
+  model?: string;
+  depth?: string;
+  analysts?: string[];
+  label?: string;
 }
 
-export function RunForm({ onSuccess }: Props) {
-  const [ticker, setTicker] = useState("");
-  const [label, setLabel] = useState("");
+interface Props {
+  onSuccess: (runId: string) => void;
+  initialValues?: RunFormInitialValues;
+}
+
+export function RunForm({ onSuccess, initialValues }: Props) {
+  const [ticker, setTicker] = useState(initialValues?.ticker ?? "");
+  const [label, setLabel] = useState(initialValues?.label ?? "");
   const [analysisDate, setAnalysisDate] = useState(new Date().toISOString().slice(0, 10));
-  const [analysts, setAnalysts] = useState<string[]>(["market", "social", "news", "fundamentals", "technical"]);
-  const [provider, setProvider] = useState("openai");
-  const [model, setModel] = useState("");
-  const [depth, setDepth] = useState<"quick" | "standard" | "deep">("standard");
+  const [analysts, setAnalysts] = useState<string[]>(
+    initialValues?.analysts ?? ["market", "social", "news", "fundamentals", "technical"]
+  );
+  const [provider, setProvider] = useState(initialValues?.provider ?? "openai");
+  const [model, setModel] = useState(initialValues?.model ?? "");
+  const [depth, setDepth] = useState<"quick" | "standard" | "deep">(
+    (initialValues?.depth as "quick" | "standard" | "deep") ?? "standard"
+  );
 
   const isLocal = LOCAL_PROVIDERS.includes(provider);
 
@@ -37,14 +60,20 @@ export function RunForm({ onSuccess }: Props) {
   });
 
   useEffect(() => {
-    setModel("");
-  }, [provider]);
+    // Only reset model when provider changes if no initial model was provided
+    if (!initialValues?.model) setModel("");
+  }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isLocal && models.length > 0 && !model) {
       setModel(models[0]);
     }
   }, [models, isLocal, model]);
+
+  // If an initial model was provided and the model list has loaded, keep it selected
+  useEffect(() => {
+    if (initialValues?.model && !model) setModel(initialValues.model);
+  }, [initialValues?.model]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mutation = useMutation({
     mutationFn: createRun,
@@ -89,11 +118,15 @@ export function RunForm({ onSuccess }: Props) {
         <input
           required
           type="text"
+          list="ticker-suggestions"
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           placeholder="AAPL"
           className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
         />
+        <datalist id="ticker-suggestions">
+          {POPULAR_TICKERS.map((t) => <option key={t} value={t} />)}
+        </datalist>
       </div>
 
       <div className="mb-4">

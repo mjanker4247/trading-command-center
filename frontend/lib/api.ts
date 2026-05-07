@@ -45,6 +45,12 @@ export async function abortRun(id: string): Promise<void> {
   await fetchWithAuth(`/runs/${id}`, { method: "DELETE" });
 }
 
+export async function updateRun(id: string, data: { label?: string | null }): Promise<Run> {
+  const r = await fetchWithAuth(`/runs/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  if (!r.ok) throw new Error("Failed to update run");
+  return r.json();
+}
+
 export async function archiveRun(id: string): Promise<Run> {
   const r = await fetchWithAuth(`/runs/${id}/archive`, { method: "POST" });
   if (!r.ok) throw new Error("Failed to archive run");

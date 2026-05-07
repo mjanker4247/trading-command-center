@@ -333,8 +333,14 @@ function ItemRow({ item, onRemove, onToggle, onRunNow }: {
       <td className="px-4 py-3 text-slate-400 text-sm">{item.depth}</td>
       <td className="px-4 py-3 text-slate-400 text-xs">{item.analysts.join(", ")}</td>
       <td className="px-4 py-3"><CronLabel cron={item.schedule_cron} /></td>
-      <td className="px-4 py-3 text-slate-500 text-xs">
-        {item.last_run_at ? new Date(item.last_run_at).toLocaleDateString() : "Never"}
+      <td className="px-4 py-3 text-xs">
+        {item.last_run_at && item.last_run_id ? (
+          <Link href={`/runs/${item.last_run_id}`} className="text-blue-400 hover:underline">
+            {new Date(item.last_run_at).toLocaleDateString()}
+          </Link>
+        ) : (
+          <span className="text-slate-500">Never</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <span className={`text-xs px-2 py-0.5 rounded-full ${item.enabled ? "bg-green-900/40 text-green-400" : "bg-slate-800 text-slate-500"}`}>

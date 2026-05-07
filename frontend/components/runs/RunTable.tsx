@@ -5,6 +5,17 @@ import { useMutation } from "@tanstack/react-query";
 import { archiveRun, deleteRun } from "@/lib/api";
 import type { Run } from "@/lib/types";
 
+function rerunUrl(run: Run): string {
+  const p = new URLSearchParams({
+    ticker: run.ticker,
+    provider: run.llm_provider,
+    model: run.llm_model,
+    depth: run.depth,
+    analysts: run.analysts.join(","),
+  });
+  return `/runs/new?${p.toString()}`;
+}
+
 function formatDuration(startedAt: string | null, completedAt: string | null): string {
   if (!startedAt || !completedAt) return "—";
   const secs = Math.round((new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000);
@@ -126,6 +137,9 @@ function RunRow({
         <div className="flex items-center gap-3">
           <Link href={`/runs/${run.id}`} className="text-blue-400 hover:underline text-xs">
             View
+          </Link>
+          <Link href={rerunUrl(run)} className="text-slate-400 hover:text-blue-400 text-xs">
+            Re-run
           </Link>
           <button
             onClick={() => archiveMutation.mutate()}

@@ -30,6 +30,7 @@ async def _fire_watchlist_item(item_id: str) -> None:
         )
         db.add(run)
         item.last_run_at = datetime.now(timezone.utc)
+        item.last_run_id = run.id
         await db.commit()
         await db.refresh(run)
         await start_run(str(run.id), {
