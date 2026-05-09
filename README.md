@@ -117,6 +117,121 @@ Go to `/register` — the first user automatically becomes **admin**. All subseq
 
 ---
 
+## Using AgentFloor
+
+### Step 1 — Add your API keys
+
+Nothing works until you add at least one LLM key. Go to **Settings → API Keys**.
+
+**Required (pick one LLM provider):**
+
+| Provider | Where to get a key |
+|---|---|
+| OpenAI | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| Anthropic | [console.anthropic.com](https://console.anthropic.com) |
+| Google Gemini | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) |
+| Groq (fast + free tier) | [console.groq.com/keys](https://console.groq.com/keys) |
+
+**Strongly recommended:**
+
+| Provider | Why |
+|---|---|
+| **Finnhub** | Live portfolio prices, outcome tracking (+7d/+14d/+30d/+90d), earnings calendar, fundamentals, and company news. Free tier covers all AgentFloor features (60 req/min). Get one at [finnhub.io](https://finnhub.io). Without this key, portfolio prices and the Trade Outcome card show `—`. |
+
+Once a key is saved, AgentFloor validates it immediately and shows a green checkmark. A red badge means the key was rejected by the provider.
+
+---
+
+### Step 2 — Run your first analysis
+
+1. Click **New Run** in the top nav.
+2. Enter a **ticker** (e.g. `AAPL`, `TSLA`, `BTC`).
+3. Set the **analysis date** — this is the date the agents treat as "today". Use today's date for a current view, or a past date to backtest how the agents would have called it then.
+4. Choose your **LLM provider and model**. GPT-4o or Claude Sonnet are good starting points for quality; Groq's `llama-3.3-70b-versatile` is fast and free.
+5. Select **depth**:
+   - *Quick* — 1 debate round, fastest (~2–5 min)
+   - *Standard* — 2 rounds, balanced (~5–10 min)
+   - *Deep* — 3 rounds, most thorough (~10–20 min)
+6. Select **analysts**. All five are on by default. Deselecting reduces run time — removing Fundamentals is common for crypto tickers (automatically excluded by the app).
+7. Click **Start Run**.
+
+You'll be taken to the **Live** page where you can watch every agent think in real time via a WebSocket feed. The pipeline sidebar on the right shows which stage is active.
+
+---
+
+### Step 3 — Read the report
+
+Once the run completes you land on the **Results** page. It has four sections:
+
+**Final Recommendation** — the Trader Agent's verdict (BUY / SELL / HOLD) with suggested entry price, stop-loss, and price target extracted from the decision text.
+
+**Trade Outcome** — price columns at Day 0, +7d, +14d, +30d, +90d populated lazily from Finnhub as those calendar dates pass. Green = verdict was correct; red = incorrect. Requires a Finnhub key.
+
+**Analyst Reports** — tab for each analyst (Market, Social, News, Fundamentals, Technical). Each tab shows that analyst's full written report.
+
+**Bull / Bear Debate** — the back-and-forth transcript between the Bull Researcher and Bear Researcher agents, followed by the Risk Manager's sign-off.
+
+You can download the full report as **PDF**, **Markdown**, or **JSON** using the download button at the top of the page.
+
+---
+
+### Step 4 — Compare and track runs
+
+**Comparing two runs:** Check the checkbox on up to two completed rows in the **History** table, then click the **"Compare 2 runs →"** banner that appears. Side-by-side diff shows verdict, price levels, and analyst agreement score.
+
+**Performance page:** The **Performance** tab tracks prediction accuracy across all your completed runs — shows what % of BUY calls went up and SELL calls went down at each time horizon. Accuracy scores populate as the +7d/+14d/+30d/+90d dates pass.
+
+---
+
+### Step 5 — Set up your portfolio
+
+1. Go to **Portfolio** and click **+ New Portfolio** to create one.
+2. Click **Upload CSV** and drop your broker's export file. AgentFloor accepts the common column names used by most brokers (`Symbol`, `Shares`/`Quantity`, `Average Cost`/`Cost Basis`). Rows with unrecognised columns are ignored.
+3. If you don't have a CSV, click **+ Add row** below the holdings table to add tickers manually — enter the ticker, number of shares, and optional average cost.
+
+Once holdings are loaded and a Finnhub key is set, each row shows the **current price**, **market value**, and **unrealized P&L** (color-coded green/red). The totals bar at the top summarises the whole portfolio.
+
+**Inline editing:** Click **Edit** on any row to change ticker, shares, or average cost in place. Press Enter to save or Escape to cancel. Click **✕** to delete a row.
+
+**Ticker detail drawer:** Click any ticker name to open a slide-in panel with a 90-day price chart, 1D/1W/1M % change, your position summary, key stats (P/E, beta, 52-week range for stocks; market cap, volume, ATH for crypto), the last AI analysis verdict with entry/stop/target levels, next earnings date, and recent news headlines.
+
+**Key fundamentals:** Click the **▸** expand toggle on any row to see P/E ratio, Beta, 52-week high/low, dividend yield, EPS (TTM), and market cap inline.
+
+**Analyze All Stale:** The stats bar above the table shows a count of holdings not analyzed in the last 7 days. Click **Analyze All Stale** to queue batch analysis runs for all of them at once — choose your LLM and depth in the modal.
+
+**AI Insights tab:** Click **Generate Insights** for a full AI briefing on your portfolio: an overall health score (1–10), bullish/bearish/neutral stance, prioritised action items per holding (BUY MORE / TRIM / EXIT / WATCH / REANALYZE), risk alerts (concentration risk, drawdown, stale analysis, sector overweight), and a sector exposure breakdown. Insights also fire automatically every weekday morning at 09:15 UTC.
+
+**Earnings tab:** Upcoming earnings dates for all your holdings in a 60-day window. Days-to-earnings are color-coded by urgency; EPS estimate vs. actual beat/miss is highlighted green/red after the report.
+
+**News tab:** A merged, time-sorted news feed for all holdings — last 7 days, sourced from Finnhub, with per-ticker color badges for quick scanning.
+
+**Export:** Click **Export CSV** in the portfolio header to download the current holdings with current prices and P&L included.
+
+**Preferred currency:** Go to **Settings → Profile** to set a display currency (USD, EUR, GBP, AUD, JPY, CAD, CHF, CNY, INR, SGD). All portfolio monetary values — prices, market value, P&L — are converted to your preferred currency using live ECB exchange rates.
+
+---
+
+### Step 6 — Watchlist and scheduling
+
+The **Watchlist** lets you track tickers and run analyses automatically on a schedule.
+
+1. Go to **Watchlist** and click **+ Add Ticker**.
+2. Enter a ticker, choose your LLM provider/model and depth.
+3. Set a **schedule** using the visual picker (daily, weekdays only, weekly, or pick specific days and a time). Leave blank to trigger manually only.
+4. Click the **▶ Run now** button on any item to trigger an immediate analysis.
+
+Scheduled runs fire via APScheduler on the backend — they work whether or not you have the browser open.
+
+---
+
+### Step 7 — Invite your team
+
+Go to **Settings → Team** (admin only). Enter a colleague's email and click **Invite Member**. They'll receive a registration link valid for one use. If you haven't configured SMTP, the invite URL is shown inline — copy and send it manually.
+
+Team members share the same run history and portfolio data. Each user's API keys and watchlist are private to their account.
+
+---
+
 ## Full-stack Docker
 
 ```bash
