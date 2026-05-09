@@ -323,7 +323,7 @@ export interface NewsArticle {
 }
 
 export interface BatchRunResult {
-  queued: string[];
+  queued: { ticker: string; run_id: string }[];
   skipped: string[];
   message: string;
 }

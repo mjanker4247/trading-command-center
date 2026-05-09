@@ -50,7 +50,7 @@ function BatchAnalyzeModal({
     depth: "quick",
     staleness_days: 7,
   });
-  const [result, setResult] = useState<{ queued: string[]; skipped: string[] } | null>(null);
+  const [result, setResult] = useState<{ queued: { ticker: string; run_id: string }[]; skipped: string[] } | null>(null);
 
   const { data: models = [] } = useQuery({
     queryKey: ["provider-models", form.llm_provider],
@@ -159,7 +159,7 @@ function BatchAnalyzeModal({
                 {result.queued.length} run{result.queued.length !== 1 ? "s" : ""} queued
               </p>
               {result.queued.length > 0 && (
-                <p className="text-xs text-slate-400 font-mono">{result.queued.join(", ")}</p>
+                <p className="text-xs text-slate-400 font-mono">{result.queued.map((q) => q.ticker).join(", ")}</p>
               )}
             </div>
             {result.skipped.length > 0 && (
