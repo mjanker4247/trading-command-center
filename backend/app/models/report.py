@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import String, Enum as SAEnum, DateTime, ForeignKey, func, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-from app.database import Base
+from app.base import Base
 from app.models.run import RunVerdict
 
 class Report(Base):

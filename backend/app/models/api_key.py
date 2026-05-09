@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
-from app.database import Base
+from app.base import Base
 
 class ApiKey(Base):
     __tablename__ = "api_keys"

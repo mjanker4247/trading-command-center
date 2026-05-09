@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, func, UniqueConstraint, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.base import Base
 
 
 class Watchlist(Base):

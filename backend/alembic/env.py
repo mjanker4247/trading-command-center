@@ -1,16 +1,27 @@
-import sys, os
+import os
+import sys
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
+# Add backend/ to sys.path so app.* imports work.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.database import Base
-from app.models import user, run, agent_event, report, api_key  # noqa: F401
-from app.config import settings
+# Import Base and all models for autogenerate — model files only depend on
+# app.base (no config/settings import needed here).
+from app.base import Base  # noqa: E402
+from app.models import user, run, agent_event, report, api_key, outcome  # noqa: F401, E402
+from app.models import portfolio, portfolio_insight, watchlist  # noqa: F401, E402
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url.replace("+asyncpg", ""))
+
+# DATABASE_URL can come from the environment (preferred) or alembic.ini.
+# Using the environment means `alembic revision --autogenerate` works locally
+# with just `DATABASE_URL=... alembic ...` — no other secrets required.
+db_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url", "")
+# Strip async driver prefix so the sync engine used by alembic works.
+db_url = db_url.replace("+asyncpg", "")
+config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

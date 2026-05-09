@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import String, Integer, DateTime, ForeignKey, func, Text, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.base import Base
 
 
 class InsightStatus(str, enum.Enum):

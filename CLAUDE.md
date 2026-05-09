@@ -30,7 +30,7 @@ python -m pytest tests/test_auth.py::test_register_first_user_is_admin
 
 # Database migrations
 DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor alembic upgrade head
-alembic revision --autogenerate -m "description"
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor alembic revision --autogenerate -m "description"
 ```
 
 ### Frontend

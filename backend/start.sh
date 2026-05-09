@@ -6,6 +6,18 @@
 # of crash-looping. This is safe for non-breaking additive changes (new columns
 # with server defaults). Rebuild the image to fully resolve the mismatch.
 
+echo "[agentfloor] Checking migration chain..."
+NUM_HEADS=$(alembic heads 2>/dev/null | grep -c "(head)" || true)
+if [ "${NUM_HEADS:-0}" -gt 1 ]; then
+    echo ""
+    echo "[agentfloor] ERROR: Multiple Alembic heads detected (${NUM_HEADS})."
+    echo "[agentfloor] Two migration files point to the same parent revision."
+    echo "[agentfloor] Fix: open backend/alembic/versions/, find the newer migration,"
+    echo "[agentfloor] and set its down_revision to the ID of the previous latest migration."
+    echo "[agentfloor] Then rebuild: docker compose up -d --build backend"
+    exit 1
+fi
+
 echo "[agentfloor] Running database migrations..."
 ALEMBIC_OUT=$(alembic upgrade head 2>&1)
 ALEMBIC_RC=$?

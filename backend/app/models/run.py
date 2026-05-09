@@ -2,7 +2,7 @@ import uuid, enum
 from datetime import datetime, date
 from sqlalchemy import String, Enum as SAEnum, DateTime, Date, ARRAY, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.base import Base
 
 class RunStatus(str, enum.Enum):
     pending = "pending"
