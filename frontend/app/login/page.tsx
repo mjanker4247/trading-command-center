@@ -40,15 +40,6 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
-        <div className="mt-4 flex items-center gap-2">
-          <div className="flex-1 h-px bg-slate-700" />
-          <span className="text-slate-600 text-xs">or</span>
-          <div className="flex-1 h-px bg-slate-700" />
-        </div>
-        <button onClick={() => signIn("google", { callbackUrl: "/runs" })}
-          className="mt-4 w-full bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-300 rounded px-4 py-2 text-sm">
-          Continue with Google
-        </button>
         <p className="mt-6 text-center text-xs text-slate-500">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="text-blue-400 hover:text-blue-300">Register</Link>
