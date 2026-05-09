@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,7 +26,10 @@ export default function RunsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useQuery({
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["runs", tab, filters],
     queryFn: () =>
       getRuns({
@@ -35,7 +38,25 @@ export default function RunsPage() {
         ...(filters.verdict ? { verdict: filters.verdict } : {}),
         archived: tab === "archived",
       }),
+    refetchInterval: (query) => {
+      const runs = query.state.data ?? [];
+      const hasActive = runs.some((r) => r.status === "running" || r.status === "pending");
+      return hasActive ? 5_000 : 60_000;
+    },
   });
+
+  // Update lastUpdated timestamp whenever a fetch completes.
+  useEffect(() => {
+    if (!isFetching) setLastUpdated(new Date());
+  }, [isFetching]);
+
+  // Tick the "X ago" counter every second.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsAgo(lastUpdated ? Math.floor((Date.now() - lastUpdated.getTime()) / 1000) : 0);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdated]);
 
   const runs: Run[] = data ?? [];
 
@@ -69,12 +90,34 @@ export default function RunsPage() {
       <main className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-slate-200 text-lg font-semibold">Run History</h1>
-          <Link
-            href="/runs/new"
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1.5 text-sm"
-          >
-            New Run
-          </Link>
+          <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-slate-500 text-xs">
+                Updated {secondsAgo < 5 ? "just now" : `${secondsAgo}s ago`}
+              </span>
+            )}
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              title="Refresh"
+              className="text-slate-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
+              >
+                <path fillRule="evenodd" d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37l-.84-.841a4.5 4.5 0 0 0-7.08.932.75.75 0 0 1-1.3-.75 6 6 0 0 1 9.44-1.242l.842.84V3.227a.75.75 0 0 1 .75-.75Zm-.911 7.5A.75.75 0 0 1 13.199 11a6 6 0 0 1-9.44 1.241l-.84-.84v1.371a.75.75 0 0 1-1.5 0V9.591a.75.75 0 0 1 .75-.75H5.35a.75.75 0 0 1 0 1.5H3.98l.841.841a4.5 4.5 0 0 0 7.08-.932.75.75 0 0 1 1.025-.273Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <Link
+              href="/runs/new"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1.5 text-sm"
+            >
+              New Run
+            </Link>
+          </div>
         </div>
 
         <div className="flex gap-1 border-b border-slate-800 mb-4">
