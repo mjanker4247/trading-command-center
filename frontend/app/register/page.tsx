@@ -1,5 +1,6 @@
 "use client";
 import { useState, Suspense } from "react";
+import { Logo } from "@/components/layout/Logo";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -31,7 +32,9 @@ function RegisterForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-navy-900">
       <div className="w-80 bg-navy-700 border border-slate-800 rounded-lg p-8">
-        <div className="text-blue-400 font-bold text-lg tracking-widest mb-2 text-center">⬡ AgentFloor</div>
+        <div className="flex justify-center mb-4">
+          <Logo height={44} />
+        </div>
         <p className="text-slate-500 text-xs text-center mb-6">Create your account</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {([["Name", "text", name, setName], ["Email", "email", email, setEmail], ["Password", "password", password, setPassword]] as [string, string, string, (v: string) => void][]).map(([label, type, value, setter]) => (

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { Logo } from "./Logo";
 
 const NAV = [
   { href: "/runs/new", label: "New Run" },
@@ -23,7 +24,9 @@ export function TopNav() {
 
   return (
     <nav className="bg-navy-700 border-b border-slate-800 px-4 py-2 flex items-center gap-4 sticky top-0 z-50">
-      <Link href="/runs" className="text-blue-400 font-bold text-sm tracking-widest mr-2">⬡ AgentFloor</Link>
+      <Link href="/runs" className="mr-3 flex items-center" aria-label="AgentFloor home">
+        <Logo height={28} />
+      </Link>
       <span className="text-slate-700 text-lg">|</span>
       {NAV.map(({ href, label }) => (
         <Link

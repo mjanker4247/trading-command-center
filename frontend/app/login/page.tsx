@@ -3,6 +3,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Logo } from "@/components/layout/Logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +21,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-navy-900">
       <div className="w-80 bg-navy-700 border border-slate-800 rounded-lg p-8">
-        <div className="text-blue-400 font-bold text-lg tracking-widest mb-6 text-center">⬡ AgentFloor</div>
+        <div className="flex justify-center mb-6">
+          <Logo height={44} />
+        </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">Email</label>
