@@ -66,14 +66,12 @@ function RunRow({
   onMutate,
   selected,
   onToggle,
-  selectable,
 }: {
   run: Run;
   archived: boolean;
   onMutate: () => void;
   selected?: boolean;
   onToggle?: () => void;
-  selectable?: boolean;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -248,7 +246,6 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
                 onMutate={onMutate}
                 selected={selectedIds?.includes(run.id)}
                 onToggle={showCheckboxes ? () => toggle(run.id) : undefined}
-                selectable={true}
               />
             ))
           )}
