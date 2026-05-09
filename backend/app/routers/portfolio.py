@@ -19,6 +19,7 @@ from app.models.portfolio import Portfolio, PortfolioSnapshot, PortfolioHolding
 from app.models.portfolio_insight import PortfolioInsight, InsightStatus, InsightTrigger, InsightStance
 from app.models.user import User
 from app.models.run import Run, RunStatus
+from app.models.report import Report
 from app.models.api_key import ApiKey
 from app.services.encryption import decrypt_key
 from app.services.portfolio_parser import parse_portfolio_csv
@@ -327,21 +328,22 @@ async def get_current_holdings(
     last_runs: dict[str, LastRun] = {}
     if tickers:
         for ticker in tickers:
-            run_result = await db.execute(
-                select(Run)
+            row = (await db.execute(
+                select(Run, Report)
+                .outerjoin(Report, Report.run_id == Run.id)
                 .where(Run.created_by == user.id, Run.ticker == ticker, Run.status == RunStatus.completed, Run.verdict.isnot(None))
                 .order_by(desc(Run.created_at))
                 .limit(1)
-            )
-            run = run_result.scalar_one_or_none()
-            if run:
+            )).first()
+            if row:
+                run, report = row
                 last_runs[ticker] = LastRun(
                     run_id=run.id,
                     verdict=run.verdict.value,
                     analysis_date=str(run.analysis_date),
-                    suggested_entry=run.suggested_entry,
-                    suggested_stop=run.suggested_stop,
-                    suggested_target=run.suggested_target,
+                    suggested_entry=report.suggested_entry if report else None,
+                    suggested_stop=report.suggested_stop if report else None,
+                    suggested_target=report.suggested_target if report else None,
                 )
 
     # Fetch all prices — crypto batched into one CoinGecko call, stocks via Finnhub
