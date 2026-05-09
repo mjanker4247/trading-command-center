@@ -302,6 +302,58 @@ async def delete_run(run_id: UUID, db: AsyncSession = Depends(get_db), user: Use
     await db.commit()
 
 
+class BulkActionRequest(BaseModel):
+    run_ids: list[UUID]
+
+
+@router.post("/runs/bulk-abort", status_code=status.HTTP_200_OK)
+async def bulk_abort_runs(
+    body: BulkActionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    aborted: list[str] = []
+    for run_id in body.run_ids:
+        run = await db.get(Run, run_id)
+        if not run:
+            continue
+        if str(run.created_by) != str(user.id) and user.role.value != "admin":
+            continue
+        if run.status in (RunStatus.running, RunStatus.pending):
+            abort_run(str(run_id))
+            aborted.append(str(run_id))
+    return {"aborted": aborted}
+
+
+@router.post("/runs/bulk-delete", status_code=status.HTTP_200_OK)
+async def bulk_delete_runs(
+    body: BulkActionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from app.models.agent_event import AgentEvent
+    from app.models.report import Report as ReportModel
+    from sqlalchemy import delete as sql_delete
+
+    deleted: list[str] = []
+    skipped_running: list[str] = []
+    for run_id in body.run_ids:
+        run = await db.get(Run, run_id)
+        if not run:
+            continue
+        if str(run.created_by) != str(user.id) and user.role.value != "admin":
+            continue
+        if run.status == RunStatus.running:
+            skipped_running.append(str(run_id))
+            continue
+        await db.execute(sql_delete(AgentEvent).where(AgentEvent.run_id == run_id))
+        await db.execute(sql_delete(ReportModel).where(ReportModel.run_id == run_id))
+        await db.delete(run)
+        deleted.append(str(run_id))
+    await db.commit()
+    return {"deleted": deleted, "skipped_running": skipped_running}
+
+
 @router.get("/runs/{run_id}/report", response_model=ReportResponse)
 async def get_report(run_id: UUID, db: AsyncSession = Depends(get_db), _user: User = Depends(get_current_user)):
     result = await db.execute(select(Report).where(Report.run_id == run_id))

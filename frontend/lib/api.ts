@@ -65,6 +65,26 @@ export async function deleteRun(id: string): Promise<void> {
   }
 }
 
+export async function bulkAbortRuns(ids: string[]): Promise<{ aborted: string[] }> {
+  const r = await fetchWithAuth("/runs/bulk-abort", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_ids: ids }),
+  });
+  if (!r.ok) throw new Error("Failed to abort runs");
+  return r.json();
+}
+
+export async function bulkDeleteRuns(ids: string[]): Promise<{ deleted: string[]; skipped_running: string[] }> {
+  const r = await fetchWithAuth("/runs/bulk-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_ids: ids }),
+  });
+  if (!r.ok) throw new Error("Failed to delete runs");
+  return r.json();
+}
+
 export async function getReport(runId: string): Promise<Report> {
   const r = await fetchWithAuth(`/runs/${runId}/report`);
   if (!r.ok) throw new Error("Report not found");

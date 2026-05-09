@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { RunFilters } from "@/components/runs/RunFilters";
 import { RunTable } from "@/components/runs/RunTable";
 import { StatsBar } from "@/components/runs/StatsBar";
-import { getRuns } from "@/lib/api";
+import { getRuns, bulkAbortRuns, bulkDeleteRuns } from "@/lib/api";
 import type { Run } from "@/lib/types";
 
 interface FilterValues {
@@ -22,6 +22,7 @@ export default function RunsPage() {
   const [tab, setTab] = useState<Tab>("active");
   const [filters, setFilters] = useState<FilterValues>({ ticker: "", status: "", verdict: "" });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -47,7 +48,23 @@ export default function RunsPage() {
 
   function handleSelectionChange(ids: string[]) {
     setSelectedIds(ids);
+    setConfirmBulkDelete(false);
   }
+
+  const abortMutation = useMutation({
+    mutationFn: () => bulkAbortRuns(selectedIds),
+    onSuccess: () => { setSelectedIds([]); invalidate(); },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteRuns(selectedIds),
+    onSuccess: () => { setSelectedIds([]); setConfirmBulkDelete(false); invalidate(); },
+  });
+
+  const selectedRuns = runs.filter((r) => selectedIds.includes(r.id));
+  const abortableCount = selectedRuns.filter((r) => r.status === "running" || r.status === "pending").length;
+  const deletableCount = selectedRuns.filter((r) => r.status !== "running").length;
+  const canCompare = selectedIds.length === 2 && selectedRuns.every((r) => r.status === "completed");
 
   return (
     <>
@@ -83,20 +100,56 @@ export default function RunsPage() {
         <RunFilters value={filters} onChange={setFilters} />
 
         {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between bg-blue-950 border border-blue-800 rounded-lg px-4 py-2.5">
-            <span className="text-sm text-blue-300">
-              {selectedIds.length === 1
-                ? "1 run selected — pick one more to compare"
-                : "2 runs selected"}
+          <div className="flex items-center justify-between bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2.5 mb-1">
+            <span className="text-sm text-slate-300">
+              {selectedIds.length} {selectedIds.length === 1 ? "run" : "runs"} selected
             </span>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setSelectedIds([])}
+                onClick={() => { setSelectedIds([]); setConfirmBulkDelete(false); }}
                 className="text-xs text-slate-400 hover:text-slate-200"
               >
                 Clear
               </button>
-              {selectedIds.length === 2 && (
+
+              {abortableCount > 0 && (
+                <button
+                  onClick={() => abortMutation.mutate()}
+                  disabled={abortMutation.isPending}
+                  className="text-xs text-yellow-400 hover:text-yellow-300 disabled:opacity-40"
+                >
+                  {abortMutation.isPending ? "Aborting…" : `Abort ${abortableCount} running`}
+                </button>
+              )}
+
+              {deletableCount > 0 && (
+                confirmBulkDelete ? (
+                  <span className="flex items-center gap-2">
+                    <button
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
+                    >
+                      {deleteMutation.isPending ? "Deleting…" : `Confirm delete ${deletableCount}`}
+                    </button>
+                    <button
+                      onClick={() => setConfirmBulkDelete(false)}
+                      className="text-xs text-slate-500 hover:text-slate-300"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmBulkDelete(true)}
+                    className="text-xs text-slate-400 hover:text-red-400"
+                  >
+                    Delete {deletableCount}
+                  </button>
+                )
+              )}
+
+              {canCompare && (
                 <button
                   onClick={() => router.push(`/runs/compare?a=${selectedIds[0]}&b=${selectedIds[1]}`)}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"

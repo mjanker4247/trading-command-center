@@ -97,9 +97,7 @@ function RunRow({
             type="checkbox"
             checked={!!selected}
             onChange={onToggle}
-            disabled={!selectable && !selected}
-            className="accent-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
-            title={!selectable && !selected ? "Only completed runs can be compared" : ""}
+            className="accent-blue-500 cursor-pointer"
           />
         </td>
       )}
@@ -187,20 +185,42 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
     if (selectedIds?.includes(id)) {
       onSelectionChange(selectedIds.filter((x) => x !== id));
     } else {
-      const next = [...(selectedIds ?? []), id];
-      // keep only the two most-recently selected
-      onSelectionChange(next.length > 2 ? next.slice(next.length - 2) : next);
+      onSelectionChange([...(selectedIds ?? []), id]);
     }
   }
 
   const showCheckboxes = !!onSelectionChange;
+  const allSelected = runs.length > 0 && runs.every((r) => selectedIds?.includes(r.id));
+  const someSelected = !allSelected && runs.some((r) => selectedIds?.includes(r.id));
+
+  function toggleAll() {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      onSelectionChange((selectedIds ?? []).filter((id) => !runs.some((r) => r.id === id)));
+    } else {
+      const existing = selectedIds ?? [];
+      const toAdd = runs.map((r) => r.id).filter((id) => !existing.includes(id));
+      onSelectionChange([...existing, ...toAdd]);
+    }
+  }
 
   return (
     <div className="overflow-x-auto rounded border border-slate-800">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
           <tr>
-            {showCheckboxes && <th className="px-3 py-3 w-8" />}
+            {showCheckboxes && (
+              <th className="px-3 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleAll}
+                  className="accent-blue-500 cursor-pointer"
+                  title="Select all visible"
+                />
+              </th>
+            )}
             <th className="text-left px-4 py-3">Ticker</th>
             <th className="text-left px-4 py-3">Status</th>
             <th className="text-left px-4 py-3">Verdict</th>
@@ -228,7 +248,7 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
                 onMutate={onMutate}
                 selected={selectedIds?.includes(run.id)}
                 onToggle={showCheckboxes ? () => toggle(run.id) : undefined}
-                selectable={run.status === "completed"}
+                selectable={true}
               />
             ))
           )}
