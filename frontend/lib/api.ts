@@ -388,3 +388,33 @@ export async function getPortfolioNews(portfolioId: string, days = 7): Promise<N
   if (data.price_unavailable_reason === "no_finnhub_key") throw new Error("no_finnhub_key");
   return data.articles ?? [];
 }
+
+export async function downloadDbBackup(): Promise<Blob> {
+  const session = await getSession();
+  const token = (session as { accessToken?: string })?.accessToken;
+  const r = await fetch(`${BASE}/admin/backup`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Failed to download backup");
+  }
+  return r.blob();
+}
+
+export async function restoreDbBackup(file: File): Promise<{ message: string; warnings: string | null }> {
+  const session = await getSession();
+  const token = (session as { accessToken?: string })?.accessToken;
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(`${BASE}/admin/restore`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Restore failed");
+  }
+  return r.json();
+}

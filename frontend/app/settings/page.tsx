@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getApiKeys, getUsers, inviteUser, updateProfile, getSmtpStatus, getMe } from "@/lib/api";
+import { getApiKeys, getUsers, inviteUser, updateProfile, getSmtpStatus, getMe, downloadDbBackup, restoreDbBackup } from "@/lib/api";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { TopNav } from "@/components/layout/TopNav";
 import { ApiKeyRow } from "@/components/settings/ApiKeyRow";
@@ -124,6 +124,40 @@ export default function SettingsPage() {
       setInviteStatus("error");
       setInviteError(err.message);
       setInviteUrl(null);
+    },
+  });
+
+  // Database backup / restore
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupError, setBackupError] = useState("");
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+
+  async function handleDownloadBackup() {
+    setBackupLoading(true);
+    setBackupError("");
+    try {
+      const blob = await downloadDbBackup();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `agentfloor-backup-${new Date().toISOString().slice(0, 10)}.dump`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setBackupError((err as Error).message);
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  const restoreMutation = useMutation({
+    mutationFn: () => restoreDbBackup(restoreFile!),
+    onSuccess: () => {
+      setRestoreModalOpen(false);
+      setRestoreFile(null);
+      setRestoreConfirmText("");
     },
   });
 
@@ -357,7 +391,130 @@ SMTP_FROM=noreply@yourdomain.com`}
           </SectionCard>
         )}
 
+        {/* Database */}
+        {isAdmin && (
+          <SectionCard
+            title="Database"
+            description="Download a full backup or restore from a previously downloaded backup file."
+          >
+            <div className="px-4 py-4 flex flex-col gap-5">
+              {/* Backup */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-slate-300 text-xs font-medium mb-0.5">Download Backup</p>
+                  <p className="text-slate-500 text-xs">
+                    Exports a compressed pg_dump file (.dump) of the full database.
+                  </p>
+                </div>
+                <button
+                  onClick={handleDownloadBackup}
+                  disabled={backupLoading}
+                  className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded px-4 py-1.5 text-xs disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                >
+                  {backupLoading ? (
+                    <>
+                      <span className="inline-block w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+                      Exporting…
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                        <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
+                        <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
+                      </svg>
+                      Download Backup
+                    </>
+                  )}
+                </button>
+              </div>
+              {backupError && <p className="text-red-400 text-xs -mt-3">{backupError}</p>}
+
+              <Divider />
+
+              {/* Restore */}
+              <div className="flex items-start gap-4">
+                <div className="flex-1">
+                  <p className="text-slate-300 text-xs font-medium mb-0.5">Restore from Backup</p>
+                  <p className="text-slate-500 text-xs">
+                    Select a .dump file exported from this app. This will replace all current data.
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  <label className="cursor-pointer bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500 transition-colors">
+                    {restoreFile ? restoreFile.name : "Choose file…"}
+                    <input
+                      type="file"
+                      accept=".dump"
+                      className="hidden"
+                      onChange={(e) => { setRestoreFile(e.target.files?.[0] ?? null); }}
+                    />
+                  </label>
+                  <button
+                    onClick={() => setRestoreModalOpen(true)}
+                    disabled={!restoreFile}
+                    className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1.5 text-xs disabled:opacity-40 transition-colors"
+                  >
+                    Restore…
+                  </button>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
       </main>
+
+      {/* Restore confirmation modal */}
+      {restoreModalOpen && restoreFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-400 shrink-0">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+              </svg>
+              <h2 className="text-base font-semibold text-white">Restore Database</h2>
+            </div>
+            <p className="text-sm text-slate-300">
+              This will <span className="text-red-400 font-medium">replace all current data</span> with the contents of:
+            </p>
+            <p className="text-xs text-slate-400 font-mono bg-slate-800 rounded px-3 py-2">{restoreFile.name}</p>
+            <p className="text-xs text-slate-500">
+              All runs, portfolios, watchlists, API keys, and user data will be overwritten. This cannot be undone.
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">Type <span className="font-mono text-slate-200">RESTORE</span> to confirm</label>
+              <input
+                type="text"
+                value={restoreConfirmText}
+                onChange={(e) => setRestoreConfirmText(e.target.value)}
+                placeholder="RESTORE"
+                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-red-500 font-mono"
+              />
+            </div>
+            {restoreMutation.isError && (
+              <p className="text-xs text-red-400">{(restoreMutation.error as Error).message}</p>
+            )}
+            {restoreMutation.isSuccess && (
+              <p className="text-xs text-green-400">Restore completed successfully.</p>
+            )}
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => { setRestoreModalOpen(false); setRestoreConfirmText(""); restoreMutation.reset(); }}
+                className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => restoreMutation.mutate()}
+                disabled={restoreConfirmText !== "RESTORE" || restoreMutation.isPending}
+                className="px-4 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded disabled:opacity-40 transition-colors"
+              >
+                {restoreMutation.isPending ? "Restoring…" : "Restore Database"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
