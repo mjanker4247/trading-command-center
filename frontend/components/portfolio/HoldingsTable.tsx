@@ -261,6 +261,8 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [filterTicker, setFilterTicker] = useState("");
+  const [filterVerdict, setFilterVerdict] = useState("");
   const newTickerRef = useRef<HTMLInputElement>(null);
 
   function handleSort(key: SortKey) {
@@ -273,9 +275,25 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
     }
   }
 
+  const isFiltered = filterTicker !== "" || filterVerdict !== "";
+
+  const filteredHoldings = useMemo(() => {
+    let result = holdings;
+    if (filterTicker) {
+      const q = filterTicker.toUpperCase();
+      result = result.filter((h) => h.ticker.toUpperCase().includes(q));
+    }
+    if (filterVerdict === "none") {
+      result = result.filter((h) => h.last_run === null);
+    } else if (filterVerdict) {
+      result = result.filter((h) => h.last_run?.verdict?.toLowerCase() === filterVerdict);
+    }
+    return result;
+  }, [holdings, filterTicker, filterVerdict]);
+
   const sortedHoldings = useMemo(() => {
-    if (!sortKey) return holdings;
-    return [...holdings].sort((a, b) => {
+    if (!sortKey) return filteredHoldings;
+    return [...filteredHoldings].sort((a, b) => {
       let av: number | string | null;
       let bv: number | string | null;
       if (sortKey === "ticker") { av = a.ticker; bv = b.ticker; }
@@ -293,7 +311,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [holdings, sortKey, sortDir]);
+  }, [filteredHoldings, sortKey, sortDir]);
 
   useEffect(() => {
     if (addingNew) newTickerRef.current?.focus();
@@ -379,6 +397,40 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={filterTicker}
+          onChange={(e) => setFilterTicker(e.target.value)}
+          placeholder="Filter by ticker…"
+          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 w-40 focus:outline-none focus:border-blue-500 placeholder-slate-500"
+        />
+        <select
+          value={filterVerdict}
+          onChange={(e) => setFilterVerdict(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+        >
+          <option value="">All signals</option>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="hold">Hold</option>
+          <option value="none">Not analyzed</option>
+        </select>
+        {isFiltered && (
+          <>
+            <span className="text-xs text-slate-500">
+              {filteredHoldings.length} of {holdings.length}
+            </span>
+            <button
+              onClick={() => { setFilterTicker(""); setFilterVerdict(""); }}
+              className="text-xs text-slate-500 hover:text-slate-300 underline"
+            >
+              Clear
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="overflow-x-auto rounded border border-slate-800">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
@@ -398,7 +450,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
             {sortedHoldings.length === 0 && !addingNew ? (
               <tr>
                 <td colSpan={colSpan} className="text-center text-slate-500 px-4 py-8">
-                  No holdings. Add a row below or upload a CSV.
+                  {isFiltered ? "No holdings match the current filters." : "No holdings. Add a row below or upload a CSV."}
                 </td>
               </tr>
             ) : (
