@@ -121,6 +121,12 @@ while ($true) {
 }
 
 # -- install agentfloor function into PowerShell profile ----------------------
+# Ensure the profile can actually be loaded by setting RemoteSigned for the
+# current user. Restricted (the Windows default) blocks all scripts including
+# $PROFILE, so the agentfloor function would never be available.
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+Write-Info "Execution policy set to RemoteSigned for current user."
+
 $ProfileDir = Split-Path $PROFILE
 if (-not (Test-Path $ProfileDir)) { New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null }
 if (-not (Test-Path $PROFILE))    { New-Item -ItemType File      -Force -Path $PROFILE    | Out-Null }
