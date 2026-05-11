@@ -36,7 +36,9 @@ if ($Version -ne "latest") {
 
 # ── helper: generate 32 random bytes as lowercase hex ─────────────────────
 function New-HexSecret {
-    $bytes = [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    $bytes = New-Object byte[] 32
+    $rng.GetBytes($bytes)
     return ([System.BitConverter]::ToString($bytes) -replace "-", "").ToLower()
 }
 
