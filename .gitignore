@@ -23,6 +23,8 @@ out/
 
 # Tools
 .superpowers/
+.claude/
+docs/superpowers/
 .DS_Store
 
 # TradingAgents output cache
