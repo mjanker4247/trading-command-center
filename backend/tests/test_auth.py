@@ -23,7 +23,7 @@ async def test_register_and_login():
 async def test_wrong_password_returns_401():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         await client.post("/auth/register", json={
-            "email": "test2@example.com", "password": "correct", "name": "Test"
+            "email": "test2@example.com", "password": "correct1", "name": "Test"
         })
         r = await client.post("/auth/login", json={
             "email": "test2@example.com", "password": "wrong"

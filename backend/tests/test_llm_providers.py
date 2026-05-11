@@ -21,8 +21,8 @@ async def clear_api_keys():
 
 
 async def _token(client, email="lp@test.com"):
-    await client.post("/auth/register", json={"email": email, "password": "pw", "name": "LP"})
-    r = await client.post("/auth/login", json={"email": email, "password": "pw"})
+    await client.post("/auth/register", json={"email": email, "password": "password1", "name": "LP"})
+    r = await client.post("/auth/login", json={"email": email, "password": "password1"})
     return r.json()["access_token"]
 
 

@@ -8,8 +8,8 @@ from main import app
 
 
 async def _get_token(client, email="runs@test.com"):
-    await client.post("/auth/register", json={"email": email, "password": "pw", "name": "Test"})
-    r = await client.post("/auth/login", json={"email": email, "password": "pw"})
+    await client.post("/auth/register", json={"email": email, "password": "password1", "name": "Test"})
+    r = await client.post("/auth/login", json={"email": email, "password": "password1"})
     return r.json()["access_token"]
 
 
@@ -30,8 +30,8 @@ async def test_get_run_includes_price_levels():
     email = f"prices_{run_id.hex[:8]}@test.com"
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        await client.post("/auth/register", json={"email": email, "password": "pw", "name": "T"})
-        r = await client.post("/auth/login", json={"email": email, "password": "pw"})
+        await client.post("/auth/register", json={"email": email, "password": "password1", "name": "T"})
+        r = await client.post("/auth/login", json={"email": email, "password": "password1"})
         token = r.json()["access_token"]
         user_id = await _decode_user_id(token)
 
@@ -79,8 +79,8 @@ async def test_list_runs_includes_price_levels():
     email = f"prices2_{run_id.hex[:8]}@test.com"
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        await client.post("/auth/register", json={"email": email, "password": "pw", "name": "T"})
-        r = await client.post("/auth/login", json={"email": email, "password": "pw"})
+        await client.post("/auth/register", json={"email": email, "password": "password1", "name": "T"})
+        r = await client.post("/auth/login", json={"email": email, "password": "password1"})
         token = r.json()["access_token"]
         user_id = await _decode_user_id(token)
 

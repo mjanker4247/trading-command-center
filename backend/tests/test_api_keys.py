@@ -4,8 +4,8 @@ from main import app
 
 
 async def _admin_token(client):
-    await client.post("/auth/register", json={"email": "keys@test.com", "password": "pw", "name": "Keys"})
-    r = await client.post("/auth/login", json={"email": "keys@test.com", "password": "pw"})
+    await client.post("/auth/register", json={"email": "keys@test.com", "password": "password1", "name": "Keys"})
+    r = await client.post("/auth/login", json={"email": "keys@test.com", "password": "password1"})
     return r.json()["access_token"]
 
 
