@@ -2,6 +2,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$LogFile = Join-Path $env:TEMP "agentfloor-install.log"
+Start-Transcript -Path $LogFile -Append | Out-Null
+
 $InstallDir = Join-Path $env:USERPROFILE ".agentfloor"
 $Version    = if ($env:AGENTFLOOR_VERSION) { $env:AGENTFLOOR_VERSION } else { "latest" }
 $RepoRef    = if ($env:AGENTFLOOR_VERSION) { $env:AGENTFLOOR_VERSION } else { "main" }
@@ -163,3 +166,5 @@ Write-Host "    agentfloor logs      stream all logs"
 Write-Host "    agentfloor stop      shut down (data preserved)"
 Write-Host "    agentfloor status    show container status"
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "  Log saved to: $LogFile"
+Stop-Transcript | Out-Null
