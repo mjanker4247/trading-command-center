@@ -49,10 +49,24 @@ async def restore_backup(
     if not data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty.")
 
-    # Close pooled connections so pg_restore --clean can DROP tables without lock contention.
+    db_url = _sync_db_url()
+
+    # 1. Close the SQLAlchemy pool so our own idle connections are released.
     await engine.dispose()
 
-    db_url = _sync_db_url()
+    # 2. Force-terminate every remaining connection to this database (scheduler,
+    #    health-check tasks, etc.) so pg_restore --clean can DROP tables without
+    #    blocking on lock contention.
+    term = await asyncio.create_subprocess_exec(
+        "psql", db_url, "-c",
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+        "WHERE datname = current_database() AND pid != pg_backend_pid()",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await term.communicate()
+
+    # 3. Run pg_restore.
     proc = await asyncio.create_subprocess_exec(
         "pg_restore", "--clean", "--if-exists", "--no-owner", "--no-privileges", "-d", db_url,
         stdin=asyncio.subprocess.PIPE,
