@@ -64,7 +64,9 @@ if (Test-Path $EnvFile) {
 
 # ── 5/7  prompt for optional values ───────────────────────────────────────
 if ($GenerateEnv) {
-    if ([Environment]::UserInteractive) {
+    $nonInteractiveFlag = [Environment]::GetCommandLineArgs() | Where-Object { $_ -match '-NonInteractive' }
+    $hasTerminal = [Environment]::UserInteractive -and (-not [Console]::IsInputRedirected) -and (-not $nonInteractiveFlag)
+    if ($hasTerminal) {
         $OpenAiKey   = Read-Host "Enter your OpenAI API key    (press Enter to skip)"
         $NextAuthUrl = Read-Host "Public URL of this install   (default: http://localhost)"
         if (-not $NextAuthUrl) { $NextAuthUrl = "http://localhost" }
