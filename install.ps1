@@ -61,9 +61,15 @@ if (Test-Path $EnvFile) {
 
 # ── 5/7  prompt for optional values ───────────────────────────────────────
 if ($GenerateEnv) {
-    $OpenAiKey       = Read-Host "Enter your OpenAI API key    (press Enter to skip)"
-    $NextAuthUrl     = Read-Host "Public URL of this install   (default: http://localhost)"
-    if (-not $NextAuthUrl) { $NextAuthUrl = "http://localhost" }
+    if ([Environment]::UserInteractive) {
+        $OpenAiKey   = Read-Host "Enter your OpenAI API key    (press Enter to skip)"
+        $NextAuthUrl = Read-Host "Public URL of this install   (default: http://localhost)"
+        if (-not $NextAuthUrl) { $NextAuthUrl = "http://localhost" }
+    } else {
+        $OpenAiKey   = ""
+        $NextAuthUrl = "http://localhost"
+        Write-Info "Non-interactive session — using default URL http://localhost (edit $EnvFile to change)"
+    }
 
 # ── 6/7  write .env ───────────────────────────────────────────────────────
     Write-Info "[6/7] Writing $EnvFile..."
