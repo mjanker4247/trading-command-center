@@ -23,9 +23,10 @@ import { InsightsDashboard } from "@/components/portfolio/InsightsDashboard";
 import { PortfolioStatsBar } from "@/components/portfolio/PortfolioStatsBar";
 import { EarningsPanel } from "@/components/portfolio/EarningsPanel";
 import { NewsPanel } from "@/components/portfolio/NewsPanel";
+import { TrendingPanel } from "@/components/portfolio/TrendingPanel";
 import { TickerDrawer } from "@/components/portfolio/TickerDrawer";
 
-type Tab = "holdings" | "insights" | "earnings" | "news";
+type Tab = "holdings" | "insights" | "earnings" | "news" | "trending";
 
 const PROVIDERS = ["openai", "anthropic", "google", "groq", "ollama", "vllm"];
 const DEPTHS = ["quick", "standard", "deep"] as const;
@@ -276,6 +277,7 @@ export default function PortfolioPage() {
     { id: "insights", label: "AI Insights", badge: "✦" },
     ...(!allCrypto ? [{ id: "earnings" as Tab, label: "Earnings" }] : []),
     { id: "news", label: "News" },
+    { id: "trending", label: "Market", badge: "↑" },
   ];
 
   return (
@@ -384,6 +386,8 @@ export default function PortfolioPage() {
                 priceUnavailableReason={current.price_unavailable_reason}
               />
             )}
+
+            {tab === "trending" && <TrendingPanel />}
           </>
         )}
       </main>
