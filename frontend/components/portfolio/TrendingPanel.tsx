@@ -295,8 +295,7 @@ export function TrendingPanel() {
     && (!movers || (movers.gainers.length === 0 && movers.losers.length === 0))
     && sectors.length === 0;
 
-  if (allEmpty && errTrending) return NO_KEY_MSG;
-  if (allEmpty && !loadingTrending) return NO_KEY_MSG;
+  if (allEmpty) return NO_KEY_MSG;
 
   return (
     <div className="space-y-8">
