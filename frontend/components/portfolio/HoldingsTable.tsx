@@ -151,6 +151,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [filterTicker, setFilterTicker] = useState("");
+  const [filterSignal, setFilterSignal] = useState("");
   const newTickerRef = useRef<HTMLInputElement>(null);
 
   function handleSort(key: SortKey) {
@@ -163,7 +164,15 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
     }
   }
 
-  const isFiltered = filterTicker !== "";
+  const tickers = holdings.map((h) => h.ticker);
+  const { data: latestRuns = {} } = useQuery({
+    queryKey: ["latest-runs-by-ticker", tickers],
+    queryFn: () => getLatestRunsByTicker(tickers),
+    enabled: tickers.length > 0,
+    staleTime: 60_000,
+  });
+
+  const isFiltered = filterTicker !== "" || filterSignal !== "";
 
   const filteredHoldings = useMemo(() => {
     let result = holdings;
@@ -171,8 +180,13 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       const q = filterTicker.toUpperCase();
       result = result.filter((h) => h.ticker.toUpperCase().includes(q));
     }
+    if (filterSignal === "none") {
+      result = result.filter((h) => !latestRuns[h.ticker]);
+    } else if (filterSignal) {
+      result = result.filter((h) => latestRuns[h.ticker]?.verdict?.toLowerCase() === filterSignal);
+    }
     return result;
-  }, [holdings, filterTicker]);
+  }, [holdings, filterTicker, filterSignal, latestRuns]);
 
   const sortedHoldings = useMemo(() => {
     if (!sortKey) return filteredHoldings;
@@ -264,14 +278,6 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
     if (e.key === "Escape") { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); }
   }
 
-  const tickers = holdings.map((h) => h.ticker);
-  const { data: latestRuns = {} } = useQuery({
-    queryKey: ["latest-runs-by-ticker", tickers],
-    queryFn: () => getLatestRunsByTicker(tickers),
-    enabled: tickers.length > 0,
-    staleTime: 60_000,
-  });
-
   const hasFundamentals = fundamentals && Object.keys(fundamentals).length > 0;
   const colSpan = hasFundamentals ? 9 : 8;
 
@@ -292,13 +298,24 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           placeholder="Filter by ticker…"
           className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 w-40 focus:outline-none focus:border-blue-500 placeholder-slate-500"
         />
+        <select
+          value={filterSignal}
+          onChange={(e) => setFilterSignal(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+        >
+          <option value="">All signals</option>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="hold">Hold</option>
+          <option value="none">Not analyzed</option>
+        </select>
         {isFiltered && (
           <>
             <span className="text-xs text-slate-500">
               {filteredHoldings.length} of {holdings.length}
             </span>
             <button
-              onClick={() => { setFilterTicker(""); }}
+              onClick={() => { setFilterTicker(""); setFilterSignal(""); }}
               className="text-xs text-slate-500 hover:text-slate-300 underline"
             >
               Clear
