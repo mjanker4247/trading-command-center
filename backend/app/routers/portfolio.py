@@ -1176,6 +1176,7 @@ async def get_sector_gaps(
 
 _discover_cache: dict[str, tuple[list, float]] = {}
 _DISCOVER_TTL = 1800  # 30 minutes
+_discover_in_flight: set[str] = set()
 
 
 @router.post("/portfolio/{portfolio_id}/discover")
@@ -1186,7 +1187,7 @@ async def discover_stocks(
     user: User = Depends(get_current_user),
 ) -> dict:
     from app.services.sp500_sectors import SECTOR_LEADERS
-    from app.routers.market import _trending_cache, _quote_cache, MARKET_UNIVERSE
+    import app.routers.market as _market_module
     from app.services.portfolio_insight_runner import _call_llm
 
     cache_key = str(portfolio_id)
@@ -1195,6 +1196,15 @@ async def discover_stocks(
         cached, expiry = _discover_cache[cache_key]
         if now < expiry:
             return {"recommendations": cached, "cached": True}
+
+    # Return last cached result if a request is already in-flight for this portfolio
+    if cache_key in _discover_in_flight:
+        cached_entry = _discover_cache.get(cache_key)
+        if cached_entry:
+            return {"recommendations": cached_entry[0], "cached": True}
+        return {"recommendations": [], "cached": False}
+
+    _discover_in_flight.add(cache_key)
 
     # Determine LLM provider/model
     llm_provider = body.get("llm_provider")
@@ -1210,7 +1220,10 @@ async def discover_stocks(
         raise HTTPException(status_code=422, detail="No LLM provider key configured. Add one in Settings.")
 
     api_key_row = (await db.execute(select(ApiKey).where(ApiKey.provider == llm_provider))).scalar_one_or_none()
-    api_key = decrypt_key(api_key_row.encrypted_key) if api_key_row else None
+    if not api_key_row:
+        _discover_in_flight.discard(cache_key)
+        raise HTTPException(status_code=422, detail="LLM provider key not found.")
+    api_key = decrypt_key(api_key_row.encrypted_key)
 
     # Get current portfolio tickers to exclude
     try:
@@ -1226,7 +1239,7 @@ async def discover_stocks(
     gaps = await get_sector_gaps(portfolio_id, db, user)
 
     # Read trending tickers from shared market cache
-    trending_tickers, _trending_expiry = _trending_cache
+    trending_tickers, _trending_expiry = _market_module._trending_cache
     trending_candidates = [
         {"ticker": t, "tag": "Trending", "sector": ""}
         for t in trending_tickers if t.upper() not in held_tickers
@@ -1234,10 +1247,10 @@ async def discover_stocks(
 
     # Read movers from shared quote cache — tickers with |change_pct| >= 3%
     mover_candidates = []
-    for ticker in MARKET_UNIVERSE:
+    for ticker in _market_module.MARKET_UNIVERSE:
         if ticker in held_tickers:
             continue
-        cached_quote = _quote_cache.get(ticker)
+        cached_quote = _market_module._quote_cache.get(ticker)
         if cached_quote:
             quote_data, q_expiry = cached_quote
             if time.time() < q_expiry:
@@ -1289,6 +1302,8 @@ Candidates:
             {"ticker": c["ticker"], "tag": c["tag"], "sector": c["sector"], "reason": ""}
             for c in candidates[:6]
         ]
+    finally:
+        _discover_in_flight.discard(cache_key)
 
     _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
     return {"recommendations": recommendations, "cached": False}
