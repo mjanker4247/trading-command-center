@@ -22,7 +22,7 @@ interface DraftRow {
   avg_cost: string;
 }
 
-type SortKey = "ticker" | "shares" | "avg_cost" | "current_price" | "market_value" | "unrealized_pnl" | "last_analysis";
+type SortKey = "ticker" | "shares" | "avg_cost" | "current_price" | "market_value" | "unrealized_pnl";
 type SortDir = "asc" | "desc";
 
 function SortableHeader({
@@ -156,7 +156,6 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [filterTicker, setFilterTicker] = useState("");
-  const [filterVerdict, setFilterVerdict] = useState("");
   const newTickerRef = useRef<HTMLInputElement>(null);
 
   function handleSort(key: SortKey) {
@@ -169,7 +168,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
     }
   }
 
-  const isFiltered = filterTicker !== "" || filterVerdict !== "";
+  const isFiltered = filterTicker !== "";
 
   const filteredHoldings = useMemo(() => {
     let result = holdings;
@@ -177,13 +176,8 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       const q = filterTicker.toUpperCase();
       result = result.filter((h) => h.ticker.toUpperCase().includes(q));
     }
-    if (filterVerdict === "none") {
-      result = result.filter((h) => h.last_run === null);
-    } else if (filterVerdict) {
-      result = result.filter((h) => h.last_run?.verdict?.toLowerCase() === filterVerdict);
-    }
     return result;
-  }, [holdings, filterTicker, filterVerdict]);
+  }, [holdings, filterTicker]);
 
   const sortedHoldings = useMemo(() => {
     if (!sortKey) return filteredHoldings;
@@ -191,10 +185,6 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       let av: number | string | null;
       let bv: number | string | null;
       if (sortKey === "ticker") { av = a.ticker; bv = b.ticker; }
-      else if (sortKey === "last_analysis") {
-        av = a.last_run?.analysis_date ?? null;
-        bv = b.last_run?.analysis_date ?? null;
-      }
       else { av = a[sortKey] as number | null; bv = b[sortKey] as number | null; }
 
       // nulls always last
@@ -307,24 +297,13 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           placeholder="Filter by ticker…"
           className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 w-40 focus:outline-none focus:border-blue-500 placeholder-slate-500"
         />
-        <select
-          value={filterVerdict}
-          onChange={(e) => setFilterVerdict(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-        >
-          <option value="">All signals</option>
-          <option value="buy">Buy</option>
-          <option value="sell">Sell</option>
-          <option value="hold">Hold</option>
-          <option value="none">Not analyzed</option>
-        </select>
         {isFiltered && (
           <>
             <span className="text-xs text-slate-500">
               {filteredHoldings.length} of {holdings.length}
             </span>
             <button
-              onClick={() => { setFilterTicker(""); setFilterVerdict(""); }}
+              onClick={() => { setFilterTicker(""); }}
               className="text-xs text-slate-500 hover:text-slate-300 underline"
             >
               Clear
@@ -344,7 +323,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
               <SortableHeader label="Current Price"  colKey="current_price"  sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
               <SortableHeader label="Market Value"   colKey="market_value"   sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
               <SortableHeader label="Unrealized P&L" colKey="unrealized_pnl" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableHeader label="Last Analysis"  colKey="last_analysis"  sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="left" />
+              <th className="text-left px-4 py-3 whitespace-nowrap text-slate-400 text-xs uppercase tracking-wider">Last Analysis</th>
               <th className="text-left px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -364,10 +343,16 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                 const pnlColor = pnl == null ? "text-slate-500" : pnl >= 0 ? "text-green-400" : "text-red-400";
                 const verdictKey = h.last_run?.verdict?.toLowerCase() ?? "";
                 const badgeClass = verdictBadge[verdictKey] ?? "bg-slate-700 text-slate-300 border border-slate-600";
+                const rowEntry = latestRuns[h.ticker] ?? null;
+                const rowTint = rowEntry && daysAgo(rowEntry.completed_at) <= 14
+                  ? rowEntry.verdict === "buy" ? "bg-emerald-900/20"
+                  : rowEntry.verdict === "sell" ? "bg-red-900/20"
+                  : ""
+                  : "";
 
                 return (
                   <>
-                    <tr key={h.id} className="border-t border-slate-800 hover:bg-slate-800/30">
+                    <tr key={h.id} className={`border-t border-slate-800 hover:bg-slate-800/30 ${rowTint}`}>
                       {/* Expand toggle */}
                       {hasFundamentals && (
                         <td className="px-2 py-2">
@@ -471,13 +456,13 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                               <span className={`text-xs ${stale ? "text-amber-400" : "text-slate-500"}`}>
                                 {days === 0 ? "today" : `${days}d ago`}{stale ? " ⚠" : ""}
                               </span>
-                              <a
+                              <Link
                                 href={`/runs/${entry.run_id}`}
                                 className="text-xs text-blue-400 hover:text-blue-300"
                                 title="View run"
                               >
                                 ↗
-                              </a>
+                              </Link>
                             </div>
                           );
                         })()}
