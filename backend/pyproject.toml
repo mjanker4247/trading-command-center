@@ -20,6 +20,7 @@ dependencies = [
     "langchain-core>=0.3",
     "langchain-openai>=1.0",
     "apscheduler>=4.0.0a5",
+    "tradingagents>=0.5.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,3 @@ packages = ["app"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-
-[tool.uv.sources]
-tradingagents = { path = "../../TradingAgents", editable = true }

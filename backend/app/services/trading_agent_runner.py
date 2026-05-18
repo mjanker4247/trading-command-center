@@ -25,6 +25,7 @@ _PROVIDER_MAP: dict[str, str] = {
     "ollama": "ollama",
     "vllm": "openai",   # vLLM is OpenAI-compatible
     "groq": "openai",   # Groq is OpenAI-compatible
+    "ionos": "openai",  # IONOS is OpenAI-compatible
 }
 
 _DEPTH_PARAMS: dict[str, dict] = {
@@ -68,6 +69,7 @@ _CLOUD_KEY_ENV: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "google": "GOOGLE_API_KEY",
     "groq": "GROQ_API_KEY",
+    "ionos": "IONOS_API_KEY",
 }
 
 
@@ -167,7 +169,11 @@ async def execute_run(run_id: str, config: dict) -> None:
         # Patch env vars needed by TradingAgents: API keys for cloud providers,
         # server URLs for local inference.
         env_patch: dict[str, str] = {}
-        if provider == "groq" and stored_key:
+        if provider == "ionos" and stored_key:
+            # Groq uses OpenAI-compatible API at a different base URL
+            env_patch["OPENAI_BASE_URL"] = "https://openai.inference.de-txl.ionos.com/v1"
+            env_patch["OPENAI_API_KEY"] = stored_key
+        elif provider == "groq" and stored_key:
             # Groq uses OpenAI-compatible API at a different base URL
             env_patch["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
             env_patch["OPENAI_API_KEY"] = stored_key

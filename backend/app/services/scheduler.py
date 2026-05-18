@@ -97,6 +97,7 @@ async def _fire_daily_portfolio_insights() -> None:
                     "openai": "gpt-4o-mini",
                     "anthropic": "claude-haiku-4-5-20251001",
                     "google": "gemini-2.5-flash",
+                    "ionos": "openai/gpt-oss-120b",
                 }[prov]
                 break
 

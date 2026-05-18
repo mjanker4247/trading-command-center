@@ -10,7 +10,7 @@ interface WatchDraft {
   depth: string;
 }
 
-const PROVIDERS = ["openai", "anthropic", "google", "groq", "ollama", "vllm"];
+const PROVIDERS = ["openai", "anthropic", "google", "groq", "ionos", "ollama", "vllm"];
 const DEPTHS = ["quick", "standard", "deep"] as const;
 
 export type { WatchDraft };

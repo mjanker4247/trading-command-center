@@ -17,7 +17,8 @@ services:
       retries: 5
 
   backend:
-    image: ghcr.io/saketnayak/agentfloor-backend:latest
+    build: ./backend
+    #image: ghcr.io/saketnayak/agentfloor-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -29,6 +30,7 @@ services:
       JWT_SECRET: "${JWT_SECRET}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
       SMTP_HOST: "${SMTP_HOST:-}"
       SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_USER: "${SMTP_USER:-}"
@@ -37,7 +39,8 @@ services:
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
 
   frontend:
-    image: ghcr.io/saketnayak/agentfloor-frontend:latest
+    build: ./frontend
+    #image: ghcr.io/saketnayak/agentfloor-frontend:latest
     restart: unless-stopped
     depends_on:
       - backend

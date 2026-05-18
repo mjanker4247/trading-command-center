@@ -1210,11 +1210,11 @@ async def discover_stocks(
     llm_provider = body.get("llm_provider")
     llm_model = body.get("llm_model")
     if not llm_provider:
-        for prov in ["openai", "anthropic", "google"]:
+        for prov in ["openai", "anthropic", "google", "ionos"]:
             row = (await db.execute(select(ApiKey).where(ApiKey.provider == prov))).scalar_one_or_none()
             if row and row.is_valid:
                 llm_provider = prov
-                llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash"}[prov]
+                llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash", "ionos": "openai/gpt-oss-120b"}[prov]
                 break
     if not llm_provider:
         _discover_in_flight.discard(cache_key)

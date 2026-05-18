@@ -19,6 +19,7 @@ const PLACEHOLDERS: Record<string, string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-haiku-4-5",
   google: "gemini-2.0-flash",
+  ionos: "openai/gpt-oss-120b",
   ollama: "llama3",
   vllm: "mistralai/Mistral-7B-Instruct-v0.3",
 };

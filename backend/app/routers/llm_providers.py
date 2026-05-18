@@ -19,6 +19,11 @@ _STATIC_MODELS: dict[str, list[str]] = {
         "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
         "o3-pro", "o3", "o4-mini",
         "gpt-4o", "gpt-4o-mini",
+        ],
+    "ionos": [
+        "meta-llama/Meta-Llama-3.1-405B-Instruct-FP8",
+        "openai/gpt-oss-120b",
+        "meta-llama/Llama-3.3-70B-Instruct",
     ],
     "anthropic": [
         "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",

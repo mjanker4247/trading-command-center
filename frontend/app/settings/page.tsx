@@ -13,6 +13,7 @@ const CLOUD_PROVIDERS: { provider: string; label: string; placeholder: string; d
   { provider: "openai",    label: "OpenAI",    placeholder: "sk-…",     docsUrl: "https://platform.openai.com/api-keys" },
   { provider: "anthropic", label: "Anthropic", placeholder: "sk-ant-…", docsUrl: "https://console.anthropic.com/settings/keys" },
   { provider: "google",    label: "Google",    placeholder: "AIza…",    docsUrl: "https://aistudio.google.com/app/apikey" },
+  { provider: "ionos",      label: "IONOS",      placeholder: "ion_…",    docsUrl: "https://docs.ionos.com/cloud/ai/ai-model-hub" },
   { provider: "groq",      label: "Groq",      placeholder: "gsk_…",    docsUrl: "https://console.groq.com/keys" },
 ];
 
