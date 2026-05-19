@@ -18,7 +18,6 @@ services:
 
   backend:
     build: ./backend
-    #image: ghcr.io/saketnayak/agentfloor-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -73,7 +72,7 @@ services:
       # HTTPS ROUTER (always accessible)
       # ------------------------------
       - "traefik.http.routers.agent-secure.entrypoints=websecure"
-      - "traefik.http.routers.agent-secure.rule=Host(`agent.ululuu.de`)"
+      - "traefik.http.routers.agent-secure.rule=Host(`agent.example.de`)"
       - "traefik.http.routers.agent-secure.tls=true"
       - "traefik.http.routers.agent-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.agent-secure.service=agent-svc"
@@ -82,7 +81,7 @@ services:
       # HTTP ROUTER
       # ------------------------------
       - "traefik.http.routers.agent-http.entrypoints=web"
-      - "traefik.http.routers.agent-http.rule=Host(`agent.ululuu.de`)"
+      - "traefik.http.routers.agent-http.rule=Host(`agent.example.de`)"
       - "traefik.http.routers.agent-http.service=agent-svc"
       # ------------------------------
       # SERVICE DEFINITION
