@@ -27,6 +27,10 @@ out/
 docs/superpowers/
 .DS_Store
 
+# Docker
+docker-compose.yml
+compose.yml
+
 # Private docs (specs, plans, launch strategy)
 docs/specs/
 docs/plans/
