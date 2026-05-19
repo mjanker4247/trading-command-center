@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -573,6 +573,43 @@ export async function sendPortfolioChat(
   if (!r.ok) {
     const body = await r.json().catch(() => null);
     throw new Error(body?.detail ?? "Chat request failed");
+  }
+  return r.json();
+}
+
+export async function getBehavioralAlerts(portfolioId: string): Promise<BehavioralAlertsResponse> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/behavioral-alerts`);
+  if (!r.ok) throw new Error("Failed to fetch behavioral alerts");
+  return r.json();
+}
+
+export async function getDeliverySettings(portfolioId: string): Promise<DeliverySettings> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/delivery-settings`);
+  if (!r.ok) throw new Error("Failed to fetch delivery settings");
+  return r.json();
+}
+
+export async function updateDeliverySettings(
+  portfolioId: string,
+  body: UpdateDeliverySettingsRequest
+): Promise<DeliverySettings> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/delivery-settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error("Failed to update delivery settings");
+  return r.json();
+}
+
+export async function testWebhook(portfolioId: string): Promise<{ sent: boolean }> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/delivery-settings/test-webhook`, {
+    method: "POST",
+  });
+  if (!r.ok) {
+    let detail = "Failed to test webhook";
+    try { detail = (await r.json()).detail ?? detail; } catch { /* ignore parse errors */ }
+    throw new Error(detail);
   }
   return r.json();
 }
