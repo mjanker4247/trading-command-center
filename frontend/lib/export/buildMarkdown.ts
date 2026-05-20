@@ -1,18 +1,5 @@
 import type { Run, Report } from "../types";
-
-/** Escape characters that are meaningful in inline Markdown. */
-function escapeMd(raw: string): string {
-  // Escape: \ ` * _ { } [ ] ( ) # + - . ! | > ~
-  return raw.replace(/[\\`*_{}[\]()#+\-.!|>~]/g, "\\$&");
-}
-
-/**
- * Escape `$` signs so they are never interpreted as LaTeX math delimiters.
- * Applies *after* escapeMd so we don't double-escape other characters.
- */
-function escapeDollars(s: string): string {
-  return s.replace(/\$/g, "\\$");
-}
+import { normalizeMarkdown } from "./normalizeMarkdown";
 
 /** "fundamental_analysis" → "Fundamental Analysis" */
 function humanize(s: string): string {
@@ -29,7 +16,7 @@ function joinSections(...sections: string[]): string {
 /** Format a price field safely, treating 0 as a valid value. */
 function priceField(label: string, value: string | null | undefined): string | null {
   if (value == null) return null;
-  return `**${label}:** ${escapeDollars(value.trim())}`;
+  return `**${label}:** ${value.trim()}`;
 }
 
 function extractHistory(value: unknown): string {
@@ -63,12 +50,12 @@ export function buildMarkdown(run: Run, report: Report): string {
   const pricesLine = priceParts.length > 0 ? priceParts.join(" · ") + "\n\n" : "";
 
   const header =
-    `# ${escapeMd(run.ticker)} Research Report — ${escapeMd(run.analysis_date)}\n\n` +
-    `**Verdict:** ${escapeMd(report.verdict.toUpperCase())}\n\n` +
+    `# ${run.ticker} Research Report — ${run.analysis_date}\n\n` +
+    `**Verdict:** ${report.verdict.toUpperCase()}\n\n` +
     pricesLine +
-    `**Model:** ${escapeMd(run.llm_provider)} / ${escapeMd(run.llm_model)}` +
-    ` · **Depth:** ${escapeMd(String(run.depth))}\n\n` +
-    `**Analysts:** ${run.analysts.map((a) => escapeMd(humanize(a))).join(", ")}\n\n`;
+    `**Model:** ${run.llm_provider} / ${run.llm_model}` +
+    ` · **Depth:** ${String(run.depth)}\n\n` +
+    `**Analysts:** ${run.analysts.map((a) => humanize(a)).join(", ")}\n\n`;
 
   const analystSections = run.analysts
     .map((analyst) => {
@@ -99,14 +86,14 @@ export function buildMarkdown(run: Run, report: Report): string {
       debateBlock += `### Risk Discussion\n\n${riskHistory.trim()}\n\n`;
   }
 
-  return joinSections(
+  const markdown = joinSections(
     header,
     mdSection("Trader Decision", report.trader_decision),
     analystBlock,
     debateBlock,
     mdSection("Investment Plan", raw?.investment_plan as string | undefined),
     mdSection("Final Trade Decision", raw?.final_trade_decision as string | undefined),
-  )
-    .trimEnd()
-    .concat("\n");
+  );
+
+  return normalizeMarkdown(markdown);
 }
