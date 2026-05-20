@@ -367,6 +367,8 @@ function ItemRow({ item, onRemove, onToggle, onRunNow }: {
 export default function WatchlistPage() {
   const qc = useQueryClient();
 
+  const [showAddTicker, setShowAddTicker] = useState(true);
+
   const { data: watchlist, isLoading } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
 
   const addMutation = useMutation({
@@ -403,9 +405,28 @@ export default function WatchlistPage() {
         </div>
 
         <div className="bg-navy-800 border border-slate-700 rounded-xl p-5">
-          <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-4">Add Ticker</p>
-          <AddItemForm onAdd={(req) => addMutation.mutate(req)} isPending={addMutation.isPending} />
-          {addMutation.error && <p className="text-red-400 text-sm mt-3">{String(addMutation.error)}</p>}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">
+              Add Ticker
+            </p>
+        
+            <button
+              type="button"
+              onClick={() => setShowAddTicker((v) =>!v)}
+              className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded"
+            >
+              {showAddTicker? "Hide": "Show"}
+            </button>
+          </div>
+        
+          {showAddTicker && (
+            <>
+              <AddItemForm onAdd={(req) => addMutation.mutate(req)} isPending={addMutation.isPending} />
+              {addMutation.error && (
+                <p className="text-red-400 text-sm mt-3">{String(addMutation.error)}</p>
+              )}
+            </>
+          )}
         </div>
 
         {isLoading && <div className="text-slate-400 text-sm">Loading watchlist…</div>}
