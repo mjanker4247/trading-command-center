@@ -3,7 +3,6 @@ import os
 import re
 from queue import Queue as SyncQueue
 from datetime import datetime, timezone
-from backend.app.services.markdown_normalizer import MarkdownNormalizer
 from langchain_core.callbacks import BaseCallbackHandler
 from decimal import Decimal
 from typing import Optional
@@ -227,9 +226,7 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         verdict = _parse_verdict(signal)
         raw = final_state.model_dump() if hasattr(final_state, "model_dump") else {}
-        trader_decision = MarkdownNormalizer.normalize(
-            str(getattr(final_state, "final_trade_decision", ""))
-            )
+        trader_decision = str(getattr(final_state, "final_trade_decision", ""))
         
         suggested_entry, suggested_stop, suggested_target = _extract_prices(trader_decision)
         async with AsyncSessionLocal() as db:

@@ -442,19 +442,19 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
             {report.suggested_entry && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Entry</Text>
-                <Text style={styles.priceValue}>${report.suggested_entry}</Text>
+                <Text style={styles.priceValue}>{report.suggested_entry}</Text>
               </View>
             )}
             {report.suggested_stop && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Stop</Text>
-                <Text style={styles.priceValue}>${report.suggested_stop}</Text>
+                <Text style={styles.priceValue}>{report.suggested_stop}</Text>
               </View>
             )}
             {report.suggested_target && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Target</Text>
-                <Text style={styles.priceValue}>${report.suggested_target}</Text>
+                <Text style={styles.priceValue}>{report.suggested_target}</Text>
               </View>
             )}
           </View>

@@ -3,9 +3,7 @@ import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 /** "fundamental_analysis" → "Fundamental Analysis" */
 function humanize(s: string): string {
-  return s
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Join non-empty sections, placing `---` *between* them (not after the last). */
@@ -42,9 +40,9 @@ export function buildMarkdown(run: Run, report: Report): string {
   const raw = report.raw_report;
 
   const priceParts = [
-    priceField("Entry", report.suggested_entry),
-    priceField("Stop", report.suggested_stop),
-    priceField("Target", report.suggested_target),
+    priceField("Entry", report.suggested_entry), 
+    priceField("Stop", report.suggested_stop), 
+    priceField("Target", report.suggested_target)
   ].filter((x): x is string => x !== null);
 
   const pricesLine = priceParts.length > 0 ? priceParts.join(" · ") + "\n\n" : "";
@@ -59,32 +57,33 @@ export function buildMarkdown(run: Run, report: Report): string {
 
   const analystSections = run.analysts
     .map((analyst) => {
-      const content =
-        (raw?.[`${analyst}_report`] as string | undefined) ??
-        (raw?.[analyst] as string | undefined) ??
-        "";
+      const content = (raw?.[`${analyst}_report`] as string | undefined) ?? (raw?.[analyst] as string | undefined) ?? "";
       if (!content.trim()) return "";
       // Wrap in a fenced block to prevent heading bleed; or strip leading #s:
-      const safeContent = content.trim().replace(/^#{1,6} /gm, (h) => "#" + h);
+      // Cap at h6 (or just strip headings entirely from analyst content)
+      const safeContent = content.trim()
+        .replace(/^(#{1,5}) /gm, (_, hashes) => hashes + "# ")  // demote, cap at 6
+        // or more defensively:
+        // .replace(/^#{1,6} /gm, "**")  // turn all headings into bold lines
+
       return `### ${humanize(analyst)} Analyst\n\n${safeContent}\n\n`;
     })
     .filter(Boolean)
     .join("");
 
-  const analystBlock = analystSections
-    ? `## Analyst Reports\n\n${analystSections}`
-    : "";
+  const analystBlock = analystSections ? `## Analyst Reports\n\n${analystSections}` : "";
 
   const debateHistory = extractHistory(raw?.investment_debate_state);
   const riskHistory = extractHistory(raw?.risk_debate_state);
   let debateBlock = "";
-  if (debateHistory || riskHistory) {
-    debateBlock = "## Bull / Bear Debate\n\n";
-    if (debateHistory)
-      debateBlock += `### Investment Debate\n\n${debateHistory.trim()}\n\n`;
-    if (riskHistory)
-      debateBlock += `### Risk Discussion\n\n${riskHistory.trim()}\n\n`;
-  }
+  const debateBlock =
+    debateHistory || riskHistory
+      ? [
+        "## Bull / Bear Debate", 
+        debateHistory && `### Investment Debate\n\n${debateHistory.trim()}`, 
+        riskHistory && `### Risk Discussion\n\n${riskHistory.trim()}`
+      ].filter(Boolean).join("\n\n") + "\n\n"
+      : "";
 
   const markdown = joinSections(
     header,

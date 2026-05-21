@@ -20,24 +20,28 @@ export function normalizeMarkdown(input: string | null | undefined): string {
 
   if (!source.trim()) return "";
 
-  const file = unified()
-    .use(remarkParse)
-    .use(remarkGfm, {
-      tableCellPadding: true,
-      tablePipeAlign: true,
-    })
-    .use(remarkStringify, {
-      bullet: "-",
-      fences: true,
-      listItemIndent: "one",
-      rule: "-",
-      ruleRepetition: 3,
-      emphasis: "*",
-      strong: "*",
-    })
-    .processSync(source);
-
-  return String(file).trimEnd() + "\n";
+  try {
+    const file = unified()
+      .use(remarkParse)
+      .use(remarkGfm, {
+        tableCellPadding: true,
+        tablePipeAlign: true,
+      })
+      .use(remarkStringify, {
+        bullet: "-",
+        fences: true,
+        listItemIndent: "one",
+        rule: "-",
+        ruleRepetition: 3,
+        emphasis: "*",
+        strong: "*",
+      })
+      .freeze()
+      .processSync(source);
+    return String(file).trimEnd() + "\n";
+  } catch (error) {
+    return source;
+  }
 }
 
 /**
