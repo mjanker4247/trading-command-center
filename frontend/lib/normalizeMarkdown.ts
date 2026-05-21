@@ -39,7 +39,7 @@ export function normalizeMarkdown(input: string | null | undefined): string {
       .freeze()
       .processSync(source);
     return String(file).trimEnd() + "\n";
-  } catch (error) {
+  } catch {
     return source;
   }
 }

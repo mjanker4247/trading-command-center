@@ -118,7 +118,7 @@ export function parseMdForPdf(md: string): MdSegment[] {
     }
 
     if (node.type === "code") {
-      segments.push({ kind: "code", text: textFromNode(node).trim(), lang: (node as any).lang ?? undefined });
+      segments.push({ kind: "code", text: "```" + textFromNode(node).trim() + "```" });
       continue;
     }
 
