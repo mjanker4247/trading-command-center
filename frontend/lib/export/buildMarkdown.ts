@@ -75,7 +75,6 @@ export function buildMarkdown(run: Run, report: Report): string {
 
   const debateHistory = extractHistory(raw?.investment_debate_state);
   const riskHistory = extractHistory(raw?.risk_debate_state);
-  let debateBlock = "";
   const debateBlock =
     debateHistory || riskHistory
       ? [
