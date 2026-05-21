@@ -8,10 +8,9 @@ export type MdSegment =
   | { kind: "h2"; text: string }
   | { kind: "h3"; text: string }
   | { kind: "bullet"; text: string }
-  | { kind: "paragraph"; text: string }
+  | { kind: "paragraph"; text: string; spans: InlineSpan[] }
   | { kind: "table"; headers: string[]; rows: string[][] }
   | { kind: "code"; text: string }
-  | { kind: "paragraph"; spans: InlineSpan[] }
   | { kind: "blank" };
 
 type InlineSpan = { 
@@ -94,7 +93,7 @@ export function parseMdForPdf(md: string): MdSegment[] {
     if (node.type === "paragraph") {
       const text = paragraphFromNode(node);
       if (text) {
-        segments.push({ kind: "paragraph", text });
+        segments.push({ kind: "paragraph", text, spans: [] });
       }
       continue;
     }
@@ -127,10 +126,10 @@ export function parseMdForPdf(md: string): MdSegment[] {
       continue;
     }
 
-    if (node.type === "html" || node.type === "code") {
+    if (node.type === "html") {
       const text = textFromNode(node).trim();
       if (text) {
-        segments.push({ kind: "paragraph", text });
+        segments.push({ kind: "paragraph", text, spans: [] });
       }
       continue;
     }
