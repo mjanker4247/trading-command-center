@@ -9,11 +9,12 @@ import { BehavioralAlerts } from "@/components/portfolio/BehavioralAlerts";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PROVIDERS = ["openai", "anthropic", "google", "ionos", "ollama", "vllm"] as const;
+const PROVIDERS = ["openai", "anthropic", "google", "groq", "ionos", "ollama", "vllm"] as const;
 const PROVIDER_LABELS: Record<string, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
   google: "Google",
+  groq: "Groq",
   ionos: "IONOS",
   ollama: "Ollama",
   vllm: "vLLM",
@@ -21,7 +22,8 @@ const PROVIDER_LABELS: Record<string, string> = {
 const PROVIDER_PLACEHOLDERS: Record<string, string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-haiku-4-5-20251001",
-  google: "gemini-1.5-flash",
+  google: "gemini-2.5-flash",
+  groq: "llama-3.3-70b-versatile",
   ionos: "openai/gpt-oss-120b",
   ollama: "llama3",
   vllm: "mistral-7b",
