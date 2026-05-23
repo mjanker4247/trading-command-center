@@ -81,7 +81,7 @@ function BatchAnalyzeModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
       <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-white">Analyze All Stale Holdings</h2>
@@ -100,7 +100,7 @@ function BatchAnalyzeModal({
                   <select
                     value={form.llm_provider}
                     onChange={(e) => setForm((f) => ({ ...f, llm_provider: e.target.value, llm_model: "" }))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
                   >
                     {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
@@ -110,7 +110,7 @@ function BatchAnalyzeModal({
                   <select
                     value={form.depth}
                     onChange={(e) => setForm((f) => ({ ...f, depth: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
                   >
                     {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
@@ -121,7 +121,7 @@ function BatchAnalyzeModal({
                 <select
                   value={form.llm_model}
                   onChange={(e) => setForm((f) => ({ ...f, llm_model: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
                 >
                   {models.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -136,7 +136,7 @@ function BatchAnalyzeModal({
                   max={90}
                   value={form.staleness_days}
                   onChange={(e) => setForm((f) => ({ ...f, staleness_days: parseInt(e.target.value) || 7 }))}
-                  className="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  className="w-24 bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
                 />
               </div>
             </div>
@@ -152,7 +152,7 @@ function BatchAnalyzeModal({
               <button
                 onClick={() => analyzeMutation.mutate()}
                 disabled={analyzeMutation.isPending}
-                className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-sm disabled:opacity-50 transition-colors"
               >
                 {analyzeMutation.isPending ? "Starting…" : "Start Batch Analysis"}
               </button>
@@ -183,7 +183,7 @@ function BatchAnalyzeModal({
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                className="px-4 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-sm transition-colors"
               >
                 Close
               </button>
@@ -364,7 +364,7 @@ export default function PortfolioPage() {
               >
                 <span>{t.label}</span>
                 {t.alertCount != null && (
-                  <span className="text-xs px-1 py-0.5 bg-red-500 text-white rounded font-mono leading-none min-w-[16px] text-center">
+                  <span className="text-xs px-1 py-0.5 bg-red-500 text-white rounded-sm font-mono leading-none min-w-[16px] text-center">
                     {t.alertCount}
                   </span>
                 )}

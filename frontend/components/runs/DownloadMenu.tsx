@@ -73,7 +73,7 @@ export function DownloadMenu({ run, report }: Props) {
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={disabled || pdfLoading}
-        className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-3 py-1 disabled:opacity-40 flex items-center gap-1.5"
+        className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded-sm px-3 py-1 disabled:opacity-40 flex items-center gap-1.5"
       >
         {pdfLoading ? (
           <>
@@ -89,7 +89,7 @@ export function DownloadMenu({ run, report }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-44 bg-navy-800 border border-slate-700 rounded shadow-lg z-20 py-1">
+        <div className="absolute right-0 mt-1 w-44 bg-navy-800 border border-slate-700 rounded-sm shadow-lg z-20 py-1">
           <button
             onClick={handleJson}
             className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-slate-100"

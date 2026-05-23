@@ -87,7 +87,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                     value={form.email_address ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, email_address: e.target.value || null }))}
                     placeholder="your@email.com"
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-hidden focus:border-indigo-500"
                   />
                 </div>
               )}
@@ -131,7 +131,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                       value={form.webhook_url ?? ""}
                       onChange={(e) => setForm((f) => ({ ...f, webhook_url: e.target.value || null }))}
                       placeholder="https://hooks.slack.com/..."
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-hidden focus:border-indigo-500"
                     />
                   </div>
                   <div>
@@ -139,7 +139,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                     <select
                       value={form.webhook_format ?? "json"}
                       onChange={(e) => setForm((f) => ({ ...f, webhook_format: e.target.value as "json" | "slack" | "telegram" }))}
-                      className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                      className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-indigo-500"
                     >
                       <option value="json">Generic JSON</option>
                       <option value="slack">Slack Message</option>
@@ -154,7 +154,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                         value={form.telegram_chat_id ?? ""}
                         onChange={(e) => setForm((f) => ({ ...f, telegram_chat_id: e.target.value || null }))}
                         placeholder="-1001234567890 or @username"
-                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-hidden focus:border-indigo-500"
                       />
                       <p className="text-xs text-slate-500 mt-1">Set the webhook URL to your bot&apos;s sendMessage endpoint: <span className="text-slate-400">https://api.telegram.org/bot&lt;TOKEN&gt;/sendMessage</span></p>
                     </div>

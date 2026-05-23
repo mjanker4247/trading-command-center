@@ -44,7 +44,7 @@ const statusLabel: Record<StageStatus, string> = {
 function StageRow({ label, status }: { label: string; status: StageStatus }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot[status]}`} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[status]}`} />
       <span className="text-slate-300 text-sm flex-1">{label}</span>
       <span className="text-slate-500 text-xs">{statusLabel[status]}</span>
     </div>
@@ -53,7 +53,7 @@ function StageRow({ label, status }: { label: string; status: StageStatus }) {
 
 export function PipelinePanel({ analysts, events }: PipelinePanelProps) {
   return (
-    <div className="bg-navy-700 rounded border border-slate-800 p-4">
+    <div className="bg-navy-700 rounded-sm border border-slate-800 p-4">
       <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">Pipeline</p>
       <div className="space-y-2">
         {analysts.map((analyst) => (

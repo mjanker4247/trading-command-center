@@ -64,11 +64,11 @@ function TickerCard({
               <img
                 src={item.logo}
                 alt={item.ticker}
-                className="w-8 h-8 rounded object-contain bg-slate-700 p-0.5 shrink-0"
+                className="w-8 h-8 rounded-sm object-contain bg-slate-700 p-0.5 shrink-0"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               />
             ) : (
-              <div className="w-8 h-8 rounded bg-slate-700 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-sm bg-slate-700 flex items-center justify-center shrink-0">
                 <span className="text-[9px] font-bold text-slate-400">{item.ticker.slice(0, 2)}</span>
               </div>
             )}
@@ -129,7 +129,7 @@ function TickerCard({
       <div className="flex gap-1.5 mt-3">
         <button
           onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker)}`)}
-          className="flex-1 text-xs font-semibold py-1 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+          className="flex-1 text-xs font-semibold py-1 rounded-sm bg-violet-700 hover:bg-violet-600 text-white transition-colors"
         >
           ⚡ Analyze
         </button>
@@ -159,11 +159,11 @@ function MoverRow({
           <img
             src={item.logo}
             alt={item.ticker}
-            className="w-7 h-7 rounded object-contain bg-slate-700 p-0.5 shrink-0"
+            className="w-7 h-7 rounded-sm object-contain bg-slate-700 p-0.5 shrink-0"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <div className="w-7 h-7 rounded bg-slate-700 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-sm bg-slate-700 flex items-center justify-center shrink-0">
             <span className="text-[9px] font-bold text-slate-400">{item.ticker.slice(0, 2)}</span>
           </div>
         )}
@@ -184,7 +184,7 @@ function MoverRow({
       </button>
       <button
         onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker)}`)}
-        className="shrink-0 text-xs font-semibold px-2 py-1 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+        className="shrink-0 text-xs font-semibold px-2 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 text-white transition-colors"
       >
         ⚡ Analyze
       </button>
@@ -209,9 +209,9 @@ function SectorHeatmap({ sectors }: { sectors: SectorData[] }) {
         return (
           <div key={s.sector} className="flex items-center gap-3">
             <span className="text-[11px] text-slate-400 w-36 shrink-0 truncate">{s.sector}</span>
-            <div className="flex-1 h-5 bg-slate-800 rounded overflow-hidden relative">
+            <div className="flex-1 h-5 bg-slate-800 rounded-sm overflow-hidden relative">
               <div
-                className={`h-full rounded transition-all ${up ? "bg-green-500/30" : "bg-red-500/30"}`}
+                className={`h-full rounded-sm transition-all ${up ? "bg-green-500/30" : "bg-red-500/30"}`}
                 style={{ width }}
               />
               <span
@@ -238,14 +238,14 @@ function CardSkeleton() {
   return (
     <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4 space-y-3 animate-pulse">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded bg-slate-700" />
+        <div className="w-8 h-8 rounded-sm bg-slate-700" />
         <div className="space-y-1.5 flex-1">
-          <div className="h-3 w-16 bg-slate-700 rounded" />
-          <div className="h-2.5 w-28 bg-slate-700/60 rounded" />
+          <div className="h-3 w-16 bg-slate-700 rounded-sm" />
+          <div className="h-2.5 w-28 bg-slate-700/60 rounded-sm" />
         </div>
         <div className="h-5 w-14 bg-slate-700 rounded-full" />
       </div>
-      <div className="h-4 w-24 bg-slate-700 rounded" />
+      <div className="h-4 w-24 bg-slate-700 rounded-sm" />
       <div className="h-1 bg-slate-700 rounded-full" />
     </div>
   );
@@ -374,7 +374,7 @@ export function TrendingPanel() {
         {loadingSectors ? (
           <div className="space-y-1.5">
             {[...Array(11)].map((_, i) => (
-              <div key={i} className="h-5 bg-slate-800/40 rounded animate-pulse" />
+              <div key={i} className="h-5 bg-slate-800/40 rounded-sm animate-pulse" />
             ))}
           </div>
         ) : sectors.length > 0 ? (

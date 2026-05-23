@@ -87,7 +87,7 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
           >
             {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -99,7 +99,7 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
             >
               <option value="">— select —</option>
               {models.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -110,7 +110,7 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PROVIDER_PLACEHOLDERS[provider] ?? "model name"}
-              className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500"
             />
           )}
         </div>
@@ -186,7 +186,7 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
             disabled={sendMutation.isPending}
             placeholder="Ask a question… (Enter to send, Shift+Enter for newline)"
             rows={1}
-            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none disabled:opacity-50 max-h-32 overflow-y-auto"
+            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 resize-none disabled:opacity-50 max-h-32 overflow-y-auto"
             style={{ minHeight: "2.5rem" }}
           />
           <button

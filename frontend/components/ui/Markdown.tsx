@@ -57,11 +57,11 @@ const components: Components = {
   code: ({ children, className }) => {
     const isBlock = className?.startsWith("language-");
     return isBlock ? (
-      <pre className="bg-slate-900 rounded p-3 overflow-x-auto mb-3">
+      <pre className="bg-slate-900 rounded-sm p-3 overflow-x-auto mb-3">
         <code className="text-slate-300 text-xs font-mono">{children}</code>
       </pre>
     ) : (
-      <code className="bg-slate-800 text-slate-300 text-xs font-mono px-1 py-0.5 rounded">
+      <code className="bg-slate-800 text-slate-300 text-xs font-mono px-1 py-0.5 rounded-sm">
         {children}
       </code>
     );

@@ -80,7 +80,7 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_provider}
         onChange={(e) => setDraft((d) => ({ ...d, llm_provider: e.target.value, llm_model: "" }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden"
       >
         {PROVIDERS.map((p) => (
           <option key={p} value={p}>{p}</option>
@@ -89,14 +89,14 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_model}
         onChange={(e) => setDraft((d) => ({ ...d, llm_model: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none max-w-[140px]"
+        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden max-w-[140px]"
       >
         {models.map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
       <select
         value={draft.depth}
         onChange={(e) => setDraft((d) => ({ ...d, depth: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden"
       >
         {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
       </select>

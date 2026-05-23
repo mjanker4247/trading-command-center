@@ -64,7 +64,7 @@ export function PortfolioSwitcher({
       {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 bg-slate-800 border border-slate-700 hover:border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none transition-colors"
+        className="flex items-center gap-2 bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden transition-colors"
       >
         <span className="truncate max-w-[160px]">
           {selected ? selected.name : <span className="text-slate-500">Select portfolio</span>}
@@ -74,7 +74,7 @@ export function PortfolioSwitcher({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-slate-800 border border-slate-700 rounded shadow-xl py-1">
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-slate-800 border border-slate-700 rounded-sm shadow-xl py-1">
           {portfolios.length === 0 && (
             <div className="px-3 py-2 text-slate-500 text-xs">No portfolios yet</div>
           )}
@@ -118,12 +118,12 @@ export function PortfolioSwitcher({
                     }
                   }}
                   placeholder="Portfolio name"
-                  className="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-purple-500 min-w-0"
+                  className="flex-1 bg-slate-900 border border-slate-600 rounded-sm px-2 py-1 text-xs text-slate-200 focus:outline-hidden focus:border-purple-500 min-w-0"
                 />
                 <button
                   onClick={handleConfirmCreate}
                   disabled={!newName.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded px-2 py-1 text-xs shrink-0"
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-sm px-2 py-1 text-xs shrink-0"
                 >
                   Add
                 </button>

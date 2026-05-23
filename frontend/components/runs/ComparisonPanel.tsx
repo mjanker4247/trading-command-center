@@ -24,7 +24,7 @@ function RunColumn({ side, data }: { side: "A" | "B"; data: RunWithReport }) {
   return (
     <div className="flex-1 min-w-0 bg-navy-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <span className="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded">Run {side}</span>
+        <span className="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-sm">Run {side}</span>
         <span className="text-xl font-bold text-white">{run.ticker}</span>
         <span className="text-sm text-slate-400">{run.analysis_date}</span>
       </div>

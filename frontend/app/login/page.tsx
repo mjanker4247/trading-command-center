@@ -28,15 +28,15 @@ export default function LoginPage() {
           <div>
             <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500" />
+              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500" />
           </div>
           <div>
             <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500" />
+              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500" />
           </div>
           {error && <p className="text-red-400 text-xs">{error}</p>}
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-medium">
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-2 text-sm font-medium">
             Sign In
           </button>
         </form>

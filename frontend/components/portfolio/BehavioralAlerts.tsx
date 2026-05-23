@@ -37,7 +37,7 @@ function AlertRow({ alert }: { alert: BehavioralAlert }) {
         <div className="flex items-center flex-wrap gap-2 mb-1">
           <span className={`text-xs font-semibold ${style.titleColor}`}>{alert.title}</span>
           {alert.affected_tickers.slice(0, 4).map((t) => (
-            <span key={t} className="text-xs font-mono px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">
+            <span key={t} className="text-xs font-mono px-1.5 py-0.5 bg-slate-800 rounded-sm text-slate-300">
               {t}
             </span>
           ))}
@@ -78,17 +78,17 @@ export function BehavioralAlerts({ portfolioId }: { portfolioId: string }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-slate-200">Behavioral Alerts</span>
           {data.critical_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-sm font-mono">
               {data.critical_count} critical
             </span>
           )}
           {data.warning_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-sm font-mono">
               {data.warning_count} warning
             </span>
           )}
           {data.info_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-sm font-mono">
               {data.info_count} info
             </span>
           )}

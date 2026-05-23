@@ -201,7 +201,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileName}
                 onChange={(e) => { setProfileName(e.target.value); setProfileStatus("idle"); }}
-                className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-none focus:border-blue-500"
+                className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
               />
             </div>
             <Divider />
@@ -214,7 +214,7 @@ export default function SettingsPage() {
                   value={currentPassword}
                   onChange={(e) => { setCurrentPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="Current password"
-                  className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -224,7 +224,7 @@ export default function SettingsPage() {
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="New password"
-                  className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
                 />
               </div>
             </div>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
               <select
                 value={preferredCurrency}
                 onChange={(e) => { setPreferredCurrency(e.target.value); setProfileStatus("idle"); }}
-                className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 w-32 focus:outline-none focus:border-blue-500"
+                className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-32 focus:outline-hidden focus:border-blue-500"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -245,7 +245,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => profileMutation.mutate()}
                 disabled={profileMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-1.5 text-xs disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-1.5 text-xs disabled:opacity-50"
               >
                 {profileMutation.isPending ? "Saving…" : "Save Changes"}
               </button>
@@ -259,7 +259,7 @@ export default function SettingsPage() {
         <SectionCard title="Investor DNA" description="Personalize AI insights with your investment context.">
           <div className="px-4 py-4">
             {profileLoading ? (
-              <div className="h-8 bg-slate-800 rounded animate-pulse w-48" />
+              <div className="h-8 bg-slate-800 rounded-sm animate-pulse w-48" />
             ) : investorProfile ? (
               <div className="flex items-center justify-between">
                 <div className="flex gap-6 text-sm">
@@ -284,13 +284,13 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-green-400 font-medium">● DNA active</span>
-                  <a href="/settings/investor-profile" className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded px-2 py-1">Edit</a>
+                  <a href="/settings/investor-profile" className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-sm px-2 py-1">Edit</a>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between">
                 <p className="text-slate-400 text-sm">Personalize your AI insights by sharing your investment context.</p>
-                <a href="/settings/investor-profile" className="text-xs text-purple-400 hover:text-purple-300 border border-purple-500/30 rounded px-3 py-1.5">Set up →</a>
+                <a href="/settings/investor-profile" className="text-xs text-purple-400 hover:text-purple-300 border border-purple-500/30 rounded-sm px-3 py-1.5">Set up →</a>
               </div>
             )}
           </div>
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                   <div className="text-slate-400 text-xs">
                     Set the following environment variables to enable email notifications:
                   </div>
-                  <pre className="bg-slate-800 rounded p-3 text-xs text-slate-300 font-mono leading-relaxed overflow-x-auto">
+                  <pre className="bg-slate-800 rounded-sm p-3 text-xs text-slate-300 font-mono leading-relaxed overflow-x-auto">
 {`SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=you@gmail.com
@@ -424,12 +424,12 @@ SMTP_FROM=noreply@yourdomain.com`}
                 value={inviteEmail}
                 onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus("idle"); }}
                 placeholder="member@example.com"
-                className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-64 focus:outline-none focus:border-blue-500"
+                className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
               />
               <button
                 onClick={() => { setInviteStatus("idle"); setInviteUrl(null); inviteMutation.mutate(); }}
                 disabled={inviteMutation.isPending || !inviteEmail}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-xs disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1 text-xs disabled:opacity-50"
               >
                 {inviteMutation.isPending ? "Sending…" : "Invite Member"}
               </button>
@@ -443,12 +443,12 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <input
                     readOnly
                     value={inviteUrl}
-                    className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono flex-1 focus:outline-none"
+                    className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-300 font-mono flex-1 focus:outline-hidden"
                     onFocus={(e) => e.target.select()}
                   />
                   <button
                     onClick={() => navigator.clipboard.writeText(inviteUrl)}
-                    className="bg-slate-700 hover:bg-slate-600 text-slate-300 rounded px-3 py-1 text-xs shrink-0"
+                    className="bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-sm px-3 py-1 text-xs shrink-0"
                   >
                     Copy
                   </button>
@@ -476,7 +476,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 <button
                   onClick={handleDownloadBackup}
                   disabled={backupLoading}
-                  className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded px-4 py-1.5 text-xs disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                  className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-sm px-4 py-1.5 text-xs disabled:opacity-50 flex items-center gap-1.5 transition-colors"
                 >
                   {backupLoading ? (
                     <>
@@ -507,7 +507,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
-                  <label className="cursor-pointer bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500 transition-colors">
+                  <label className="cursor-pointer bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500 transition-colors">
                     {restoreFile ? restoreFile.name : "Choose file…"}
                     <input
                       type="file"
@@ -519,7 +519,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <button
                     onClick={() => setRestoreModalOpen(true)}
                     disabled={!restoreFile}
-                    className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1.5 text-xs disabled:opacity-40 transition-colors"
+                    className="bg-red-700 hover:bg-red-600 text-white rounded-sm px-3 py-1.5 text-xs disabled:opacity-40 transition-colors"
                   >
                     Restore…
                   </button>
@@ -543,7 +543,7 @@ SMTP_FROM=noreply@yourdomain.com`}
             : 0;
         const remaining = Math.max(0, estimatedSecs - restoreElapsed);
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
             <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-400 shrink-0">
@@ -588,7 +588,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <p className="text-sm text-slate-300">
                     This will <span className="text-red-400 font-medium">replace all current data</span> with the contents of:
                   </p>
-                  <p className="text-xs text-slate-400 font-mono bg-slate-800 rounded px-3 py-2">{restoreFile.name}</p>
+                  <p className="text-xs text-slate-400 font-mono bg-slate-800 rounded-sm px-3 py-2">{restoreFile.name}</p>
                   <p className="text-xs text-slate-500">
                     All runs, portfolios, watchlists, API keys, and user data will be overwritten. This cannot be undone.
                   </p>
@@ -599,7 +599,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                       value={restoreConfirmText}
                       onChange={(e) => setRestoreConfirmText(e.target.value)}
                       placeholder="RESTORE"
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-red-500 font-mono"
                     />
                   </div>
                   <p className="text-xs text-slate-500">
@@ -628,7 +628,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <button
                     onClick={() => restoreMutation.mutate()}
                     disabled={restoreConfirmText !== "RESTORE"}
-                    className="px-4 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded disabled:opacity-40 transition-colors"
+                    className="px-4 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded-sm disabled:opacity-40 transition-colors"
                   >
                     Restore Database
                   </button>

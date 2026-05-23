@@ -59,13 +59,13 @@ export default function LiveRunPage() {
     <div className="h-screen flex flex-col bg-navy-900">
       <TopNav />
       <div className="flex gap-4 p-6 max-w-7xl mx-auto w-full flex-1 overflow-hidden">
-        <div className="w-64 flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
+        <div className="w-64 shrink-0 flex flex-col gap-4 overflow-y-auto">
           <AgentSidebar run={run} onAbort={handleAbort} />
           {run && <PipelinePanel analysts={run.analysts} events={events} />}
           {isDone && (
             <Link
               href={`/runs/${id}`}
-              className="block text-center bg-blue-800 hover:bg-blue-700 text-blue-200 rounded px-3 py-2 text-sm"
+              className="block text-center bg-blue-800 hover:bg-blue-700 text-blue-200 rounded-sm px-3 py-2 text-sm"
             >
               View Results
             </Link>

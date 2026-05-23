@@ -124,14 +124,14 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
             <p className="text-sm text-slate-400 mt-0.5">{name}</p>
           )}
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {snap?.exchange && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.exchange}</span>}
-            {snap?.sector && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.sector}</span>}
-            {snap?.country && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.country}</span>}
+            {snap?.exchange && <span className="text-[10px] text-slate-500 bg-slate-800 rounded-sm px-1.5 py-0.5">{snap.exchange}</span>}
+            {snap?.sector && <span className="text-[10px] text-slate-500 bg-slate-800 rounded-sm px-1.5 py-0.5">{snap.sector}</span>}
+            {snap?.country && <span className="text-[10px] text-slate-500 bg-slate-800 rounded-sm px-1.5 py-0.5">{snap.country}</span>}
           </div>
         </div>
         {snap?.logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={snap.logo} alt={name} className="h-10 w-10 rounded object-contain bg-slate-800 p-1 shrink-0" />
+          <img src={snap.logo} alt={name} className="h-10 w-10 rounded-sm object-contain bg-slate-800 p-1 shrink-0" />
         )}
       </div>
 
@@ -171,7 +171,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
 
       {/* Chart */}
       <Section title="Price History">
-        {isLoading && <div className="h-24 bg-slate-800/50 rounded animate-pulse" />}
+        {isLoading && <div className="h-24 bg-slate-800/50 rounded-sm animate-pulse" />}
         {!isLoading && hasChart && (
           <>
             <div className="flex gap-1 mb-2">
@@ -248,7 +248,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
           <Divider />
           <Section title="Last Analysis">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className={`rounded px-2 py-0.5 text-xs font-medium ${verdictColors[holding.last_run.verdict?.toLowerCase()] ?? "bg-slate-700 text-slate-300 border border-slate-600"}`}>
+              <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictColors[holding.last_run.verdict?.toLowerCase()] ?? "bg-slate-700 text-slate-300 border border-slate-600"}`}>
                 {holding.last_run.verdict?.toUpperCase()}
               </span>
               <span className="text-xs text-slate-400">{holding.last_run.analysis_date}</span>
@@ -300,7 +300,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
                   <div className="flex gap-3">
                     {article.image && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={article.image} alt="" className="w-14 h-10 object-cover rounded shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <img src={article.image} alt="" className="w-14 h-10 object-cover rounded-sm shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
                     )}
                     <div className="min-w-0">
                       <p className="text-xs text-slate-300 group-hover:text-white transition-colors leading-snug line-clamp-2">

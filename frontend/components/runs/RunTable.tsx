@@ -104,7 +104,7 @@ function RunRow({
         {run.label && <p className="text-slate-500 text-xs mt-0.5">{run.label}</p>}
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
           {run.status === "running" && (
             <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse" />
           )}
@@ -113,7 +113,7 @@ function RunRow({
       </td>
       <td className="px-4 py-3">
         {run.verdict ? (
-          <span className={`rounded px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
+          <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
             {run.verdict}
           </span>
         ) : (
@@ -203,7 +203,7 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-800">
+    <div className="overflow-x-auto rounded-sm border border-slate-800">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
           <tr>

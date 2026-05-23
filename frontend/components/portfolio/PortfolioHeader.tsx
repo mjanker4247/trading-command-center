@@ -44,7 +44,7 @@ export function PortfolioHeader({
     : null;
 
   return (
-    <div className="flex items-center gap-4 bg-slate-800/50 border border-slate-800 rounded px-4 py-3">
+    <div className="flex items-center gap-4 bg-slate-800/50 border border-slate-800 rounded-sm px-4 py-3">
       {/* Left: portfolio name + meta */}
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-purple-400 font-medium text-sm truncate">{portfolio.name}</span>
@@ -93,21 +93,21 @@ export function PortfolioHeader({
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={onUploadClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
         >
           <span>↑</span>
           <span>Upload</span>
         </button>
         <button
           onClick={onExportClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
         >
           <span>⬇</span>
           <span>Export</span>
         </button>
         <button
           onClick={onDeliveryClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
           title="Brief delivery settings"
         >
           <span>🔔</span>

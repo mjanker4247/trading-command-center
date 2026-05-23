@@ -96,7 +96,7 @@ function ScheduleBuilder({ onChange }: ScheduleBuilderProps) {
     }
   }
 
-  const selectCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500";
+  const selectCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-hidden focus:border-blue-500";
 
   return (
     <div className="flex flex-col gap-3">
@@ -167,7 +167,7 @@ function ScheduleBuilder({ onChange }: ScheduleBuilderProps) {
       {/* Cron preview */}
       <div className="flex items-center gap-2 mt-1">
         <span className="text-xs text-slate-500">Schedule:</span>
-        <code className="text-xs text-blue-300 bg-navy-900 border border-slate-800 px-2 py-0.5 rounded">
+        <code className="text-xs text-blue-300 bg-navy-900 border border-slate-800 px-2 py-0.5 rounded-sm">
           {cron ?? "manual trigger"}
         </code>
         {cron && (
@@ -240,7 +240,7 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
     setTicker("");
   }
 
-  const inputCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500";
+  const inputCls = "bg-navy-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-hidden focus:border-blue-500";
 
   return (
     <div className="flex flex-col gap-5">
@@ -294,7 +294,7 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
             const sel = analysts.includes(a);
             return (
               <button key={a} type="button" onClick={() => toggleAnalyst(a)}
-                className={`px-3 py-1 rounded border text-xs capitalize ${sel ? "bg-blue-700 text-white border-blue-600" : "bg-navy-900 text-slate-400 border-slate-700"}`}>
+                className={`px-3 py-1 rounded-sm border text-xs capitalize ${sel ? "bg-blue-700 text-white border-blue-600" : "bg-navy-900 text-slate-400 border-slate-700"}`}>
                 {a}
               </button>
             );
@@ -351,11 +351,11 @@ function ItemRow({ item, onRemove, onToggle, onRunNow }: {
       </td>
       <td className="px-4 py-3">
         <div className="flex gap-2">
-          <button onClick={onRunNow} className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-800 rounded">Run now</button>
-          <button onClick={onToggle} className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded">
+          <button onClick={onRunNow} className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-800 rounded-sm">Run now</button>
+          <button onClick={onToggle} className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded-sm">
             {item.enabled ? "Pause" : "Resume"}
           </button>
-          <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-red-900 rounded">Remove</button>
+          <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-red-900 rounded-sm">Remove</button>
         </div>
       </td>
     </tr>
@@ -413,7 +413,7 @@ export default function WatchlistPage() {
             <button
               type="button"
               onClick={() => setShowAddTicker((v) =>!v)}
-              className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded"
+              className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1 border border-slate-700 rounded-sm"
             >
               {showAddTicker? "Hide": "Show"}
             </button>

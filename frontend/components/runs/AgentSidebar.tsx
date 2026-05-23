@@ -24,22 +24,22 @@ export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
   if (!run) {
     return (
       <div className="space-y-3 p-4">
-        <div className="bg-slate-700 rounded animate-pulse h-4 w-full" />
-        <div className="bg-slate-700 rounded animate-pulse h-4 w-full" />
-        <div className="bg-slate-700 rounded animate-pulse h-4 w-full" />
+        <div className="bg-slate-700 rounded-sm animate-pulse h-4 w-full" />
+        <div className="bg-slate-700 rounded-sm animate-pulse h-4 w-full" />
+        <div className="bg-slate-700 rounded-sm animate-pulse h-4 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="bg-navy-700 rounded border border-slate-800 p-4 space-y-4">
+    <div className="bg-navy-700 rounded-sm border border-slate-800 p-4 space-y-4">
       <div>
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Ticker</p>
         <p className="text-slate-200 font-mono font-semibold">{run.ticker}</p>
       </div>
       <div>
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Status</p>
-        <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
           {run.status === "running" && (
             <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse" />
           )}
@@ -49,7 +49,7 @@ export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
       <div>
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Verdict</p>
         {run.verdict ? (
-          <span className={`rounded px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
+          <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
             {run.verdict}
           </span>
         ) : (
@@ -83,7 +83,7 @@ export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
       {run.status === "running" && (
         <button
           onClick={onAbort}
-          className="bg-red-800 hover:bg-red-700 text-white rounded px-3 py-1.5 text-sm w-full"
+          className="bg-red-800 hover:bg-red-700 text-white rounded-sm px-3 py-1.5 text-sm w-full"
         >
           Abort Run
         </button>

@@ -77,7 +77,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
         Upcoming earnings dates for your holdings (next 60 days). Dates flagged{" "}
         <span className="text-yellow-400">yellow</span> have stale or missing analysis.
       </p>
-      <div className="overflow-x-auto rounded border border-slate-800">
+      <div className="overflow-x-auto rounded-sm border border-slate-800">
         <table className="w-full text-sm">
           <thead className="bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
             <tr>
@@ -103,7 +103,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
                   <td className={`px-4 py-2 font-mono font-semibold ${isStale && !isPast ? "text-yellow-400" : "text-purple-400"}`}>
                     {e.ticker}
                     {isStale && !isPast && (
-                      <span className="ml-1.5 text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded px-1">
+                      <span className="ml-1.5 text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-sm px-1">
                         STALE
                       </span>
                     )}

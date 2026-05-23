@@ -253,7 +253,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
             onChange={(e) => setThesisText(e.target.value)}
             rows={5}
             placeholder="Paste an investment thesis, article excerpt, podcast notes, or any text (50–10,000 characters)…"
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none"
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 resize-none"
           />
           <div className="flex items-center justify-between mt-2">
             <span className={`text-xs ${charValid ? "text-slate-500" : charCount > 0 ? "text-red-400" : "text-slate-600"}`}>
@@ -263,7 +263,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
               <select
                 value={provider}
                 onChange={(e) => { setProvider(e.target.value); setModel(PROVIDER_DEFAULT_MODELS[e.target.value] ?? ""); }}
-                className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
+                className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1.5 text-xs text-slate-300 focus:outline-hidden focus:border-blue-500"
               >
                 {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -272,7 +272,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="model"
-                className="w-40 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-blue-500"
+                className="w-40 bg-slate-800 border border-slate-700 rounded-sm px-2 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500"
               />
               <button
                 onClick={() => analyzeMutation.mutate()}

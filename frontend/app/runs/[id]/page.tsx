@@ -48,7 +48,7 @@ function LabelEditor({ id, label }: { id: string; label: string | null }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Add a label…"
-          className="bg-navy-900 border border-slate-600 rounded px-2 py-0.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-48"
+          className="bg-navy-900 border border-slate-600 rounded-sm px-2 py-0.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500 w-48"
         />
         <button type="submit" disabled={mutation.isPending} className="text-xs text-blue-400 hover:text-blue-300">
           {mutation.isPending ? "Saving…" : "Save"}

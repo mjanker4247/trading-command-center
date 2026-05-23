@@ -65,7 +65,7 @@ function Select({ value, onChange, children }: { value: string; onChange: (v: st
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+      className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
     >
       {children}
     </select>
@@ -79,7 +79,7 @@ function Textarea({ value, onChange, placeholder }: { value: string; onChange: (
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={3}
-      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-none"
+      className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500 resize-none"
     />
   );
 }
@@ -214,7 +214,7 @@ export default function InvestorProfilePage() {
                 value={form.liquidity_reserve}
                 onChange={(e) => set("liquidity_reserve")(e.target.value)}
                 placeholder="3 months expenses"
-                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
               />
             </div>
             <div>
@@ -225,7 +225,7 @@ export default function InvestorProfilePage() {
                 value={form.dependents}
                 onChange={(e) => set("dependents")(e.target.value)}
                 placeholder="0"
-                className="w-32 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-32 bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
               />
             </div>
           </div>
@@ -278,7 +278,7 @@ export default function InvestorProfilePage() {
               <div className="flex gap-2">
                 {[["passive", "Passive (index/ETF-first)"], ["active", "Active (stock picking)"], ["hybrid", "Hybrid"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("investment_style")(v)}
-                    className={`text-sm px-3 py-1.5 rounded border transition-colors ${form.investment_style === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.investment_style === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
                     {l}
                   </button>
                 ))}
@@ -289,7 +289,7 @@ export default function InvestorProfilePage() {
               <div className="flex gap-2 flex-wrap">
                 {[["equal_weight", "Equal weight"], ["conviction", "Conviction-based"], ["market_cap", "Market-cap weighted"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("sizing_approach")(v)}
-                    className={`text-sm px-3 py-1.5 rounded border transition-colors ${form.sizing_approach === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.sizing_approach === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
                     {l}
                   </button>
                 ))}
@@ -341,7 +341,7 @@ export default function InvestorProfilePage() {
               <div className="flex gap-2 flex-wrap">
                 {[["growth_only", "Growth only"], ["some_income", "Some income (5–20% yield)"], ["income_first", "Income-first (>20% yield)"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("income_goal")(v)}
-                    className={`text-sm px-3 py-1.5 rounded border transition-colors ${form.income_goal === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.income_goal === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
                     {l}
                   </button>
                 ))}

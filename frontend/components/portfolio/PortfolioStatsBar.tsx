@@ -55,7 +55,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale }: Props) {
         {staleCount > 0 && onAnalyzeStale && (
           <button
             onClick={onAnalyzeStale}
-            className="px-2.5 py-1 rounded bg-purple-600/20 border border-purple-500/40 text-purple-300 hover:bg-purple-600/30 transition-colors text-xs"
+            className="px-2.5 py-1 rounded-sm bg-purple-600/20 border border-purple-500/40 text-purple-300 hover:bg-purple-600/30 transition-colors text-xs"
           >
             Analyze All Stale
           </button>

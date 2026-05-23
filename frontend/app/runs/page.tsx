@@ -113,7 +113,7 @@ export default function RunsPage() {
             </button>
             <Link
               href="/runs/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1.5 text-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1.5 text-sm"
             >
               New Run
             </Link>
@@ -192,7 +192,7 @@ export default function RunsPage() {
               {canCompare && (
                 <button
                   onClick={() => router.push(`/runs/compare?a=${selectedIds[0]}&b=${selectedIds[1]}`)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-sm"
                 >
                   Compare 2 runs →
                 </button>

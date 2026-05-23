@@ -18,7 +18,7 @@ export function AnalystReports({ report, analysts }: Props) {
         <h2 className="text-slate-200 text-lg font-semibold mb-4">Analyst Reports</h2>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-4 bg-slate-800 rounded animate-pulse" />
+            <div key={i} className="h-4 bg-slate-800 rounded-sm animate-pulse" />
           ))}
         </div>
       </div>

@@ -99,7 +99,7 @@ function EditInput({
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
-      className={`bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 ${className ?? ""}`}
+      className={`bg-slate-800 border border-slate-600 rounded-sm px-2 py-1 text-xs text-slate-200 focus:outline-hidden focus:border-blue-500 ${className ?? ""}`}
     />
   );
 }
@@ -284,7 +284,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_finnhub_key" && (
-        <div className="text-xs text-slate-400 bg-slate-800/50 border border-slate-700 rounded px-3 py-2">
+        <div className="text-xs text-slate-400 bg-slate-800/50 border border-slate-700 rounded-sm px-3 py-2">
           Live prices unavailable — add your Finnhub API key in{" "}
           <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>.
         </div>
@@ -296,12 +296,12 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           value={filterTicker}
           onChange={(e) => setFilterTicker(e.target.value)}
           placeholder="Filter by ticker…"
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 w-40 focus:outline-none focus:border-blue-500 placeholder-slate-500"
+          className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-xs text-slate-200 w-40 focus:outline-hidden focus:border-blue-500 placeholder-slate-500"
         />
         <select
           value={filterSignal}
           onChange={(e) => setFilterSignal(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+          className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-xs text-slate-200 focus:outline-hidden focus:border-blue-500"
         >
           <option value="">All signals</option>
           <option value="buy">Buy</option>
@@ -324,7 +324,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
         )}
       </div>
 
-      <div className="overflow-x-auto rounded border border-slate-800">
+      <div className="overflow-x-auto rounded-sm border border-slate-800">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
             <tr>
@@ -460,7 +460,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                           };
                           return (
                             <div className="flex items-center justify-end gap-1.5">
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${verdictColors[entry.verdict] ?? "bg-slate-700 text-slate-200"}`}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${verdictColors[entry.verdict] ?? "bg-slate-700 text-slate-200"}`}>
                                 {entry.verdict.toUpperCase()}
                               </span>
                               <span className={`text-xs ${stale ? "text-amber-400" : "text-slate-500"}`}>
@@ -591,7 +591,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       {!addingNew && (
         <button
           onClick={() => setAddingNew(true)}
-          className="text-xs text-slate-500 hover:text-slate-300 border border-dashed border-slate-700 hover:border-slate-500 rounded px-3 py-1.5 transition-colors"
+          className="text-xs text-slate-500 hover:text-slate-300 border border-dashed border-slate-700 hover:border-slate-500 rounded-sm px-3 py-1.5 transition-colors"
         >
           + Add row
         </button>

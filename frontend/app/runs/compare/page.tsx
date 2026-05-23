@@ -21,7 +21,7 @@ function RunPickerRow({ run, onPick }: { run: Run; onPick: () => void }) {
       <td className="px-4 py-3 text-slate-400 text-xs">{run.analysis_date}</td>
       <td className="px-4 py-3">
         {run.verdict ? (
-          <span className={`rounded px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
+          <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
             {run.verdict}
           </span>
         ) : (
@@ -62,7 +62,7 @@ function RunPicker({ anchorId }: { anchorId: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-slate-400 text-sm">Pick a second run to compare against:</p>
-      <div className="overflow-x-auto rounded border border-slate-800">
+      <div className="overflow-x-auto rounded-sm border border-slate-800">
         <table className="w-full text-sm">
           <thead className="bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
             <tr>

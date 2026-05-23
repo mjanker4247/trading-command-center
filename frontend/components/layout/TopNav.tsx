@@ -39,7 +39,7 @@ export function TopNav() {
       ))}
       <div className="ml-auto flex items-center gap-3">
         {(session?.user as { role?: string })?.role === "admin" && (
-          <span className="bg-blue-900 text-blue-300 text-xs px-1.5 py-0.5 rounded">ADMIN</span>
+          <span className="bg-blue-900 text-blue-300 text-xs px-1.5 py-0.5 rounded-sm">ADMIN</span>
         )}
         <span className="text-slate-500 text-xs">{session?.user?.email}</span>
         <button onClick={() => signOut()} className="text-slate-600 text-xs hover:text-slate-400">Sign out</button>

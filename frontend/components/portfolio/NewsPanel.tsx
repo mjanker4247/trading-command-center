@@ -88,13 +88,13 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
                 <img
                   src={a.image}
                   alt=""
-                  className="w-14 h-14 rounded object-cover flex-shrink-0 opacity-80"
+                  className="w-14 h-14 rounded-sm object-cover shrink-0 opacity-80"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                 />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${colorMap[a.ticker]}`}>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border ${colorMap[a.ticker]}`}>
                     {a.ticker}
                   </span>
                   <span className="text-slate-500 text-xs">{a.source}</span>

@@ -31,7 +31,7 @@ export function StatsBar() {
     : null;
 
   return (
-    <div className="flex items-center divide-x divide-slate-800 bg-slate-800/50 rounded border border-slate-800 mb-4">
+    <div className="flex items-center divide-x divide-slate-800 bg-slate-800/50 rounded-sm border border-slate-800 mb-4">
       <Stat label="Total Runs" value={stats.total} />
       <Stat label="Buy" value={stats.verdicts.buy} color="text-green-400" />
       <Stat label="Sell" value={stats.verdicts.sell} color="text-red-400" />

@@ -34,12 +34,12 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={provider === "ollama" ? "http://localhost:11434" : "http://localhost:8080"}
-        className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-64 focus:outline-none focus:border-blue-500"
+        className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
       />
       <button
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || !value}
-        className="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-xs disabled:opacity-50"
+        className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1 text-xs disabled:opacity-50"
       >
         {mutation.isPending ? "Saving…" : "Save"}
       </button>

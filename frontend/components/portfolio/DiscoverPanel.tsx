@@ -74,7 +74,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
           <button
             onClick={() => discoverMutation.mutate()}
             disabled={discoverMutation.isPending}
-            className="text-xs font-semibold px-3 py-1 rounded bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white transition-colors"
+            className="text-xs font-semibold px-3 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white transition-colors"
           >
             {discoverMutation.isPending ? "Generating…" : hasLoaded ? "↺ Refresh" : "Generate"}
           </button>
@@ -139,9 +139,9 @@ function SectorRow({ gap, maxWeight }: { gap: SectorGap; maxWeight: number }) {
           </span>
         </div>
       </div>
-      <div className="h-1.5 bg-slate-800 rounded relative">
+      <div className="h-1.5 bg-slate-800 rounded-sm relative">
         <div
-          className="h-full bg-blue-500 rounded"
+          className="h-full bg-blue-500 rounded-sm"
           style={{ width: `${(gap.your_weight / maxWeight) * 100}%` }}
         />
         <div
@@ -165,7 +165,7 @@ function RecommendationCard({
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-slate-100 font-bold text-sm">{rec.ticker}</span>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TAG_COLORS[rec.tag] ?? "bg-slate-700 text-slate-300"}`}>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${TAG_COLORS[rec.tag] ?? "bg-slate-700 text-slate-300"}`}>
             {rec.tag}
           </span>
           {rec.sector && (
@@ -175,7 +175,7 @@ function RecommendationCard({
         <div className="flex items-center gap-1.5">
           <button
             onClick={onAnalyze}
-            className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+            className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-violet-700 hover:bg-violet-600 text-white transition-colors"
           >
             ⚡ Analyze
           </button>

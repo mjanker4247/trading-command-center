@@ -122,10 +122,10 @@ function ActionItemCard({ item }: { item: InsightActionItem }) {
   const router = useRouter();
 
   return (
-    <div className="flex items-start gap-3 bg-slate-800/50 rounded p-3 border border-slate-700/50">
+    <div className="flex items-start gap-3 bg-slate-800/50 rounded-sm p-3 border border-slate-700/50">
       <div className="flex items-center gap-2 mt-0.5 shrink-0">
         <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[item.priority] ?? "bg-slate-500"}`} />
-        <span className={`text-xs font-medium px-2 py-0.5 rounded border ${ACTION_COLORS[item.action] ?? "bg-slate-700 text-slate-300 border-slate-600"}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-sm border ${ACTION_COLORS[item.action] ?? "bg-slate-700 text-slate-300 border-slate-600"}`}>
           {item.action.replace("_", " ")}
         </span>
       </div>
@@ -139,7 +139,7 @@ function ActionItemCard({ item }: { item: InsightActionItem }) {
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker!)}`)}
-                className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+                className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-violet-700 hover:bg-violet-600 text-white transition-colors"
               >
                 ⚡ Analyze
               </button>
@@ -154,14 +154,14 @@ function ActionItemCard({ item }: { item: InsightActionItem }) {
 
 function RiskAlertCard({ alert }: { alert: InsightRiskAlert }) {
   return (
-    <div className="flex items-start gap-2 bg-slate-800/30 rounded p-2.5 border border-slate-700/30">
+    <div className="flex items-start gap-2 bg-slate-800/30 rounded-sm p-2.5 border border-slate-700/30">
       <span className="text-base leading-none mt-0.5">{SEVERITY_ICON[alert.severity] ?? "🔵"}</span>
       <div className="flex-1 min-w-0">
         <p className="text-slate-300 text-xs leading-relaxed">{alert.description}</p>
         {alert.affected_tickers?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {alert.affected_tickers.map((t) => (
-              <span key={t} className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">{t}</span>
+              <span key={t} className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-sm">{t}</span>
             ))}
           </div>
         )}
@@ -177,9 +177,9 @@ function SectorChart({ data }: { data: Record<string, number> }) {
       {entries.map(([sector, pct], i) => (
         <div key={sector} className="flex items-center gap-2">
           <div className="w-24 text-slate-400 text-xs text-right shrink-0 truncate" title={sector}>{sector}</div>
-          <div className="flex-1 h-4 bg-slate-800 rounded overflow-hidden">
+          <div className="flex-1 h-4 bg-slate-800 rounded-sm overflow-hidden">
             <div
-              className="h-full rounded transition-all duration-500"
+              className="h-full rounded-sm transition-all duration-500"
               style={{
                 width: `${Math.min(100, pct)}%`,
                 backgroundColor: SECTOR_COLORS[i % SECTOR_COLORS.length],
@@ -213,7 +213,7 @@ function InsightHistoryRow({ insight, onSelect, selected }: { insight: Portfolio
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {insight.overall_stance && (
-            <span className={`text-xs px-1.5 py-0.5 rounded border ${stanceColor(insight.overall_stance)}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-sm border ${stanceColor(insight.overall_stance)}`}>
               {insight.overall_stance}
             </span>
           )}
@@ -280,7 +280,7 @@ function GenerateForm({
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+            className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
           >
             {PROVIDERS.map((p) => (
               <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -293,7 +293,7 @@ function GenerateForm({
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+              className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
             >
               <option value="">— select model —</option>
               {models.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -304,14 +304,14 @@ function GenerateForm({
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PROVIDER_PLACEHOLDERS[provider]}
-              className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-slate-200 text-sm focus:outline-none focus:border-blue-600 w-48"
+              className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600 w-48"
             />
           )}
         </div>
         <button
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending}
-          className="px-4 py-1.5 rounded text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+          className="px-4 py-1.5 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
         >
           {mutation.isPending ? "Starting…" : "Generate Insights"}
         </button>
@@ -389,7 +389,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             {insight.overall_stance && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded border capitalize ${stanceColor(insight.overall_stance)}`}>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-sm border capitalize ${stanceColor(insight.overall_stance)}`}>
                 {insight.overall_stance}
               </span>
             )}
@@ -400,7 +400,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
             <button
               onClick={handleExportPdf}
               disabled={pdfLoading}
-              className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-2.5 py-1 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
+              className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded-sm px-2.5 py-1 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
             >
               {pdfLoading ? (
                 <>
@@ -576,7 +576,7 @@ export function InsightsDashboard({ portfolioId, hasHoldings, portfolioName }: I
         <button
           onClick={() => setShowGenerate((v) => !v)}
           disabled={isRunning}
-          className="w-full px-3 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2"
+          className="w-full px-3 py-2 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2"
         >
           {isRunning ? (
             <>

@@ -127,7 +127,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. pre-earnings check"
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
         />
       </div>
 
@@ -140,7 +140,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           placeholder="AAPL"
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
         />
         <datalist id="ticker-suggestions">
           {POPULAR_TICKERS.map((t) => <option key={t} value={t} />)}
@@ -154,7 +154,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           type="date"
           value={analysisDate}
           onChange={(e) => setAnalysisDate(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
         />
       </div>
 
@@ -189,7 +189,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
         >
           <option value="openai">openai</option>
           <option value="anthropic">anthropic</option>
@@ -203,14 +203,14 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       <div className="mb-4">
         <label className="block text-slate-400 text-xs mb-1">LLM Model</label>
         {modelsLoading ? (
-          <select disabled className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-500 text-sm">
+          <select disabled className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-500 text-sm">
             <option>Loading models…</option>
           </select>
         ) : models.length > 0 ? (
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+            className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
           >
             {models.map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -223,7 +223,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PLACEHOLDERS[provider]}
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
             />
             {isLocal && <p className="text-amber-400 text-xs mt-1">Server unreachable — enter model name manually</p>}
           </>
@@ -235,7 +235,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
         <select
           value={depth}
           onChange={(e) => setDepth(e.target.value as "quick" | "standard" | "deep")}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-600"
+          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
         >
           <option value="quick">Quick — 1 debate round, faster</option>
           <option value="standard">Standard — 2 debate rounds</option>
@@ -246,7 +246,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       <button
         type="submit"
         disabled={mutation.isPending || analysts.length === 0}
-        className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+        className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {mutation.isPending ? "Launching…" : "Launch Run"}
       </button>

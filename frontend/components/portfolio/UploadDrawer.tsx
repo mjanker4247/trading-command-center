@@ -68,7 +68,7 @@ export function UploadDrawer({ open, onClose, onUpload, uploading }: UploadDrawe
   }
 
   return (
-    <div className="bg-[#181825] border border-slate-700 rounded mt-2 p-4 transition-all">
+    <div className="bg-[#181825] border border-slate-700 rounded-sm mt-2 p-4 transition-all">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-slate-300 text-sm font-medium">Upload broker CSV</span>
@@ -86,7 +86,7 @@ export function UploadDrawer({ open, onClose, onUpload, uploading }: UploadDrawe
         {BROKER_BADGES.map((b) => (
           <span
             key={b.label}
-            className={`rounded px-2 py-0.5 text-xs font-medium ${b.className}`}
+            className={`rounded-sm px-2 py-0.5 text-xs font-medium ${b.className}`}
           >
             {b.label}
           </span>
@@ -138,7 +138,7 @@ export function UploadDrawer({ open, onClose, onUpload, uploading }: UploadDrawe
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded px-4 py-1.5 transition-colors"
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm px-4 py-1.5 transition-colors"
           >
             {uploading ? "Uploading..." : "Upload"}
           </button>
