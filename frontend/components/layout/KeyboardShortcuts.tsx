@@ -56,7 +56,7 @@ export function KeyboardShortcuts() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60"
       onClick={() => setOpen(false)}
       role="dialog"
       aria-label="Keyboard shortcuts"

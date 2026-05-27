@@ -73,14 +73,14 @@ function NotesEditor({ id, notes }: { id: string; notes: string | null }) {
       <div className="flex-1 min-w-0">
         <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Notes</p>
         {notes ? (
-          <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">{notes}</p>
+          <p className="text-sm text-slate-200 whitespace-pre-wrap wrap-break-word">{notes}</p>
         ) : (
           <p className="text-sm text-slate-600 italic">No notes yet — capture your decision or context.</p>
         )}
       </div>
       <button
         onClick={() => { setValue(notes ?? ""); setEditing(true); }}
-        className="text-xs text-slate-400 hover:text-blue-400 flex-shrink-0"
+        className="text-xs text-slate-400 hover:text-blue-400 shrink-0"
       >
         {notes ? "Edit" : "Add"}
       </button>
