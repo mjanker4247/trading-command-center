@@ -15,6 +15,7 @@ export interface Run {
   depth: "quick" | "standard" | "deep";
   analysts: string[];
   label: string | null;
+  notes: string | null;
   status: "pending" | "running" | "completed" | "aborted" | "failed";
   verdict: "buy" | "sell" | "hold" | null;
   archived: boolean;
@@ -459,6 +460,7 @@ export interface DeliverySettings {
   webhook_url: string | null;
   webhook_format: "json" | "slack" | "telegram";
   telegram_chat_id: string | null;
+  delivery_timezone: string;
 }
 
 export interface UpdateDeliverySettingsRequest {
@@ -468,4 +470,5 @@ export interface UpdateDeliverySettingsRequest {
   webhook_url?: string | null;
   webhook_format?: "json" | "slack" | "telegram";
   telegram_chat_id?: string | null;
+  delivery_timezone?: string;
 }

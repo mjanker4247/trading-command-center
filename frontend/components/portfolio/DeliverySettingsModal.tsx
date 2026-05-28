@@ -4,6 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getDeliverySettings, updateDeliverySettings, testWebhook } from "@/lib/api";
 import type { DeliverySettings } from "@/lib/types";
 
+const TIMEZONES = [
+  "UTC",
+  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "America/Toronto", "America/Vancouver", "America/Sao_Paulo", "America/Buenos_Aires",
+  "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Europe/Rome",
+  "Europe/Amsterdam", "Europe/Stockholm", "Europe/Helsinki", "Europe/Moscow",
+  "Africa/Cairo", "Africa/Johannesburg",
+  "Asia/Dubai", "Asia/Kolkata", "Asia/Bangkok", "Asia/Singapore",
+  "Asia/Hong_Kong", "Asia/Shanghai", "Asia/Tokyo", "Asia/Seoul",
+  "Australia/Sydney", "Australia/Melbourne",
+  "Pacific/Auckland", "Pacific/Honolulu",
+];
+
 interface Props {
   portfolioId: string;
   open: boolean;
@@ -14,6 +27,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
   const queryClient = useQueryClient();
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [testError, setTestError] = useState("");
+  const [showChatIdHelp, setShowChatIdHelp] = useState(false);
 
   const { data, isLoading } = useQuery<DeliverySettings>({
     queryKey: ["deliverySettings", portfolioId],
@@ -24,7 +38,15 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
   const [form, setForm] = useState<Partial<DeliverySettings>>({});
 
   useEffect(() => {
-    if (data) setForm(data);
+    if (data) {
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setForm({
+        ...data,
+        delivery_timezone: data.delivery_timezone && data.delivery_timezone !== "UTC"
+          ? data.delivery_timezone
+          : browserTz,
+      });
+    }
   }, [data]);
 
   const saveMutation = useMutation({
@@ -91,7 +113,22 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                   />
                 </div>
               )}
-              <p className="text-xs text-slate-500">Delivered weekdays ~9:15 AM UTC</p>
+              <p className="text-xs text-slate-500">Delivered weekdays ~9:15 AM in your delivery timezone</p>
+            </div>
+
+            {/* Timezone section */}
+            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-2">
+              <label className="text-sm font-medium text-slate-200 block">Delivery Timezone</label>
+              <select
+                value={form.delivery_timezone ?? "UTC"}
+                onChange={(e) => setForm((f) => ({ ...f, delivery_timezone: e.target.value }))}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">Briefs are generated and delivered at 9:15 AM in this timezone.</p>
             </div>
 
             {/* Webhook section */}
@@ -147,16 +184,43 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                     </select>
                   </div>
                   {form.webhook_format === "telegram" && (
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Telegram Chat ID</label>
-                      <input
-                        type="text"
-                        value={form.telegram_chat_id ?? ""}
-                        onChange={(e) => setForm((f) => ({ ...f, telegram_chat_id: e.target.value || null }))}
-                        placeholder="-1001234567890 or @username"
-                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-hidden focus:border-indigo-500"
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Set the webhook URL to your bot&apos;s sendMessage endpoint: <span className="text-slate-400">https://api.telegram.org/bot&lt;TOKEN&gt;/sendMessage</span></p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Webhook URL</label>
+                        <p className="text-xs text-slate-500">Set the URL above to your bot&apos;s sendMessage endpoint:</p>
+                        <p className="text-xs font-mono text-slate-400 mt-0.5">https://api.telegram.org/bot&lt;TOKEN&gt;/sendMessage</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs text-slate-400">Telegram Chat ID</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowChatIdHelp((v) => !v)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            {showChatIdHelp ? "Hide help ▲" : "How to get your Chat ID ▼"}
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={form.telegram_chat_id ?? ""}
+                          onChange={(e) => setForm((f) => ({ ...f, telegram_chat_id: e.target.value || null }))}
+                          placeholder="-1001234567890"
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                        />
+                        {showChatIdHelp && (
+                          <div className="mt-2 bg-slate-900/60 border border-slate-700 rounded-lg p-3 space-y-1.5">
+                            <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
+                              <li>Create a bot via <span className="text-slate-300">@BotFather</span> in Telegram and copy the token</li>
+                              <li>Send your bot any message (e.g. <span className="text-slate-300">/start</span>)</li>
+                              <li>Open <span className="font-mono text-slate-300">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</span> in a browser</li>
+                              <li>Find <span className="font-mono text-slate-300">&quot;chat&quot;:&#123;&quot;id&quot;:...</span> — that number is your Chat ID</li>
+                            </ol>
+                            <p className="text-xs text-slate-500 pt-0.5">For a channel: add the bot as admin, post a message, then check <span className="text-slate-400">getUpdates</span>. The ID will be a negative number like <span className="font-mono text-slate-400">-1001234567890</span>.</p>
+                            <p className="text-xs text-indigo-400 pt-0.5">Shortcut: forward any message from the target chat to <span className="font-medium">@userinfobot</span> — it replies with the ID instantly.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   <div className="flex items-center gap-3 flex-wrap">
@@ -169,9 +233,7 @@ export function DeliverySettingsModal({ portfolioId, open, onClose }: Props) {
                       {testStatus === "sending" ? "Sending…" : "Test webhook"}
                     </button>
                     {testStatus === "ok" && <span className="text-xs text-green-400">✓ Sent</span>}
-                    {testStatus === "error" && (
-                      <span className="text-xs text-red-400 break-all">{testError}</span>
-                    )}
+                    {testStatus === "error" && <span className="text-xs text-red-400 wrap-break-word min-w-0">{testError}</span>}
                   </div>
                   <p className="text-xs text-slate-600">Tests saved settings — click Save first if you&apos;ve made changes</p>
                 </>
