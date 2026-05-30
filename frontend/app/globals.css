@@ -5,14 +5,16 @@
 
 /* Theme tokens — :root = light, .dark = existing AgentFloor dark palette */
 :root {
+  color-scheme: light;
+
   --af-page: #f1f5f9;
   --af-surface: #ffffff;
   --af-elevated: #f8fafc;
   --af-muted-surface: #e2e8f0;
   --af-fg: #0f172a;
-  --af-fg-secondary: #334155;
-  --af-muted: #64748b;
-  --af-subtle: #94a3b8;
+  --af-fg-secondary: #1e293b;
+  --af-muted: #475569;
+  --af-subtle: #64748b;
   --af-border: #e2e8f0;
   --af-border-strong: #cbd5e1;
   --af-input: #ffffff;
@@ -20,9 +22,25 @@
   --af-nav-divider: #cbd5e1;
   --af-logo-fill: #f8fafc;
   --af-logo-stroke-muted: #94a3b8;
+
+  --af-link: #1d4ed8;
+  --af-link-hover: #1e40af;
+  --af-info: #2563eb;
+  --af-info-soft: #dbeafe;
+  --af-success: #15803d;
+  --af-success-soft: #dcfce7;
+  --af-warning: #b45309;
+  --af-warning-soft: #fef3c7;
+  --af-danger: #b91c1c;
+  --af-danger-soft: #fee2e2;
+  --af-accent: #7e22ce;
+  --af-accent-soft: #f3e8ff;
+  --af-on-accent: #ffffff;
 }
 
 .dark {
+  color-scheme: dark;
+
   --af-page: #0a0e1a;
   --af-surface: #0f1629;
   --af-elevated: #0d1220;
@@ -38,6 +56,20 @@
   --af-nav-divider: #334155;
   --af-logo-fill: #0f172a;
   --af-logo-stroke-muted: #1e3a5f;
+
+  --af-link: #60a5fa;
+  --af-link-hover: #93c5fd;
+  --af-info: #60a5fa;
+  --af-info-soft: #1e3a8a;
+  --af-success: #4ade80;
+  --af-success-soft: #14532d;
+  --af-warning: #fbbf24;
+  --af-warning-soft: #713f12;
+  --af-danger: #f87171;
+  --af-danger-soft: #7f1d1d;
+  --af-accent: #c084fc;
+  --af-accent-soft: #581c87;
+  --af-on-accent: #ffffff;
 }
 
 @theme {
@@ -54,6 +86,50 @@
   --color-input: var(--af-input);
   --color-input-border: var(--af-input-border);
   --color-nav-divider: var(--af-nav-divider);
+  --color-link: var(--af-link);
+  --color-link-hover: var(--af-link-hover);
+  --color-info: var(--af-info);
+  --color-info-soft: var(--af-info-soft);
+  --color-success: var(--af-success);
+  --color-success-soft: var(--af-success-soft);
+  --color-warning: var(--af-warning);
+  --color-warning-soft: var(--af-warning-soft);
+  --color-danger: var(--af-danger);
+  --color-danger-soft: var(--af-danger-soft);
+  --color-accent: var(--af-accent);
+  --color-accent-soft: var(--af-accent-soft);
+  --color-on-accent: var(--af-on-accent);
+
+  /*
+    Existing components still use Tailwind palette utilities such as
+    text-blue-400 and text-green-400. Remap the common accent steps to
+    readable semantic colors so those utilities remain contrast-aware.
+  */
+  --color-blue-300: var(--af-link-hover);
+  --color-blue-400: var(--af-link);
+  --color-blue-700: var(--af-info);
+  --color-blue-900: var(--af-info-soft);
+  --color-green-300: var(--af-success);
+  --color-green-400: var(--af-success);
+  --color-green-700: var(--af-success);
+  --color-green-900: var(--af-success-soft);
+  --color-red-300: var(--af-danger);
+  --color-red-400: var(--af-danger);
+  --color-red-700: var(--af-danger);
+  --color-red-900: var(--af-danger-soft);
+  --color-yellow-300: var(--af-warning);
+  --color-yellow-400: var(--af-warning);
+  --color-yellow-700: var(--af-warning);
+  --color-yellow-900: var(--af-warning-soft);
+  --color-amber-300: var(--af-warning);
+  --color-amber-400: var(--af-warning);
+  --color-amber-700: var(--af-warning);
+  --color-amber-900: var(--af-warning-soft);
+  --color-purple-300: var(--af-accent);
+  --color-purple-400: var(--af-accent);
+  --color-purple-500: var(--af-accent);
+  --color-purple-600: var(--af-accent);
+  --color-purple-900: var(--af-accent-soft);
 
   /* Legacy navy aliases (theme-aware) */
   --color-navy-600: var(--af-muted-surface);
@@ -62,6 +138,20 @@
   --color-navy-900: var(--af-page);
 
   --font-mono: var(--font-geist-mono, ui-monospace, monospace);
+}
+
+@layer utilities {
+  .bg-blue-600.text-fg,
+  .bg-blue-700.text-fg,
+  .bg-red-500.text-fg,
+  .bg-red-600.text-fg,
+  .bg-red-700.text-fg,
+  .bg-red-800.text-fg,
+  .bg-purple-500.text-fg,
+  .bg-purple-600.text-fg,
+  .bg-purple-700.text-fg {
+    color: var(--af-on-accent);
+  }
 }
 
 @layer base {
