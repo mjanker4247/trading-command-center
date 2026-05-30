@@ -52,20 +52,20 @@ export function UploadDrawer({ open, onClose, onUpload, uploading }: UploadDrawe
   if (!open) return null;
 
   return (
-    <div className="bg-[#181825] border border-slate-700 rounded-sm mt-2 p-4 transition-all relative">
+    <div className="bg-[#181825] border border-input-border rounded-sm mt-2 p-4 transition-all relative">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-slate-300 text-sm font-medium">Upload broker CSV</span>
+        <span className="text-fg-secondary text-sm font-medium">Upload broker CSV</span>
         <button
           type="button"
           onClick={onClose}
-          className="text-slate-500 hover:text-slate-200 text-sm leading-none transition-colors"
+          className="text-muted hover:text-fg text-sm leading-none transition-colors"
           aria-label="Close"
         >
           ✕
         </button>
       </div>
 
-      <p className="text-slate-500 text-xs mb-2">
+      <p className="text-muted text-xs mb-2">
         Pick your CSV, map columns to Ticker and Shares (Average Cost optional), then start import. We upload a
         normalized snapshot to the server.
       </p>
@@ -85,7 +85,7 @@ export function UploadDrawer({ open, onClose, onUpload, uploading }: UploadDrawe
 
         {uploading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#181825]/85 backdrop-blur-[2px] rounded-sm">
-            <span className="text-slate-200 text-sm font-medium">Uploading snapshot…</span>
+            <span className="text-fg text-sm font-medium">Uploading snapshot…</span>
           </div>
         ) : null}
       </div>

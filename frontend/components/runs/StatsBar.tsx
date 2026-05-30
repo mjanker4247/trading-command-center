@@ -11,8 +11,8 @@ function formatDur(secs: number): string {
 function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div className="flex flex-col items-center px-5 py-3">
-      <span className={`text-xl font-semibold tabular-nums ${color ?? "text-slate-200"}`}>{value}</span>
-      <span className="text-slate-500 text-xs mt-0.5">{label}</span>
+      <span className={`text-xl font-semibold tabular-nums ${color ?? "text-fg"}`}>{value}</span>
+      <span className="text-muted text-xs mt-0.5">{label}</span>
     </div>
   );
 }
@@ -31,7 +31,7 @@ export function StatsBar() {
     : null;
 
   return (
-    <div className="flex items-center divide-x divide-slate-800 bg-slate-800/50 rounded-sm border border-slate-800 mb-4">
+    <div className="flex items-center divide-x divide-border bg-input/50 rounded-sm border border-border mb-4">
       <Stat label="Total Runs" value={stats.total} />
       <Stat label="Buy" value={stats.verdicts.buy} color="text-green-400" />
       <Stat label="Sell" value={stats.verdicts.sell} color="text-red-400" />

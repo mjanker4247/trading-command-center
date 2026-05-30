@@ -17,7 +17,7 @@ function levelStyle(level: TrimSignalEntry["level"]) {
     case "watch":
       return { label: "● Watch", cls: "text-yellow-400 bg-yellow-900/30" };
     default:
-      return { label: "—", cls: "text-slate-500" };
+      return { label: "—", cls: "text-muted" };
   }
 }
 
@@ -30,7 +30,7 @@ function regimeStyle(regime: TrimSignalEntry["regime"]) {
     case "Bear":
       return "text-red-400";
     default:
-      return "text-slate-500";
+      return "text-muted";
   }
 }
 
@@ -58,26 +58,26 @@ export function SellCandidatesPanel({ entries, computedAt }: Props) {
   if (flagged.length === 0) return null;
 
   return (
-    <section className="mb-4 rounded-lg border border-slate-700 bg-slate-900/50">
+    <section className="mb-4 rounded-lg border border-input-border bg-page/50">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-800/50"
+        className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-input/50"
       >
-        <span className="font-medium text-slate-200">
+        <span className="font-medium text-fg">
           {expanded ? "▾" : "▸"} Sell Candidates · {flagged.length} flagged
           {strongCount > 0 && (
             <span className="ml-2 text-red-400">({strongCount} strong)</span>
           )}
         </span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted">
           {computedAt ? `evaluated ${relativeTime(computedAt)}` : ""}
         </span>
       </button>
       {expanded && (
         <div className="px-4 pb-3">
           <table className="w-full text-sm">
-            <thead className="text-xs text-slate-500 uppercase">
+            <thead className="text-xs text-muted uppercase">
               <tr>
                 <th className="text-left py-1">Ticker</th>
                 <th className="text-right py-1">Gain</th>
@@ -91,26 +91,26 @@ export function SellCandidatesPanel({ entries, computedAt }: Props) {
               {flagged.map((e) => {
                 const lvl = levelStyle(e.level);
                 return (
-                  <tr key={e.holding_id} className="border-t border-slate-800">
-                    <td className="py-2 font-medium text-slate-200">{e.ticker}</td>
+                  <tr key={e.holding_id} className="border-t border-border">
+                    <td className="py-2 font-medium text-fg">{e.ticker}</td>
                     <td
                       className={`py-2 text-right ${
                         e.unrealized_pnl_pct !== null && e.unrealized_pnl_pct >= 0
                           ? "text-green-400"
                           : e.unrealized_pnl_pct !== null
                           ? "text-red-400"
-                          : "text-slate-500"
+                          : "text-muted"
                       }`}
                     >
                       {e.unrealized_pnl_pct !== null
                         ? `${e.unrealized_pnl_pct >= 0 ? "+" : ""}${e.unrealized_pnl_pct.toFixed(0)}%`
                         : "—"}
                     </td>
-                    <td className="py-2 text-slate-300">{e.current_verdict ?? "—"}</td>
+                    <td className="py-2 text-fg-secondary">{e.current_verdict ?? "—"}</td>
                     <td className={`py-2 ${regimeStyle(e.regime)}`}>
                       {e.regime ?? "—"}
                       {e.regime_signal !== null && e.regime !== null && (
-                        <span className="ml-1 text-xs text-slate-500">
+                        <span className="ml-1 text-xs text-muted">
                           {e.regime_signal >= 0 ? "+" : ""}
                           {e.regime_signal.toFixed(2)}
                         </span>
@@ -124,7 +124,7 @@ export function SellCandidatesPanel({ entries, computedAt }: Props) {
                         {lvl.label}
                       </span>
                     </td>
-                    <td className="py-2 text-slate-400" title={e.reasons.join("\n")}>
+                    <td className="py-2 text-muted" title={e.reasons.join("\n")}>
                       {e.reasons[0] ?? ""}
                     </td>
                   </tr>
@@ -132,7 +132,7 @@ export function SellCandidatesPanel({ entries, computedAt }: Props) {
               })}
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-muted">
             Showing {flagged.length} of {entries.length} holdings · {strongCount} strong · {considerCount} consider · {watchCount} watch
           </p>
         </div>

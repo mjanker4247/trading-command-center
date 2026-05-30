@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { TopNav } from "@/components/layout/TopNav";
 import {
   listPortfolios,
   createPortfolio,
@@ -85,52 +84,52 @@ function BatchAnalyzeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
-      <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+      <div className="bg-elevated border border-input-border rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Analyze All Stale Holdings</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg">✕</button>
+          <h2 className="text-base font-semibold text-fg">Analyze All Stale Holdings</h2>
+          <button onClick={onClose} className="text-muted hover:text-fg-secondary text-lg">✕</button>
         </div>
 
         {!result ? (
           <>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted">
               Queues a new analysis run for every holding whose last analysis is older than the threshold (or has never been analyzed).
             </p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-400">Provider</label>
+                  <label className="text-xs text-muted">Provider</label>
                   <select
                     value={form.llm_provider}
                     onChange={(e) => setForm((f) => ({ ...f, llm_provider: e.target.value, llm_model: "" }))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                    className="w-full bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
                   >
                     {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-400">Depth</label>
+                  <label className="text-xs text-muted">Depth</label>
                   <select
                     value={form.depth}
                     onChange={(e) => setForm((f) => ({ ...f, depth: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                    className="w-full bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
                   >
                     {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Model</label>
+                <label className="text-xs text-muted">Model</label>
                 <select
                   value={form.llm_model}
                   onChange={(e) => setForm((f) => ({ ...f, llm_model: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                  className="w-full bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
                 >
                   {models.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">
+                <label className="text-xs text-muted">
                   Staleness threshold (days) — skip if analyzed within this many days
                 </label>
                 <input
@@ -139,7 +138,7 @@ function BatchAnalyzeModal({
                   max={90}
                   value={form.staleness_days}
                   onChange={(e) => setForm((f) => ({ ...f, staleness_days: parseInt(e.target.value) || 7 }))}
-                  className="w-24 bg-slate-800 border border-slate-600 rounded-sm px-2 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                  className="w-24 bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
                 />
               </div>
             </div>
@@ -149,13 +148,13 @@ function BatchAnalyzeModal({
               </p>
             )}
             <div className="flex gap-2 justify-end pt-2">
-              <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200">
+              <button onClick={onClose} className="px-3 py-1.5 text-sm text-muted hover:text-fg">
                 Cancel
               </button>
               <button
                 onClick={() => analyzeMutation.mutate()}
                 disabled={analyzeMutation.isPending}
-                className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-sm disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-fg rounded-sm disabled:opacity-50 transition-colors"
               >
                 {analyzeMutation.isPending ? "Starting…" : "Start Batch Analysis"}
               </button>
@@ -168,25 +167,25 @@ function BatchAnalyzeModal({
                 {result.queued.length} run{result.queued.length !== 1 ? "s" : ""} queued
               </p>
               {result.queued.length > 0 && (
-                <p className="text-xs text-slate-400 font-mono">{result.queued.map((q) => q.ticker).join(", ")}</p>
+                <p className="text-xs text-muted font-mono">{result.queued.map((q) => q.ticker).join(", ")}</p>
               )}
             </div>
             {result.skipped.length > 0 && (
               <div>
-                <p className="text-xs text-slate-500 mb-1">{result.skipped.length} skipped (recently analyzed):</p>
-                <p className="text-xs text-slate-500 font-mono">{result.skipped.join(", ")}</p>
+                <p className="text-xs text-muted mb-1">{result.skipped.length} skipped (recently analyzed):</p>
+                <p className="text-xs text-muted font-mono">{result.skipped.join(", ")}</p>
               </div>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setResult(null)}
-                className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200"
+                className="px-3 py-1.5 text-sm text-muted hover:text-fg"
               >
                 Run Again
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-sm transition-colors"
+                className="px-4 py-1.5 text-sm bg-muted-surface hover:bg-muted-surface text-fg rounded-sm transition-colors"
               >
                 Close
               </button>
@@ -323,10 +322,9 @@ export default function PortfolioPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-navy-900">
-      <TopNav />
-      <main className="max-w-screen-2xl mx-auto px-6 py-6 space-y-4">
-        <h1 className="text-lg font-semibold text-white">Portfolio</h1>
+    <>
+    <main className="max-w-screen-2xl mx-auto px-6 py-6 space-y-4">
+        <h1 className="text-lg font-semibold text-fg">Portfolio</h1>
 
         <div className="flex items-center gap-4">
           <PortfolioSwitcher
@@ -369,31 +367,31 @@ export default function PortfolioPage() {
         )}
 
         {selectedId === null && portfolios.length === 0 && !loadingPortfolios && (
-          <p className="text-slate-500 text-sm text-center py-10">
+          <p className="text-muted text-sm text-center py-10">
             No portfolios yet. Create one above to get started.
           </p>
         )}
 
         {selectedId && loadingCurrent && tab !== "trending" && (
-          <div className="text-slate-400 text-sm">Loading portfolio…</div>
+          <div className="text-muted text-sm">Loading portfolio…</div>
         )}
 
         {/* Tab bar — Market tab is always accessible; portfolio tabs require a loaded portfolio */}
         {!loadingPortfolios && (
-          <div className="flex gap-1 border-b border-slate-800">
+          <div className="flex gap-1 border-b border-border">
             {selectedId && current && TABS.filter((t) => t.id !== "trending").map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
                   tab === t.id
-                    ? "border-purple-500 text-white"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    ? "border-purple-500 text-fg"
+                    : "border-transparent text-muted hover:text-fg"
                 }`}
               >
                 <span>{t.label}</span>
                 {t.alertCount != null && (
-                  <span className="text-xs px-1 py-0.5 bg-red-500 text-white rounded-sm font-mono leading-none min-w-[16px] text-center">
+                  <span className="text-xs px-1 py-0.5 bg-red-500 text-fg rounded-sm font-mono leading-none min-w-[16px] text-center">
                     {t.alertCount}
                   </span>
                 )}
@@ -404,8 +402,8 @@ export default function PortfolioPage() {
               onClick={() => setTab("trending")}
               className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
                 tab === "trending"
-                  ? "border-purple-500 text-white"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "border-purple-500 text-fg"
+                  : "border-transparent text-muted hover:text-fg"
               }`}
             >
               <span>Market</span>
@@ -417,7 +415,7 @@ export default function PortfolioPage() {
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   tab === "discover"
                     ? "border-violet-500 text-violet-400"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    : "border-transparent text-muted hover:text-fg"
                 }`}
               >
                 Discover 🔍
@@ -510,6 +508,6 @@ export default function PortfolioPage() {
         displayCurrency={current?.display_currency ?? "USD"}
         onClose={() => setDrawerHolding(null)}
       />
-    </div>
+    </>
   );
 }

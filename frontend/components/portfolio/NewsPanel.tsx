@@ -24,7 +24,7 @@ function timeAgo(unixTs: number): string {
 }
 
 const NO_KEY_MSG = (
-  <div className="text-slate-400 text-sm py-6 text-center">
+  <div className="text-muted text-sm py-6 text-center">
     Could not load news. Add a <a href="/settings" className="text-blue-400 hover:underline">Finnhub API key in Settings</a>.
   </div>
 );
@@ -49,12 +49,12 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
   });
 
   if (isLoading) {
-    return <div className="text-slate-400 text-sm py-8 text-center">Loading news…</div>;
+    return <div className="text-muted text-sm py-8 text-center">Loading news…</div>;
   }
 
   if (isError) {
     return (
-      <div className="text-slate-400 text-sm py-6 text-center">
+      <div className="text-muted text-sm py-6 text-center">
         Could not load news. Add a Finnhub API key in Settings.
       </div>
     );
@@ -62,7 +62,7 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
 
   if (articles.length === 0) {
     return (
-      <div className="text-slate-500 text-sm py-8 text-center">
+      <div className="text-muted text-sm py-8 text-center">
         No recent news found for your holdings.
       </div>
     );
@@ -70,7 +70,7 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted">
         Latest news for your holdings (last 7 days), sorted by recency.
       </p>
       <div className="space-y-2">
@@ -80,7 +80,7 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
             href={a.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block group bg-slate-800/40 border border-slate-700/60 rounded-lg px-4 py-3 hover:border-slate-600 hover:bg-slate-800/60 transition-colors"
+            className="block group bg-input/40 border border-input-border/60 rounded-lg px-4 py-3 hover:border-input-border hover:bg-input/60 transition-colors"
           >
             <div className="flex items-start gap-3">
               {a.image && (
@@ -97,14 +97,14 @@ export function NewsPanel({ portfolioId, priceUnavailableReason }: Props) {
                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border ${colorMap[a.ticker]}`}>
                     {a.ticker}
                   </span>
-                  <span className="text-slate-500 text-xs">{a.source}</span>
-                  <span className="text-slate-600 text-xs ml-auto">{timeAgo(a.datetime)}</span>
+                  <span className="text-muted text-xs">{a.source}</span>
+                  <span className="text-subtle text-xs ml-auto">{timeAgo(a.datetime)}</span>
                 </div>
-                <p className="text-sm text-slate-200 group-hover:text-white font-medium leading-snug line-clamp-2">
+                <p className="text-sm text-fg group-hover:text-fg font-medium leading-snug line-clamp-2">
                   {a.headline}
                 </p>
                 {a.summary && (
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{a.summary}</p>
+                  <p className="text-xs text-muted mt-1 line-clamp-2">{a.summary}</p>
                 )}
               </div>
             </div>

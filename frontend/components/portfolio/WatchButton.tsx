@@ -67,7 +67,7 @@ export function WatchButton({ ticker }: { ticker: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-400 hover:text-yellow-400 transition-colors"
+        className="text-xs text-muted hover:text-yellow-400 transition-colors"
         title="Add to watchlist"
       >
         Watch
@@ -80,7 +80,7 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_provider}
         onChange={(e) => setDraft((d) => ({ ...d, llm_provider: e.target.value, llm_model: "" }))}
-        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
       >
         {PROVIDERS.map((p) => (
           <option key={p} value={p}>{p}</option>
@@ -89,14 +89,14 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_model}
         onChange={(e) => setDraft((d) => ({ ...d, llm_model: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden max-w-[140px]"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden max-w-[140px]"
       >
         {models.map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
       <select
         value={draft.depth}
         onChange={(e) => setDraft((d) => ({ ...d, depth: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded-sm px-1.5 py-0.5 text-xs text-slate-200 focus:outline-hidden"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
       >
         {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
       </select>
@@ -107,7 +107,7 @@ export function WatchButton({ ticker }: { ticker: string }) {
       >
         {addMutation.isPending ? "Adding…" : "Add"}
       </button>
-      <button onClick={() => setOpen(false)} className="text-xs text-slate-500 hover:text-slate-300">✕</button>
+      <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg-secondary">✕</button>
     </div>
   );
 }

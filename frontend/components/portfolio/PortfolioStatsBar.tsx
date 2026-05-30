@@ -57,7 +57,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
   const signalColor = avgSignal > 0.1 ? "text-green-400" : avgSignal < -0.1 ? "text-red-400" : "text-yellow-400";
 
   return (
-    <div className="flex flex-wrap items-center gap-x-0 gap-y-2 bg-slate-800/40 border border-slate-700/60 rounded-lg text-xs overflow-hidden">
+    <div className="flex flex-wrap items-center gap-x-0 gap-y-2 bg-input/40 border border-input-border/60 rounded-lg text-xs overflow-hidden">
       {/* Performance group */}
       <div className="flex items-center gap-4 px-4 py-3">
         {best && (
@@ -81,10 +81,10 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
       {/* Signals + PEG group */}
       <div className="flex items-center gap-4 px-4 py-3">
         <div className="flex flex-col gap-0.5 min-w-[64px]">
-          <span className="text-slate-500 uppercase tracking-wide text-[10px] whitespace-nowrap">AI Signals</span>
+          <span className="text-muted uppercase tracking-wide text-[10px] whitespace-nowrap">AI Signals</span>
           <span className="font-semibold whitespace-nowrap">
             <span className="text-green-400">{buyCount} buy</span>
-            <span className="text-slate-600"> · </span>
+            <span className="text-subtle"> · </span>
             <span className="text-red-400">{sellCount} sell</span>
           </span>
         </div>
@@ -102,12 +102,12 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
               className="flex flex-col gap-0.5"
               title="Markov regime distribution across holdings"
             >
-              <span className="text-slate-500 uppercase tracking-wide text-[10px]">Regime</span>
+              <span className="text-muted uppercase tracking-wide text-[10px]">Regime</span>
               <span className="font-semibold whitespace-nowrap">
                 <span className="text-green-400">{bullCount} Bull</span>
-                <span className="text-slate-600"> · </span>
+                <span className="text-subtle"> · </span>
                 <span className="text-yellow-400">{sidewaysCount} Sidew.</span>
-                <span className="text-slate-600"> · </span>
+                <span className="text-subtle"> · </span>
                 <span className="text-red-400">{bearCount} Bear</span>
               </span>
             </div>
@@ -116,7 +116,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
                 className="flex flex-col gap-0.5"
                 title="Average Markov directional signal across holdings (bull_prob − bear_prob). Range: −1 to +1."
               >
-                <span className="text-slate-500 uppercase tracking-wide text-[10px]">Avg signal</span>
+                <span className="text-muted uppercase tracking-wide text-[10px]">Avg signal</span>
                 <span className={`font-semibold font-mono ${signalColor}`}>
                   {avgSignal >= 0 ? "+" : ""}{avgSignal.toFixed(2)} {signalArrow}
                 </span>
@@ -134,10 +134,10 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
         const watch = flagged.filter((e) => e.level === "watch").length;
         return (
           <>
-            <div className="self-stretch w-px bg-slate-700/60" />
+            <div className="self-stretch w-px bg-muted-surface/60" />
             <div className="flex items-center gap-4 px-4 py-3">
               <div
-                className="text-xs text-slate-400"
+                className="text-xs text-muted"
                 title="Holdings flagged for review based on AI verdict, regime, valuation, and concentration."
               >
                 Trim signals:{" "}
@@ -157,7 +157,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
         <Stat
           label="Stale / unanalyzed"
           value={`${staleCount} of ${holdings.length}`}
-          color={staleCount > 0 ? "text-amber-400" : "text-slate-500"}
+          color={staleCount > 0 ? "text-amber-400" : "text-muted"}
         />
         {staleCount > 0 && onAnalyzeStale && (
           <button
@@ -173,13 +173,13 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
 }
 
 function Divider() {
-  return <div className="self-stretch w-px bg-slate-700/60" />;
+  return <div className="self-stretch w-px bg-muted-surface/60" />;
 }
 
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-[64px]">
-      <span className="text-slate-500 uppercase tracking-wide text-[10px] whitespace-nowrap">{label}</span>
+      <span className="text-muted uppercase tracking-wide text-[10px] whitespace-nowrap">{label}</span>
       <span className={`font-semibold ${color}`}>{value}</span>
     </div>
   );

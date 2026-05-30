@@ -3,30 +3,74 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --color-navy-600: #1a1d2e;
-  --color-navy-700: #0f1629;
-  --color-navy-800: #0d1220;
-  --color-navy-900: #0a0e1a;
-
-  --font-mono: var(--font-mono), monospace;
+/* Theme tokens — :root = light, .dark = existing AgentFloor dark palette */
+:root {
+  --af-page: #f1f5f9;
+  --af-surface: #ffffff;
+  --af-elevated: #f8fafc;
+  --af-muted-surface: #e2e8f0;
+  --af-fg: #0f172a;
+  --af-fg-secondary: #334155;
+  --af-muted: #64748b;
+  --af-subtle: #94a3b8;
+  --af-border: #e2e8f0;
+  --af-border-strong: #cbd5e1;
+  --af-input: #ffffff;
+  --af-input-border: #cbd5e1;
+  --af-nav-divider: #cbd5e1;
+  --af-logo-fill: #f8fafc;
+  --af-logo-stroke-muted: #94a3b8;
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+.dark {
+  --af-page: #0a0e1a;
+  --af-surface: #0f1629;
+  --af-elevated: #0d1220;
+  --af-muted-surface: #1a1d2e;
+  --af-fg: #e2e8f0;
+  --af-fg-secondary: #cbd5e1;
+  --af-muted: #94a3b8;
+  --af-subtle: #64748b;
+  --af-border: #1e293b;
+  --af-border-strong: #334155;
+  --af-input: #1e293b;
+  --af-input-border: #334155;
+  --af-nav-divider: #334155;
+  --af-logo-fill: #0f172a;
+  --af-logo-stroke-muted: #1e3a5f;
+}
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+@theme {
+  --color-page: var(--af-page);
+  --color-surface: var(--af-surface);
+  --color-elevated: var(--af-elevated);
+  --color-muted-surface: var(--af-muted-surface);
+  --color-fg: var(--af-fg);
+  --color-fg-secondary: var(--af-fg-secondary);
+  --color-muted: var(--af-muted);
+  --color-subtle: var(--af-subtle);
+  --color-border: var(--af-border);
+  --color-border-strong: var(--af-border-strong);
+  --color-input: var(--af-input);
+  --color-input-border: var(--af-input-border);
+  --color-nav-divider: var(--af-nav-divider);
+
+  /* Legacy navy aliases (theme-aware) */
+  --color-navy-600: var(--af-muted-surface);
+  --color-navy-700: var(--af-surface);
+  --color-navy-800: var(--af-elevated);
+  --color-navy-900: var(--af-page);
+
+  --font-mono: var(--font-geist-mono, ui-monospace, monospace);
+}
+
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--color-border, currentcolor);
   }
 }
 
@@ -34,82 +78,66 @@
   text-wrap: balance;
 }
 
-@layer utilities {
-  :root {
-    --background: #ffffff;
-    --foreground: #171717;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #0a0a0a;
-      --foreground: #ededed;
-    }
-  }
-
-  body {
-    color: var(--foreground);
-    background: var(--background);
-    font-family: Arial, Helvetica, sans-serif;
-  }
-}
-
-/* react-csv-importer — dark drawer shell (portfolio upload) */
+/* react-csv-importer — portfolio upload drawer */
 .upload-drawer-csv-importer .CSVImporter_ImporterFrame {
-  border-color: rgb(51 65 85);
-  background: rgb(15 23 42 / 0.85);
+  border-color: var(--af-border-strong);
+  background: color-mix(in srgb, var(--af-elevated) 92%, transparent);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ImporterFrame__headerTitle,
 .upload-drawer-csv-importer .CSVImporter_ImporterFrame__headerSubtitle {
-  color: rgb(226 232 240);
+  color: var(--af-fg);
 }
 
 .upload-drawer-csv-importer .CSVImporter_FileSelector {
-  border-color: rgb(71 85 105);
-  background: rgb(15 23 42 / 0.6);
-  color: rgb(203 213 225);
+  border-color: var(--af-border-strong);
+  background: color-mix(in srgb, var(--af-input) 80%, transparent);
+  color: var(--af-fg-secondary);
 }
 
 .upload-drawer-csv-importer .CSVImporter_FileSelector[data-active='true'] {
-  background: rgb(88 28 135 / 0.15);
+  background: rgb(88 28 135 / 0.12);
 }
 
 .upload-drawer-csv-importer .CSVImporter_FileStep__header {
-  color: rgb(148 163 184);
+  color: var(--af-muted);
 }
 
 .upload-drawer-csv-importer .CSVImporter_FileStep__headerToggle {
-  color: rgb(203 213 225);
+  color: var(--af-fg-secondary);
 }
 
 .upload-drawer-csv-importer .CSVImporter_TextButton {
-  border-color: rgb(71 85 105);
-  background: rgb(51 65 85);
-  color: rgb(241 245 249);
+  border-color: var(--af-border-strong);
+  background: var(--af-muted-surface);
+  color: var(--af-fg);
 }
 
 .upload-drawer-csv-importer .CSVImporter_TextButton:hover:not(:disabled) {
-  background: rgb(71 85 105);
+  background: var(--af-border-strong);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ColumnDragCard {
-  background: rgb(30 41 59);
-  color: rgb(226 232 240);
+  background: var(--af-input);
+  color: var(--af-fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.dark .upload-drawer-csv-importer .CSVImporter_ColumnDragCard {
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ColumnDragCard__cardHeader {
-  color: rgb(148 163 184);
+  color: var(--af-muted);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ColumnDragCard__cardHeader > b {
-  background: rgb(51 65 85);
-  color: rgb(203 213 225);
+  background: var(--af-muted-surface);
+  color: var(--af-fg-secondary);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ColumnDragTargetArea__boxLabel {
-  color: rgb(203 213 225);
+  color: var(--af-fg-secondary);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ColumnDragTargetArea__boxLabel > b {
@@ -117,19 +145,19 @@
 }
 
 .upload-drawer-csv-importer .CSVImporter_ProgressDisplay__status {
-  color: rgb(226 232 240);
+  color: var(--af-fg);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ProgressDisplay__status.-pending {
-  color: rgb(148 163 184);
+  color: var(--af-muted);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ProgressDisplay__count {
-  color: rgb(148 163 184);
+  color: var(--af-muted);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ProgressDisplay__progressBar {
-  background: rgb(51 65 85);
+  background: var(--af-muted-surface);
 }
 
 .upload-drawer-csv-importer .CSVImporter_ProgressDisplay__progressBarIndicator {

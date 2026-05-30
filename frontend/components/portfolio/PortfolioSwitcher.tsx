@@ -64,19 +64,19 @@ export function PortfolioSwitcher({
       {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden transition-colors"
+        className="flex items-center gap-2 bg-input border border-input-border hover:border-input-border rounded-sm px-3 py-2 text-sm text-fg focus:outline-hidden transition-colors"
       >
         <span className="truncate max-w-[160px]">
-          {selected ? selected.name : <span className="text-slate-500">Select portfolio</span>}
+          {selected ? selected.name : <span className="text-muted">Select portfolio</span>}
         </span>
-        <span className="text-slate-500 text-xs shrink-0">▾</span>
+        <span className="text-muted text-xs shrink-0">▾</span>
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-slate-800 border border-slate-700 rounded-sm shadow-xl py-1">
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-input border border-input-border rounded-sm shadow-xl py-1">
           {portfolios.length === 0 && (
-            <div className="px-3 py-2 text-slate-500 text-xs">No portfolios yet</div>
+            <div className="px-3 py-2 text-muted text-xs">No portfolios yet</div>
           )}
 
           {portfolios.map((p) => (
@@ -85,15 +85,15 @@ export function PortfolioSwitcher({
               onClick={() => handleSelect(p.id)}
               className={`group flex items-center justify-between px-3 py-2 cursor-pointer text-sm transition-colors ${
                 p.id === selectedId
-                  ? "bg-slate-700 text-slate-100"
-                  : "text-slate-300 hover:bg-slate-700/60"
+                  ? "bg-muted-surface text-fg"
+                  : "text-fg-secondary hover:bg-muted-surface/60"
               }`}
             >
               <span className="truncate">{p.name}</span>
               {p.id !== selectedId && (
                 <button
                   onClick={(e) => handleDeleteClick(e, p.id)}
-                  className="opacity-0 group-hover:opacity-100 ml-2 text-slate-500 hover:text-red-400 text-xs leading-none shrink-0 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 ml-2 text-muted hover:text-red-400 text-xs leading-none shrink-0 transition-opacity"
                   title="Delete portfolio"
                 >
                   ✕
@@ -102,7 +102,7 @@ export function PortfolioSwitcher({
             </div>
           ))}
 
-          <div className="border-t border-slate-700 mt-1 pt-1">
+          <div className="border-t border-input-border mt-1 pt-1">
             {creating ? (
               <div className="flex items-center gap-2 px-3 py-2">
                 <input
@@ -118,12 +118,12 @@ export function PortfolioSwitcher({
                     }
                   }}
                   placeholder="Portfolio name"
-                  className="flex-1 bg-slate-900 border border-slate-600 rounded-sm px-2 py-1 text-xs text-slate-200 focus:outline-hidden focus:border-purple-500 min-w-0"
+                  className="flex-1 bg-page border border-input-border rounded-sm px-2 py-1 text-xs text-fg focus:outline-hidden focus:border-purple-500 min-w-0"
                 />
                 <button
                   onClick={handleConfirmCreate}
                   disabled={!newName.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-sm px-2 py-1 text-xs shrink-0"
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-fg rounded-sm px-2 py-1 text-xs shrink-0"
                 >
                   Add
                 </button>
@@ -131,7 +131,7 @@ export function PortfolioSwitcher({
             ) : (
               <button
                 onClick={() => setCreating(true)}
-                className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 transition-colors"
+                className="w-full text-left px-3 py-2 text-xs text-muted hover:text-fg hover:bg-muted-surface/60 transition-colors"
               >
                 + New Portfolio
               </button>

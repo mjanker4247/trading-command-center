@@ -8,7 +8,7 @@ function pct(base: number | null, target: number | null): string {
 }
 
 function pctColor(base: number | null, target: number | null, verdict: string): string {
-  if (!base || !target) return "text-slate-400";
+  if (!base || !target) return "text-muted";
   const up = target > base;
   const correct = (verdict === "buy" && up) || (verdict === "sell" && !up);
   return correct ? "text-green-400" : "text-red-400";
@@ -26,17 +26,17 @@ export function OutcomeCard({ outcome }: { outcome: RunOutcome }) {
   const base = outcome.price_at_analysis;
 
   return (
-    <div className="bg-navy-800 border border-slate-700 rounded-xl p-5">
-      <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
+    <div className="bg-elevated border border-input-border rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-fg-secondary uppercase tracking-wide mb-4">
         Trade Outcome
       </h2>
       <div className="grid grid-cols-5 gap-3">
         {CHECKPOINTS.map(({ label, key }) => {
           const price = outcome[key] as number | null;
           return (
-            <div key={label} className="flex flex-col items-center bg-navy-900 rounded-lg p-3 gap-1">
-              <span className="text-xs text-slate-400">{label}</span>
-              <span className="text-sm font-semibold text-white">
+            <div key={label} className="flex flex-col items-center bg-page rounded-lg p-3 gap-1">
+              <span className="text-xs text-muted">{label}</span>
+              <span className="text-sm font-semibold text-fg">
                 {price ? `$${price.toFixed(2)}` : "—"}
               </span>
               {key !== "price_at_analysis" && (
@@ -48,9 +48,9 @@ export function OutcomeCard({ outcome }: { outcome: RunOutcome }) {
           );
         })}
       </div>
-      <p className="text-xs text-slate-500 mt-3">
+      <p className="text-xs text-muted mt-3">
         Verdict was{" "}
-        <span className="font-semibold text-slate-400">{outcome.verdict.toUpperCase()}</span>.
+        <span className="font-semibold text-muted">{outcome.verdict.toUpperCase()}</span>.
         Prices fetched from Finnhub. Future dates show &ldquo;—&rdquo; until available.
       </p>
     </div>

@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getInvestorProfile, upsertInvestorProfile } from "@/lib/api";
-import { TopNav } from "@/components/layout/TopNav";
 
 const SECTORS = [
   { slug: "technology", label: "Technology" },
@@ -57,7 +56,7 @@ const EMPTY: FormState = {
 };
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="text-slate-400 text-xs mb-1 block">{children}</label>;
+  return <label className="text-muted text-xs mb-1 block">{children}</label>;
 }
 
 function Select({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
@@ -65,7 +64,7 @@ function Select({ value, onChange, children }: { value: string; onChange: (v: st
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+      className="w-full bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
     >
       {children}
     </select>
@@ -79,7 +78,7 @@ function Textarea({ value, onChange, placeholder }: { value: string; onChange: (
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={3}
-      className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500 resize-none"
+      className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-sm text-fg focus:outline-hidden focus:border-blue-500 resize-none"
     />
   );
 }
@@ -87,8 +86,8 @@ function Textarea({ value, onChange, placeholder }: { value: string; onChange: (
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-slate-100 text-sm font-semibold">{title}</h2>
-      {description && <p className="text-slate-500 text-xs mt-0.5">{description}</p>}
+      <h2 className="text-fg text-sm font-semibold">{title}</h2>
+      {description && <p className="text-muted text-xs mt-0.5">{description}</p>}
     </div>
   );
 }
@@ -108,7 +107,7 @@ function CheckboxGroup({
           className={`text-xs px-2.5 py-1 rounded border transition-colors ${
             selected.includes(o.slug)
               ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+              : "bg-input border-input-border text-muted hover:text-fg"
           }`}
         >
           {o.label}
@@ -180,20 +179,18 @@ export default function InvestorProfilePage() {
   });
 
   return (
-    <>
-      <TopNav />
-      <main className="p-6 max-w-2xl mx-auto">
+    <main className="p-6 max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <a href="/settings" className="text-slate-500 hover:text-slate-300 text-sm">← Settings</a>
-          <h1 className="text-lg font-semibold text-white">Investor DNA</h1>
+          <a href="/settings" className="text-muted hover:text-fg-secondary text-sm">← Settings</a>
+          <h1 className="text-lg font-semibold text-fg">Investor DNA</h1>
         </div>
-        <p className="text-slate-400 text-sm mb-8">
+        <p className="text-muted text-sm mb-8">
           All fields are optional. The more context you provide, the more personalized your AI portfolio insights will be.
         </p>
 
         <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-8">
           {/* Section 1 */}
-          <div className="bg-navy-700 border border-slate-800 rounded-lg p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Operating Base" description="Your financial context shapes every recommendation." />
             <div>
               <Label>Annual income range</Label>
@@ -214,7 +211,7 @@ export default function InvestorProfilePage() {
                 value={form.liquidity_reserve}
                 onChange={(e) => set("liquidity_reserve")(e.target.value)}
                 placeholder="3 months expenses"
-                className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                className="w-full bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
               />
             </div>
             <div>
@@ -225,13 +222,13 @@ export default function InvestorProfilePage() {
                 value={form.dependents}
                 onChange={(e) => set("dependents")(e.target.value)}
                 placeholder="0"
-                className="w-32 bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500"
+                className="w-32 bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
               />
             </div>
           </div>
 
           {/* Section 2 */}
-          <div className="bg-navy-700 border border-slate-800 rounded-lg p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Capital Base" description="Your time horizon and risk profile." />
             <div>
               <Label>Investment time horizon</Label>
@@ -247,7 +244,7 @@ export default function InvestorProfilePage() {
             <div>
               <Label>Risk willingness: {form.risk_willingness}/5</Label>
               <div className="flex items-center gap-3">
-                <span className="text-slate-500 text-xs">Conservative</span>
+                <span className="text-muted text-xs">Conservative</span>
                 <input
                   type="range"
                   min={1}
@@ -256,7 +253,7 @@ export default function InvestorProfilePage() {
                   onChange={(e) => set("risk_willingness")(parseInt(e.target.value))}
                   className="flex-1 accent-purple-500"
                 />
-                <span className="text-slate-500 text-xs">Aggressive</span>
+                <span className="text-muted text-xs">Aggressive</span>
               </div>
             </div>
             <div>
@@ -271,14 +268,14 @@ export default function InvestorProfilePage() {
           </div>
 
           {/* Section 3 */}
-          <div className="bg-navy-700 border border-slate-800 rounded-lg p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Investment Philosophy" description="How you approach building a portfolio." />
             <div>
               <Label>Investment style</Label>
               <div className="flex gap-2">
                 {[["passive", "Passive (index/ETF-first)"], ["active", "Active (stock picking)"], ["hybrid", "Hybrid"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("investment_style")(v)}
-                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.investment_style === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.investment_style === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-input border-input-border text-muted hover:text-fg"}`}>
                     {l}
                   </button>
                 ))}
@@ -289,7 +286,7 @@ export default function InvestorProfilePage() {
               <div className="flex gap-2 flex-wrap">
                 {[["equal_weight", "Equal weight"], ["conviction", "Conviction-based"], ["market_cap", "Market-cap weighted"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("sizing_approach")(v)}
-                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.sizing_approach === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.sizing_approach === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-input border-input-border text-muted hover:text-fg"}`}>
                     {l}
                   </button>
                 ))}
@@ -302,7 +299,7 @@ export default function InvestorProfilePage() {
           </div>
 
           {/* Section 4 */}
-          <div className="bg-navy-700 border border-slate-800 rounded-lg p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Behavioral Profile" description="Self-awareness is the edge most investors skip." />
             <div>
               <Label>Known blind spots</Label>
@@ -319,7 +316,7 @@ export default function InvestorProfilePage() {
           </div>
 
           {/* Section 5 */}
-          <div className="bg-navy-700 border border-slate-800 rounded-lg p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Constraints and Goals" description="Hard limits and where you're headed." />
             <div>
               <Label>Anti-portfolio (never recommend these)</Label>
@@ -341,7 +338,7 @@ export default function InvestorProfilePage() {
               <div className="flex gap-2 flex-wrap">
                 {[["growth_only", "Growth only"], ["some_income", "Some income (5–20% yield)"], ["income_first", "Income-first (>20% yield)"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("income_goal")(v)}
-                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.income_goal === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}>
+                    className={`text-sm px-3 py-1.5 rounded-sm border transition-colors ${form.income_goal === v ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-input border-input-border text-muted hover:text-fg"}`}>
                     {l}
                   </button>
                 ))}
@@ -357,17 +354,16 @@ export default function InvestorProfilePage() {
             <button
               type="submit"
               disabled={saveMutation.isPending || saved}
-              className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors"
+              className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-fg text-sm rounded-lg font-medium transition-colors"
             >
               {saved ? "Saved ✓" : saveMutation.isPending ? "Saving…" : "Save Profile"}
             </button>
-            <a href="/settings" className="text-slate-400 hover:text-slate-200 text-sm">Cancel</a>
+            <a href="/settings" className="text-muted hover:text-fg text-sm">Cancel</a>
             {saveMutation.isError && (
               <span className="text-red-400 text-xs">{(saveMutation.error as Error).message}</span>
             )}
           </div>
         </form>
       </main>
-    </>
   );
 }

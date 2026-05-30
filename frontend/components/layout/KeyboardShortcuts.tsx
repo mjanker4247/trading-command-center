@@ -62,14 +62,14 @@ export function KeyboardShortcuts() {
       aria-label="Keyboard shortcuts"
     >
       <div
-        className="bg-navy-800 border border-slate-700 rounded-lg p-6 w-[480px] max-w-[90vw]"
+        className="bg-elevated border border-input-border rounded-lg p-6 w-[480px] max-w-[90vw]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-slate-100 text-base font-semibold">Keyboard shortcuts</h2>
+          <h2 className="text-fg text-base font-semibold">Keyboard shortcuts</h2>
           <button
             onClick={() => setOpen(false)}
-            className="text-slate-500 hover:text-slate-300 text-xs"
+            className="text-muted hover:text-fg-secondary text-xs"
             aria-label="Close"
           >
             Esc
@@ -78,14 +78,14 @@ export function KeyboardShortcuts() {
         <ul className="flex flex-col gap-2">
           {SHORTCUTS.map(({ keys, description }) => (
             <li key={keys} className="flex items-center justify-between text-sm">
-              <span className="text-slate-300">{description}</span>
-              <kbd className="bg-navy-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-200 font-mono">
+              <span className="text-fg-secondary">{description}</span>
+              <kbd className="bg-page border border-input-border rounded px-2 py-0.5 text-xs text-fg font-mono">
                 {keys}
               </kbd>
             </li>
           ))}
         </ul>
-        <p className="text-xs text-slate-500 mt-4">
+        <p className="text-xs text-muted mt-4">
           Shortcuts are disabled while typing in inputs.
         </p>
       </div>

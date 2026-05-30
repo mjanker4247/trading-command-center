@@ -19,28 +19,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-900">
-      <div className="w-80 bg-navy-700 border border-slate-800 rounded-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-page">
+      <div className="w-80 bg-surface border border-border rounded-lg p-8">
         <div className="flex justify-center mb-6">
           <Logo height={44} />
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">Email</label>
+            <label className="text-muted text-xs uppercase tracking-wide block mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500" />
+              className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-sm text-fg focus:outline-hidden focus:border-blue-500" />
           </div>
           <div>
-            <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">Password</label>
+            <label className="text-muted text-xs uppercase tracking-wide block mb-1">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500" />
+              className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-sm text-fg focus:outline-hidden focus:border-blue-500" />
           </div>
           {error && <p className="text-red-400 text-xs">{error}</p>}
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-2 text-sm font-medium">
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-4 py-2 text-sm font-medium">
             Sign In
           </button>
         </form>
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-muted">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="text-blue-400 hover:text-blue-300">Register</Link>
         </p>

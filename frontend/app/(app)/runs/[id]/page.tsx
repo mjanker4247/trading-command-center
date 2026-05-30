@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { TopNav } from "@/components/layout/TopNav";
 import { TraderDecision } from "@/components/runs/TraderDecision";
 import { AnalystReports } from "@/components/runs/AnalystReports";
 import { BullBearDebate } from "@/components/runs/BullBearDebate";
@@ -40,27 +39,27 @@ function NotesEditor({ id, notes }: { id: string; notes: string | null }) {
 
   if (editing) {
     return (
-      <div className="bg-navy-800 border border-slate-700 rounded-lg p-4 flex flex-col gap-2">
-        <label className="text-xs text-slate-400 uppercase tracking-wide">Notes</label>
+      <div className="bg-elevated border border-input-border rounded-lg p-4 flex flex-col gap-2">
+        <label className="text-xs text-muted uppercase tracking-wide">Notes</label>
         <textarea
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="What did you decide? Did you take the trade? Any context worth keeping…"
           rows={4}
-          className="bg-navy-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-y"
+          className="bg-page border border-input-border rounded px-3 py-2 text-sm text-fg focus:outline-none focus:border-blue-500 resize-y"
         />
         <div className="flex items-center gap-3">
           <button
             onClick={() => mutation.mutate(value)}
             disabled={mutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded px-3 py-1.5 disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 text-fg text-xs rounded px-3 py-1.5 disabled:opacity-50"
           >
             {mutation.isPending ? "Saving…" : "Save"}
           </button>
           <button
             onClick={() => { setValue(notes ?? ""); setEditing(false); }}
-            className="text-xs text-slate-500 hover:text-slate-300"
+            className="text-xs text-muted hover:text-fg-secondary"
           >
             Cancel
           </button>
@@ -70,18 +69,18 @@ function NotesEditor({ id, notes }: { id: string; notes: string | null }) {
   }
 
   return (
-    <div className="bg-navy-800 border border-slate-700 rounded-lg p-4 flex items-start justify-between gap-4">
+    <div className="bg-elevated border border-input-border rounded-lg p-4 flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+        <p className="text-xs text-muted uppercase tracking-wide mb-1">Notes</p>
         {notes ? (
-          <p className="text-sm text-slate-200 whitespace-pre-wrap wrap-break-word">{notes}</p>
+          <p className="text-sm text-fg whitespace-pre-wrap wrap-break-word">{notes}</p>
         ) : (
-          <p className="text-sm text-slate-600 italic">No notes yet — capture your decision or context.</p>
+          <p className="text-sm text-subtle italic">No notes yet — capture your decision or context.</p>
         )}
       </div>
       <button
         onClick={() => { setValue(notes ?? ""); setEditing(true); }}
-        className="text-xs text-slate-400 hover:text-blue-400 shrink-0"
+        className="text-xs text-muted hover:text-blue-400 shrink-0"
       >
         {notes ? "Edit" : "Add"}
       </button>
@@ -114,12 +113,12 @@ function LabelEditor({ id, label }: { id: string; label: string | null }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Add a label…"
-          className="bg-navy-900 border border-slate-600 rounded-sm px-2 py-0.5 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500 w-48"
+          className="bg-page border border-input-border rounded-sm px-2 py-0.5 text-sm text-fg focus:outline-hidden focus:border-blue-500 w-48"
         />
         <button type="submit" disabled={mutation.isPending} className="text-xs text-blue-400 hover:text-blue-300">
           {mutation.isPending ? "Saving…" : "Save"}
         </button>
-        <button type="button" onClick={() => setEditing(false)} className="text-xs text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted hover:text-fg-secondary">
           Cancel
         </button>
       </form>
@@ -129,15 +128,15 @@ function LabelEditor({ id, label }: { id: string; label: string | null }) {
   return (
     <button
       onClick={() => { setValue(label ?? ""); setEditing(true); }}
-      className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 group"
+      className="flex items-center gap-1.5 text-sm text-muted hover:text-fg group"
       title="Click to edit label"
     >
       {label ? (
-        <span className="text-slate-300">{label}</span>
+        <span className="text-fg-secondary">{label}</span>
       ) : (
-        <span className="text-slate-600 italic">Add label…</span>
+        <span className="text-subtle italic">Add label…</span>
       )}
-      <span className="text-slate-600 group-hover:text-slate-400 text-xs">✎</span>
+      <span className="text-subtle group-hover:text-muted text-xs">✎</span>
     </button>
   );
 }
@@ -167,9 +166,7 @@ export default function RunResultsPage() {
   const isRunning = run?.status === "pending" || run?.status === "running";
 
   return (
-    <div className="min-h-screen bg-navy-900">
-      <TopNav />
-      <main className="p-6 max-w-5xl mx-auto flex flex-col gap-6">
+    <main className="p-6 max-w-5xl mx-auto flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/runs" className="text-blue-400 hover:underline text-sm">
@@ -179,12 +176,12 @@ export default function RunResultsPage() {
           </div>
           <div className="flex items-center gap-3">
             {run && (
-              <Link href={rerunUrl(run)} className="text-slate-400 hover:text-blue-400 text-sm">
+              <Link href={rerunUrl(run)} className="text-muted hover:text-blue-400 text-sm">
                 Re-run
               </Link>
             )}
             {run && (
-              <Link href={`/runs/compare?a=${id}`} className="text-slate-400 hover:text-blue-400 text-sm">
+              <Link href={`/runs/compare?a=${id}`} className="text-muted hover:text-blue-400 text-sm">
                 Compare →
               </Link>
             )}
@@ -193,7 +190,7 @@ export default function RunResultsPage() {
         </div>
 
         {isRunning && (
-          <div className="bg-navy-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300">
+          <div className="bg-surface border border-input-border rounded-lg px-4 py-3 text-sm text-fg-secondary">
             Run in progress —{" "}
             <Link href={`/runs/${id}/live`} className="text-blue-400 hover:underline">
               View live feed →
@@ -208,6 +205,5 @@ export default function RunResultsPage() {
         <AnalystReports report={report} analysts={run?.analysts ?? []} />
         <BullBearDebate report={report} />
       </main>
-    </div>
   );
 }

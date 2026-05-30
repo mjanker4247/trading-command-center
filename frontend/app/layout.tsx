@@ -10,8 +10,10 @@ export const metadata: Metadata = { title: "AgentFloor", description: "AI Tradin
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-navy-900 text-slate-200 font-mono min-h-screen`}>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} bg-page text-fg font-mono min-h-screen antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

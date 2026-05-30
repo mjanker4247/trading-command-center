@@ -10,8 +10,8 @@ interface LogoProps {
 const ICON_W = 40;
 const ICON_H = 40;
 const TEXT_GAP = 12;
-const TEXT_W = 110; // approximate width of "AgentFloor" at 15px Geist Mono
-const FULL_VB_W = ICON_W + TEXT_GAP + TEXT_W; // 162
+const TEXT_W = 110;
+const FULL_VB_W = ICON_W + TEXT_GAP + TEXT_W;
 
 export function Logo({ height = 30, iconOnly = false, className = "" }: LogoProps) {
   const uid = useId().replace(/:/g, "");
@@ -38,24 +38,21 @@ export function Logo({ height = 30, iconOnly = false, className = "" }: LogoProp
         </linearGradient>
       </defs>
 
-      {/* ── Hexagon mark ── */}
       <polygon
         points="20,2 35.6,11 35.6,29 20,38 4.4,29 4.4,11"
-        fill="#0f172a"
+        className="fill-[var(--af-logo-fill)]"
         stroke={`url(#${gradId})`}
         strokeWidth="1.8"
       />
 
-      {/* Baseline dash */}
       <line
         x1="8.5" y1="30.5" x2="31.5" y2="30.5"
-        stroke="#1e3a5f"
+        className="stroke-[var(--af-logo-stroke-muted)]"
         strokeWidth="1"
         strokeDasharray="2.5 2"
         strokeLinecap="round"
       />
 
-      {/* Rising chart line */}
       <polyline
         points="9,27 15,23 22,17 31,12"
         stroke={`url(#${gradId})`}
@@ -64,12 +61,9 @@ export function Logo({ height = 30, iconOnly = false, className = "" }: LogoProp
         strokeLinejoin="round"
       />
 
-      {/* Node — start (blue) */}
       <circle cx="9" cy="27" r="2.8" fill="#3b82f6" />
-      {/* Node — end (purple) */}
       <circle cx="31" cy="12" r="2.8" fill="#8b5cf6" />
 
-      {/* ── Wordmark ── */}
       {!iconOnly && (
         <text
           x={ICON_W + TEXT_GAP}
@@ -78,8 +72,8 @@ export function Logo({ height = 30, iconOnly = false, className = "" }: LogoProp
           fontFamily="var(--font-geist-mono, ui-monospace, 'SF Mono', monospace)"
           letterSpacing="0.5"
         >
-          <tspan fill="#f1f5f9" fontWeight="700">Agent</tspan>
-          <tspan fill="#60a5fa" fontWeight="400">Floor</tspan>
+          <tspan className="fill-fg" fontWeight="700">Agent</tspan>
+          <tspan fill="#3b82f6" className="dark:fill-[#60a5fa]" fontWeight="400">Floor</tspan>
         </text>
       )}
     </svg>

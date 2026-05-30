@@ -4,7 +4,6 @@ import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiKeys, getUsers, inviteUser, updateProfile, getSmtpStatus, getMe, downloadDbBackup, restoreDbBackup, getInvestorProfile } from "@/lib/api";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
-import { TopNav } from "@/components/layout/TopNav";
 import { ApiKeyRow } from "@/components/settings/ApiKeyRow";
 import { ServerUrlRow } from "@/components/settings/ServerUrlRow";
 import { TeamMemberRow } from "@/components/settings/TeamMemberRow";
@@ -26,10 +25,10 @@ function SectionCard({ title, description, children }: { title: string; descript
   return (
     <section>
       <div className="mb-3">
-        <h2 className="text-slate-100 text-base font-semibold">{title}</h2>
-        {description && <p className="text-slate-500 text-xs mt-0.5">{description}</p>}
+        <h2 className="text-fg text-base font-semibold">{title}</h2>
+        {description && <p className="text-muted text-xs mt-0.5">{description}</p>}
       </div>
-      <div className="bg-navy-700 border border-slate-800 rounded-lg overflow-hidden">
+      <div className="bg-surface border border-border rounded-lg overflow-hidden">
         {children}
       </div>
     </section>
@@ -37,13 +36,13 @@ function SectionCard({ title, description, children }: { title: string; descript
 }
 
 function Divider() {
-  return <div className="border-t border-slate-800" />;
+  return <div className="border-t border-border" />;
 }
 
 function SubGroupLabel({ label }: { label: string }) {
   return (
-    <div className="px-4 py-2 bg-slate-800/40 border-b border-slate-800">
-      <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">{label}</span>
+    <div className="px-4 py-2 bg-input/40 border-b border-border">
+      <span className="text-muted text-xs font-medium uppercase tracking-wide">{label}</span>
     </div>
   );
 }
@@ -189,52 +188,51 @@ export default function SettingsPage() {
 
   return (
     <>
-      <TopNav />
-      <main className="p-6 max-w-3xl mx-auto flex flex-col gap-8">
+    <main className="p-6 max-w-3xl mx-auto flex flex-col gap-8">
 
         {/* Profile */}
         <SectionCard title="My Profile" description="Your display name and login credentials.">
           <div className="px-4 py-4 flex flex-col gap-4">
             <div className="flex items-center gap-4">
-              <label className="text-slate-400 text-xs w-32 shrink-0">Display Name</label>
+              <label className="text-muted text-xs w-32 shrink-0">Display Name</label>
               <input
                 type="text"
                 value={profileName}
                 onChange={(e) => { setProfileName(e.target.value); setProfileStatus("idle"); }}
-                className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
+                className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg w-64 focus:outline-hidden focus:border-blue-500"
               />
             </div>
             <Divider />
             <div className="flex flex-col gap-2">
-              <span className="text-slate-400 text-xs">Change Password</span>
+              <span className="text-muted text-xs">Change Password</span>
               <div className="flex items-center gap-3">
-                <label className="text-slate-500 text-xs w-32 shrink-0">Current</label>
+                <label className="text-muted text-xs w-32 shrink-0">Current</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => { setCurrentPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="Current password"
-                  className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
+                  className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg w-64 focus:outline-hidden focus:border-blue-500"
                 />
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-slate-500 text-xs w-32 shrink-0">New</label>
+                <label className="text-muted text-xs w-32 shrink-0">New</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="New password"
-                  className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
+                  className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg w-64 focus:outline-hidden focus:border-blue-500"
                 />
               </div>
             </div>
             <Divider />
             <div className="flex items-center gap-4">
-              <label className="text-slate-400 text-xs w-32 shrink-0">Display Currency</label>
+              <label className="text-muted text-xs w-32 shrink-0">Display Currency</label>
               <select
                 value={preferredCurrency}
                 onChange={(e) => { setPreferredCurrency(e.target.value); setProfileStatus("idle"); }}
-                className="bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-sm text-slate-200 w-32 focus:outline-hidden focus:border-blue-500"
+                className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg w-32 focus:outline-hidden focus:border-blue-500"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -245,7 +243,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => profileMutation.mutate()}
                 disabled={profileMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-1.5 text-xs disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-4 py-1.5 text-xs disabled:opacity-50"
               >
                 {profileMutation.isPending ? "Saving…" : "Save Changes"}
               </button>
@@ -259,26 +257,26 @@ export default function SettingsPage() {
         <SectionCard title="Investor DNA" description="Personalize AI insights with your investment context.">
           <div className="px-4 py-4">
             {profileLoading ? (
-              <div className="h-8 bg-slate-800 rounded-sm animate-pulse w-48" />
+              <div className="h-8 bg-input rounded-sm animate-pulse w-48" />
             ) : investorProfile ? (
               <div className="flex items-center justify-between">
                 <div className="flex gap-6 text-sm">
                   {investorProfile.time_horizon && (
                     <div>
-                      <span className="text-slate-500 text-xs">Horizon</span>
-                      <p className="text-slate-200">{HORIZON_LABELS[investorProfile.time_horizon] ?? investorProfile.time_horizon}</p>
+                      <span className="text-muted text-xs">Horizon</span>
+                      <p className="text-fg">{HORIZON_LABELS[investorProfile.time_horizon] ?? investorProfile.time_horizon}</p>
                     </div>
                   )}
                   {investorProfile.risk_willingness && (
                     <div>
-                      <span className="text-slate-500 text-xs">Risk</span>
-                      <p className="text-slate-200">{RISK_LABELS[investorProfile.risk_willingness] ?? investorProfile.risk_willingness}</p>
+                      <span className="text-muted text-xs">Risk</span>
+                      <p className="text-fg">{RISK_LABELS[investorProfile.risk_willingness] ?? investorProfile.risk_willingness}</p>
                     </div>
                   )}
                   {investorProfile.investment_style && (
                     <div>
-                      <span className="text-slate-500 text-xs">Style</span>
-                      <p className="text-slate-200">{STYLE_LABELS[investorProfile.investment_style] ?? investorProfile.investment_style}</p>
+                      <span className="text-muted text-xs">Style</span>
+                      <p className="text-fg">{STYLE_LABELS[investorProfile.investment_style] ?? investorProfile.investment_style}</p>
                     </div>
                   )}
                 </div>
@@ -289,7 +287,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <p className="text-slate-400 text-sm">Personalize your AI insights by sharing your investment context.</p>
+                <p className="text-muted text-sm">Personalize your AI insights by sharing your investment context.</p>
                 <a href="/settings/investor-profile" className="text-xs text-purple-400 hover:text-purple-300 border border-purple-500/30 rounded-sm px-3 py-1.5">Set up →</a>
               </div>
             )}
@@ -354,11 +352,11 @@ export default function SettingsPage() {
           >
             <div className="px-4 py-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <span className="text-slate-400 text-xs w-32 shrink-0">Status</span>
+                <span className="text-muted text-xs w-32 shrink-0">Status</span>
                 {smtpLoading ? (
-                  <span className="text-slate-500 text-xs">Checking…</span>
+                  <span className="text-muted text-xs">Checking…</span>
                 ) : smtpError ? (
-                  <span className="text-slate-500 text-xs">Unavailable — restart the backend to load status</span>
+                  <span className="text-muted text-xs">Unavailable — restart the backend to load status</span>
                 ) : smtpStatus?.configured ? (
                   <span className="text-green-400 text-xs">Configured ✓</span>
                 ) : (
@@ -367,24 +365,24 @@ export default function SettingsPage() {
               </div>
               {!smtpLoading && !smtpError && smtpStatus?.configured && smtpStatus.from_address && (
                 <div className="flex items-center gap-3">
-                  <span className="text-slate-400 text-xs w-32 shrink-0">Sending from</span>
-                  <span className="text-slate-300 text-xs font-mono">{smtpStatus.from_address}</span>
+                  <span className="text-muted text-xs w-32 shrink-0">Sending from</span>
+                  <span className="text-fg-secondary text-xs font-mono">{smtpStatus.from_address}</span>
                 </div>
               )}
               {!smtpLoading && !smtpError && smtpStatus && !smtpStatus.configured && (
                 <>
                   <Divider />
-                  <div className="text-slate-400 text-xs">
+                  <div className="text-muted text-xs">
                     Set the following environment variables to enable email notifications:
                   </div>
-                  <pre className="bg-slate-800 rounded-sm p-3 text-xs text-slate-300 font-mono leading-relaxed overflow-x-auto">
+                  <pre className="bg-input rounded-sm p-3 text-xs text-fg-secondary font-mono leading-relaxed overflow-x-auto">
 {`SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=you@gmail.com
 SMTP_PASSWORD=your-app-password
 SMTP_FROM=noreply@yourdomain.com`}
                   </pre>
-                  <p className="text-slate-500 text-xs">
+                  <p className="text-muted text-xs">
                     For Gmail, use an{" "}
                     <a
                       href="https://myaccount.google.com/apppasswords"
@@ -405,7 +403,7 @@ SMTP_FROM=noreply@yourdomain.com`}
         {/* Team */}
         {isAdmin && (
           <SectionCard title="Team" description="Manage members and send invitations.">
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-border">
               {users.map((u) => (
                 <TeamMemberRow
                   key={u.id}
@@ -415,21 +413,21 @@ SMTP_FROM=noreply@yourdomain.com`}
                 />
               ))}
               {users.length === 0 && (
-                <p className="text-slate-500 text-xs px-4 py-3">No team members found.</p>
+                <p className="text-muted text-xs px-4 py-3">No team members found.</p>
               )}
             </div>
-            <div className="border-t border-slate-800 px-4 py-3 flex items-center gap-2">
+            <div className="border-t border-border px-4 py-3 flex items-center gap-2">
               <input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus("idle"); }}
                 placeholder="member@example.com"
-                className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
+                className="bg-input border border-input-border rounded-sm px-2 py-1 text-xs text-fg w-64 focus:outline-hidden focus:border-blue-500"
               />
               <button
                 onClick={() => { setInviteStatus("idle"); setInviteUrl(null); inviteMutation.mutate(); }}
                 disabled={inviteMutation.isPending || !inviteEmail}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1 text-xs disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-3 py-1 text-xs disabled:opacity-50"
               >
                 {inviteMutation.isPending ? "Sending…" : "Invite Member"}
               </button>
@@ -437,18 +435,18 @@ SMTP_FROM=noreply@yourdomain.com`}
               {inviteStatus === "error" && <span className="text-red-400 text-xs">{inviteError}</span>}
             </div>
             {inviteUrl && (
-              <div className="border-t border-slate-800 px-4 py-3 flex flex-col gap-1">
-                <span className="text-slate-400 text-xs">SMTP not configured — share this invite link directly:</span>
+              <div className="border-t border-border px-4 py-3 flex flex-col gap-1">
+                <span className="text-muted text-xs">SMTP not configured — share this invite link directly:</span>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
                     value={inviteUrl}
-                    className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-300 font-mono flex-1 focus:outline-hidden"
+                    className="bg-input border border-input-border rounded-sm px-2 py-1 text-xs text-fg-secondary font-mono flex-1 focus:outline-hidden"
                     onFocus={(e) => e.target.select()}
                   />
                   <button
                     onClick={() => navigator.clipboard.writeText(inviteUrl)}
-                    className="bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-sm px-3 py-1 text-xs shrink-0"
+                    className="bg-muted-surface hover:bg-muted-surface text-fg-secondary rounded-sm px-3 py-1 text-xs shrink-0"
                   >
                     Copy
                   </button>
@@ -468,19 +466,19 @@ SMTP_FROM=noreply@yourdomain.com`}
               {/* Backup */}
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <p className="text-slate-300 text-xs font-medium mb-0.5">Download Backup</p>
-                  <p className="text-slate-500 text-xs">
+                  <p className="text-fg-secondary text-xs font-medium mb-0.5">Download Backup</p>
+                  <p className="text-muted text-xs">
                     Exports a compressed pg_dump file (.dump) of the full database.
                   </p>
                 </div>
                 <button
                   onClick={handleDownloadBackup}
                   disabled={backupLoading}
-                  className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-sm px-4 py-1.5 text-xs disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                  className="shrink-0 bg-muted-surface hover:bg-muted-surface text-fg rounded-sm px-4 py-1.5 text-xs disabled:opacity-50 flex items-center gap-1.5 transition-colors"
                 >
                   {backupLoading ? (
                     <>
-                      <span className="inline-block w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="inline-block w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
                       Exporting…
                     </>
                   ) : (
@@ -501,13 +499,13 @@ SMTP_FROM=noreply@yourdomain.com`}
               {/* Restore */}
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <p className="text-slate-300 text-xs font-medium mb-0.5">Restore from Backup</p>
-                  <p className="text-slate-500 text-xs">
+                  <p className="text-fg-secondary text-xs font-medium mb-0.5">Restore from Backup</p>
+                  <p className="text-muted text-xs">
                     Select a .dump file exported from this app. This will replace all current data.
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
-                  <label className="cursor-pointer bg-slate-800 border border-slate-700 rounded-sm px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500 transition-colors">
+                  <label className="cursor-pointer bg-input border border-input-border rounded-sm px-3 py-1.5 text-xs text-fg-secondary hover:border-border-strong transition-colors">
                     {restoreFile ? restoreFile.name : "Choose file…"}
                     <input
                       type="file"
@@ -519,7 +517,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <button
                     onClick={() => setRestoreModalOpen(true)}
                     disabled={!restoreFile}
-                    className="bg-red-700 hover:bg-red-600 text-white rounded-sm px-3 py-1.5 text-xs disabled:opacity-40 transition-colors"
+                    className="bg-red-700 hover:bg-red-600 text-fg rounded-sm px-3 py-1.5 text-xs disabled:opacity-40 transition-colors"
                   >
                     Restore…
                   </button>
@@ -544,29 +542,29 @@ SMTP_FROM=noreply@yourdomain.com`}
         const remaining = Math.max(0, estimatedSecs - restoreElapsed);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
-            <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+            <div className="bg-elevated border border-input-border rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-400 shrink-0">
                   <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                 </svg>
-                <h2 className="text-base font-semibold text-white">Restore Database</h2>
+                <h2 className="text-base font-semibold text-fg">Restore Database</h2>
               </div>
 
               {restoreMutation.isPending ? (
                 /* ── In-progress view ── */
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                    <span className="inline-block w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin shrink-0" />
+                  <div className="flex items-center gap-2 text-sm text-fg-secondary">
+                    <span className="inline-block w-4 h-4 border-2 border-muted border-t-white rounded-full animate-spin shrink-0" />
                     Restoring database…
                   </div>
                   {/* Progress bar */}
-                  <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-muted-surface rounded-full h-1.5 overflow-hidden">
                     <div
                       className="h-full bg-red-500 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>{restoreElapsed}s elapsed</span>
                     <span>
                       {remaining > 0
@@ -574,7 +572,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                         : "finishing up…"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted">
                     {restoreElapsed < 3
                       ? "Uploading backup file…"
                       : restoreElapsed < 8
@@ -585,24 +583,24 @@ SMTP_FROM=noreply@yourdomain.com`}
               ) : (
                 /* ── Confirmation view ── */
                 <>
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-fg-secondary">
                     This will <span className="text-red-400 font-medium">replace all current data</span> with the contents of:
                   </p>
-                  <p className="text-xs text-slate-400 font-mono bg-slate-800 rounded-sm px-3 py-2">{restoreFile.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted font-mono bg-input rounded-sm px-3 py-2">{restoreFile.name}</p>
+                  <p className="text-xs text-muted">
                     All runs, portfolios, watchlists, API keys, and user data will be overwritten. This cannot be undone.
                   </p>
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-400">Type <span className="font-mono text-slate-200">RESTORE</span> to confirm</label>
+                    <label className="text-xs text-muted">Type <span className="font-mono text-fg">RESTORE</span> to confirm</label>
                     <input
                       type="text"
                       value={restoreConfirmText}
                       onChange={(e) => setRestoreConfirmText(e.target.value)}
                       placeholder="RESTORE"
-                      className="w-full bg-slate-800 border border-slate-600 rounded-sm px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-red-500 font-mono"
+                      className="w-full bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg focus:outline-hidden focus:border-red-500 font-mono"
                     />
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted">
                     Est. restore time: ~{estimatedSecs}s
                     {restoreFile.size > 0 && ` (${(restoreFile.size / (1024 * 1024)).toFixed(1)} MB)`}
                   </p>
@@ -620,7 +618,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 <button
                   onClick={() => { setRestoreModalOpen(false); setRestoreConfirmText(""); restoreMutation.reset(); }}
                   disabled={restoreMutation.isPending}
-                  className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                  className="px-3 py-1.5 text-sm text-muted hover:text-fg disabled:opacity-30"
                 >
                   Cancel
                 </button>
@@ -628,7 +626,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   <button
                     onClick={() => restoreMutation.mutate()}
                     disabled={restoreConfirmText !== "RESTORE"}
-                    className="px-4 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded-sm disabled:opacity-40 transition-colors"
+                    className="px-4 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-fg rounded-sm disabled:opacity-40 transition-colors"
                   >
                     Restore Database
                   </button>

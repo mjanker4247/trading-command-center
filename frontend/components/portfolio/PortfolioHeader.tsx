@@ -39,7 +39,7 @@ export function PortfolioHeader({
   const pnlPositive = pnl != null && pnl >= 0;
 
   const pnlColor =
-    pnl == null ? "text-slate-500" : pnlPositive ? "text-green-400" : "text-red-400";
+    pnl == null ? "text-muted" : pnlPositive ? "text-green-400" : "text-red-400";
 
   const snapshotLabel = snapshotDate
     ? new Date(snapshotDate).toLocaleDateString("en-US", {
@@ -50,20 +50,20 @@ export function PortfolioHeader({
     : null;
 
   return (
-    <div className="flex items-center gap-4 bg-slate-800/50 border border-slate-800 rounded-sm px-4 py-3">
+    <div className="flex items-center gap-4 bg-input/50 border border-border rounded-sm px-4 py-3">
       {/* Left: portfolio name + meta */}
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-purple-400 font-medium text-sm truncate">{portfolio.name}</span>
         {portfolio.holding_count > 0 && (
-          <span className="text-slate-500 text-xs shrink-0">
+          <span className="text-muted text-xs shrink-0">
             {portfolio.holding_count} position{portfolio.holding_count !== 1 ? "s" : ""}
           </span>
         )}
         {broker && (
-          <span className="text-slate-600 text-xs shrink-0">{broker}</span>
+          <span className="text-subtle text-xs shrink-0">{broker}</span>
         )}
         {snapshotLabel && (
-          <span className="text-slate-600 text-xs shrink-0">as of {snapshotLabel}</span>
+          <span className="text-subtle text-xs shrink-0">as of {snapshotLabel}</span>
         )}
       </div>
 
@@ -74,10 +74,10 @@ export function PortfolioHeader({
       {hasData ? (
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right">
-            <div className="text-slate-200 text-sm font-semibold tabular-nums">
+            <div className="text-fg text-sm font-semibold tabular-nums">
               {fmtMoney(totals!.market_value, displayCurrency)}
             </div>
-            <div className="text-xs text-slate-500">Market Value</div>
+            <div className="text-xs text-muted">Market Value</div>
           </div>
           <div className={`text-right ${pnlColor}`}>
             <div className="text-sm font-semibold tabular-nums">
@@ -89,11 +89,11 @@ export function PortfolioHeader({
           </div>
         </div>
       ) : (
-        <span className="text-slate-600 text-xs shrink-0">No data yet</span>
+        <span className="text-subtle text-xs shrink-0">No data yet</span>
       )}
 
       {/* Divider */}
-      <div className="h-6 w-px bg-slate-700 shrink-0" />
+      <div className="h-6 w-px bg-muted-surface shrink-0" />
 
       {/* Action buttons */}
       <div className="flex items-center gap-1 shrink-0">
@@ -103,7 +103,7 @@ export function PortfolioHeader({
             disabled={isRefreshing}
             title={hasMissingPrices ? "Retry fetching missing prices" : "Refresh prices"}
             aria-label={hasMissingPrices ? "Retry fetching missing prices" : "Refresh prices"}
-            className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 text-muted hover:text-fg text-xs px-2 py-1 rounded hover:bg-muted-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <span className={isRefreshing ? "animate-spin inline-block" : ""}
               style={{ display: "inline-block" }}
@@ -115,21 +115,21 @@ export function PortfolioHeader({
         )}
         <button
           onClick={onUploadClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-muted hover:text-fg text-xs px-2 py-1 rounded-sm hover:bg-muted-surface transition-colors"
         >
           <span>↑</span>
           <span>Upload</span>
         </button>
         <button
           onClick={onExportClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-muted hover:text-fg text-xs px-2 py-1 rounded-sm hover:bg-muted-surface transition-colors"
         >
           <span>⬇</span>
           <span>Export</span>
         </button>
         <button
           onClick={onDeliveryClick}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded-sm hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1 text-muted hover:text-fg text-xs px-2 py-1 rounded-sm hover:bg-muted-surface transition-colors"
           title="Brief delivery settings"
         >
           <span>🔔</span>
