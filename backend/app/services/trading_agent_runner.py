@@ -1,20 +1,26 @@
 import asyncio
 import os
-import re
 from queue import Queue as SyncQueue
 from datetime import datetime, timezone
 from langchain_core.callbacks import BaseCallbackHandler
-from typing import Optional
 
 # Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
 _env_fallback_lock = asyncio.Lock()
 
+# LangGraph node names emitted by TradingAgents v0.7 (callback `name` is lower_snake).
 AGENT_NODES = {
-    "market_analyst", "social_analyst", "news_analyst",
-    "fundamentals_analyst", "technical_analyst",
-    "bull_researcher", "bear_researcher",
+    "market_analyst",
+    "social_analyst",
+    "news_analyst",
+    "fundamentals_analyst",
+    "situation_summariser",
+    "bull_researcher",
+    "bear_researcher",
+    "research_manager",
     "trader",
-    "aggressive_analyst", "conservative_analyst", "neutral_analyst",
+    "aggressive_analyst",
+    "conservative_analyst",
+    "neutral_analyst",
     "risk_judge",
 }
 
@@ -29,10 +35,11 @@ _PROVIDER_MAP: dict[str, str] = {
     "ionos": "openai",  # IONOS is OpenAI-compatible
 }
 
+# max_recur_limit floor is 30 in tradingagents>=0.7 (Situation Summariser node).
 _DEPTH_PARAMS: dict[str, dict] = {
-    "quick":    {"max_debate_rounds": 1, "max_risk_discuss_rounds": 1, "max_recur_limit": 75},
+    "quick": {"max_debate_rounds": 1, "max_risk_discuss_rounds": 1, "max_recur_limit": 75},
     "standard": {"max_debate_rounds": 2, "max_risk_discuss_rounds": 2, "max_recur_limit": 150},
-    "deep":     {"max_debate_rounds": 3, "max_risk_discuss_rounds": 3, "max_recur_limit": 200},
+    "deep": {"max_debate_rounds": 3, "max_risk_discuss_rounds": 3, "max_recur_limit": 200},
 }
 
 class _SyncEmitter(BaseCallbackHandler):
@@ -93,6 +100,8 @@ async def execute_run(run_id: str, config: dict) -> None:
     from app.models.agent_event import AgentEvent, EventType
     from app.models.report import Report
     from app.services.websocket_manager import ws_manager
+    from app.utils.asset_type import is_crypto as _is_crypto
+    from app.utils.tradingagents_analysts import normalize_analysts
 
     sync_q: SyncQueue = SyncQueue()
     async_q: asyncio.Queue = asyncio.Queue()
@@ -150,10 +159,11 @@ async def execute_run(run_id: str, config: dict) -> None:
         provider = config.get("llm_provider", "openai")
         model = config.get("llm_model", "")
         depth = config.get("depth", "standard")
-        from app.utils.asset_type import is_crypto as _is_crypto
-        analysts = config.get("analysts") or ["market", "social", "news", "fundamentals", "technical"]
-        if _is_crypto(config.get("ticker", "")):
-            analysts = [a for a in analysts if a != "fundamentals"]
+        ticker = config.get("ticker", "")
+        analysts = normalize_analysts(
+            config.get("analysts"),
+            exclude_fundamentals=_is_crypto(ticker),
+        )
         depth_params = _DEPTH_PARAMS.get(depth, _DEPTH_PARAMS["standard"])
         ta_provider = _PROVIDER_MAP.get(provider, provider)
 
@@ -163,6 +173,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             llm_provider=ta_provider,
             deep_think_llm=model,
             quick_think_llm=model,
+            response_language="en-US",
             **depth_params,
         )
 
@@ -170,11 +181,9 @@ async def execute_run(run_id: str, config: dict) -> None:
         # server URLs for local inference.
         env_patch: dict[str, str] = {}
         if provider == "ionos" and stored_key:
-            # Groq uses OpenAI-compatible API at a different base URL
             env_patch["OPENAI_BASE_URL"] = "https://openai.inference.de-txl.ionos.com/v1"
             env_patch["OPENAI_API_KEY"] = stored_key
         elif provider == "groq" and stored_key:
-            # Groq uses OpenAI-compatible API at a different base URL
             env_patch["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
             env_patch["OPENAI_API_KEY"] = stored_key
         elif provider in _CLOUD_KEY_ENV and stored_key:
@@ -201,10 +210,10 @@ async def execute_run(run_id: str, config: dict) -> None:
                     callbacks=[emitter],
                 )
                 from app.config import settings as _settings
-                final_state, signal = await asyncio.wait_for(
+                final_state, recommendation = await asyncio.wait_for(
                     asyncio.to_thread(
                         graph.propagate,
-                        config["ticker"],
+                        ticker,
                         config["analysis_date"],
                     ),
                     timeout=_settings.run_timeout_seconds,
@@ -220,11 +229,13 @@ async def execute_run(run_id: str, config: dict) -> None:
         await async_q.put(None)  # sentinel
         await process_task
 
-        verdict = _parse_verdict(signal)
+        verdict = _parse_verdict(recommendation)
         raw = final_state.model_dump() if hasattr(final_state, "model_dump") else {}
-        trader_decision = str(getattr(final_state, "final_trade_decision", ""))
-        
-        suggested_entry, suggested_stop, suggested_target = _extract_prices(trader_decision)
+        trader_decision = _extract_trader_decision(final_state, recommendation)
+
+        suggested_entry = _normalize_price(getattr(recommendation, "entry_reference_price", None))
+        suggested_stop = _normalize_price(getattr(recommendation, "stop_loss", None))
+        suggested_target = _normalize_price(getattr(recommendation, "target_price", None))
         async with AsyncSessionLocal() as db:
             db.add(Report(
                 run_id=run_id,
@@ -299,60 +310,36 @@ def _extract_risk_assessment(state) -> str:
     return "\n\n".join(parts)
 
 
-def _extract_prices(text: str) -> tuple[str | None, str | None, str | None]:
-    """Regex-parse entry, stop-loss, and price target from free-form LLM text."""
-    def _find(patterns: list[str]) -> Optional[str]:
-        for pat in patterns:
-            m = re.search(pat, text, re.IGNORECASE)
-            if m:
-                return m.group(1)
+def _normalize_price(value) -> str | None:
+    if value is None:
         return None
-
-    number = r"([\d,]+(?:\.\d+)?)"
-
-    entry = _find([
-        rf"entry\s+price\s*[:=]\s*\$?{number}",
-        rf"entry\s*[:=]\s*\$?{number}",
-        rf"buy\s+at\s*[:=]\s*\$?{number}",
-        rf"entry\s+(?:at|around|near|@)\s*\$?{number}",
-        rf"(?:initial|suggested)\s+entry\s*[:=]?\s*(?:at\s+)?\$?{number}",
-        rf"enter\s+(?:at|around|near)\s*\$?{number}",
-        rf"(?:buy|initiate|open)\s+(?:a?\s*(?:long|position|trade)\s+)?(?:at|near|around|@)\s*\$?{number}",
-    ])
-
-    stop = _find([
-        rf"stop[\s-]*loss\s*[:=]\s*\$?{number}",
-        rf"stop\s+at\s*[:=]\s*\$?{number}",
-        rf"stop\s*[:=]\s*\$?{number}",
-        rf"stop[\s-]*loss\s+(?:at|below|above|near|around|@)\s*\$?{number}",
-        rf"stop\s+(?:below|above|near|around|@)\s*\$?{number}",
-        rf"trailing\s+stop\s*[:=]?\s*(?:at\s+)?\$?{number}",
-        rf"stop\s+(?:price\s+)?(?:at|below|above)\s*\$?{number}",
-    ])
-
-    target = _find([
-        rf"price\s+target\s*[:=]\s*\$?{number}",
-        rf"take[\s-]*profit\s*[:=]\s*\$?{number}",
-        rf"profit\s+target\s*[:=]\s*\$?{number}",
-        rf"target\s*[:=]\s*\$?{number}",
-        rf"(?:price\s+)?target\s+(?:at|near|of|around|@)\s*\$?{number}",
-        rf"target\s+\${number}",
-        rf"(?:take[\s-]*profit|tp)\s*[:=]?\s*(?:at\s+)?\$?{number}",
-        rf"(?:first\s+)?(?:profit\s+)?target\s*:\s*\$?{number}",
-        rf"(?:exit|close)\s+(?:at|near|around)\s*\$?{number}",
-    ])
-    return entry, stop, target
+    text = str(value).strip()
+    if not text or text.lower() in {"none", "null", "n/a", "na"}:
+        return None
+    return text
 
 
-def _parse_verdict(signal: str) -> "RunVerdict":
+def _extract_trader_decision(state, recommendation) -> str:
+    rationale = getattr(recommendation, "rationale", None)
+    if rationale:
+        return str(rationale).strip()
+
+    final_recommendation = getattr(state, "final_trade_recommendation", None)
+    if final_recommendation is not None:
+        final_rationale = getattr(final_recommendation, "rationale", None)
+        if final_rationale:
+            return str(final_rationale).strip()
+
+    final_decision = getattr(state, "final_trade_decision", "")
+    return str(final_decision).strip()
+
+
+def _parse_verdict(recommendation) -> "RunVerdict":
     from app.models.run import RunVerdict
-    _NEGATION = r"(?:do\s+not|don'?t|not\s+a?)\s+"
-    buy_match = re.search(r'\bbuy\b', signal, re.IGNORECASE)
-    buy_negated = re.search(_NEGATION + r'buy\b', signal, re.IGNORECASE)
-    sell_match = re.search(r'\bsell\b', signal, re.IGNORECASE)
-    sell_negated = re.search(_NEGATION + r'sell\b', signal, re.IGNORECASE)
-    if buy_match and not buy_negated:
+
+    signal = str(getattr(recommendation, "signal", "")).strip().lower()
+    if signal in ("buy", "b"):
         return RunVerdict.buy
-    if sell_match and not sell_negated:
+    if signal in ("sell", "s"):
         return RunVerdict.sell
     return RunVerdict.hold

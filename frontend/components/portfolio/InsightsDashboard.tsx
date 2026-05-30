@@ -40,7 +40,7 @@ const ACTION_COLORS: Record<string, string> = {
 const PRIORITY_DOT: Record<string, string> = {
   high:   "bg-red-400",
   medium: "bg-yellow-400",
-  low:    "bg-slate-500",
+  low:    "bg-subtle",
 };
 
 const SEVERITY_ICON: Record<string, string> = {
@@ -72,7 +72,7 @@ function stanceColor(stance: string): string {
   if (stance === "bullish") return "bg-green-500/20 text-green-300 border-green-500/30";
   if (stance === "bearish") return "bg-red-500/20 text-red-300 border-red-500/30";
   if (stance === "mixed")   return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
-  return "bg-slate-700 text-slate-300 border-slate-600";
+  return "bg-muted-surface text-fg-secondary border-input-border";
 }
 
 function fmtDate(iso: string): string {
@@ -112,10 +112,10 @@ function HealthScoreRing({ score }: { score: number }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={`text-2xl font-bold tabular-nums ${healthColor(score)}`}>{score}</span>
-          <span className="text-slate-500 text-xs leading-none">/ 10</span>
+          <span className="text-muted text-xs leading-none">/ 10</span>
         </div>
       </div>
-      <span className="text-slate-500 text-xs">Health Score</span>
+      <span className="text-muted text-xs">Health Score</span>
     </div>
   );
 }
@@ -124,24 +124,24 @@ function ActionItemCard({ item }: { item: InsightActionItem }) {
   const router = useRouter();
 
   return (
-    <div className="flex items-start gap-3 bg-slate-800/50 rounded-sm p-3 border border-slate-700/50">
+    <div className="flex items-start gap-3 bg-input/50 rounded-sm p-3 border border-input-border/50">
       <div className="flex items-center gap-2 mt-0.5 shrink-0">
-        <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[item.priority] ?? "bg-slate-500"}`} />
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-sm border ${ACTION_COLORS[item.action] ?? "bg-slate-700 text-slate-300 border-slate-600"}`}>
+        <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[item.priority] ?? "bg-subtle"}`} />
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-sm border ${ACTION_COLORS[item.action] ?? "bg-muted-surface text-fg-secondary border-input-border"}`}>
           {item.action.replace("_", " ")}
         </span>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <span className="text-slate-200 text-sm font-semibold">{item.ticker}</span>
-            <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">{item.rationale}</p>
+            <span className="text-fg text-sm font-semibold">{item.ticker}</span>
+            <p className="text-muted text-xs mt-0.5 leading-relaxed">{item.rationale}</p>
           </div>
           {item.ticker && (
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker!)}`)}
-                className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+                className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-violet-700 hover:bg-violet-600 text-fg transition-colors"
               >
                 ⚡ Analyze
               </button>
@@ -156,14 +156,14 @@ function ActionItemCard({ item }: { item: InsightActionItem }) {
 
 function RiskAlertCard({ alert }: { alert: InsightRiskAlert }) {
   return (
-    <div className="flex items-start gap-2 bg-slate-800/30 rounded-sm p-2.5 border border-slate-700/30">
+    <div className="flex items-start gap-2 bg-input/30 rounded-sm p-2.5 border border-input-border/30">
       <span className="text-base leading-none mt-0.5">{SEVERITY_ICON[alert.severity] ?? "🔵"}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-slate-300 text-xs leading-relaxed">{alert.description}</p>
+        <p className="text-fg-secondary text-xs leading-relaxed">{alert.description}</p>
         {alert.affected_tickers?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {alert.affected_tickers.map((t) => (
-              <span key={t} className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-sm">{t}</span>
+              <span key={t} className="text-xs bg-muted-surface text-fg-secondary px-1.5 py-0.5 rounded-sm">{t}</span>
             ))}
           </div>
         )}
@@ -178,8 +178,8 @@ function SectorChart({ data }: { data: Record<string, number> }) {
     <div className="space-y-2">
       {entries.map(([sector, pct], i) => (
         <div key={sector} className="flex items-center gap-2">
-          <div className="w-24 text-slate-400 text-xs text-right shrink-0 truncate" title={sector}>{sector}</div>
-          <div className="flex-1 h-4 bg-slate-800 rounded-sm overflow-hidden">
+          <div className="w-24 text-muted text-xs text-right shrink-0 truncate" title={sector}>{sector}</div>
+          <div className="flex-1 h-4 bg-input rounded-sm overflow-hidden">
             <div
               className="h-full rounded-sm transition-all duration-500"
               style={{
@@ -188,7 +188,7 @@ function SectorChart({ data }: { data: Record<string, number> }) {
               }}
             />
           </div>
-          <div className="w-10 text-slate-400 text-xs tabular-nums text-right shrink-0">
+          <div className="w-10 text-muted text-xs tabular-nums text-right shrink-0">
             {typeof pct === "number" ? pct.toFixed(1) : pct}%
           </div>
         </div>
@@ -202,14 +202,14 @@ function InsightHistoryRow({ insight, onSelect, selected }: { insight: Portfolio
     <button
       onClick={onSelect}
       className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded transition-colors ${
-        selected ? "bg-slate-700 border border-slate-600" : "hover:bg-slate-800 border border-transparent"
+        selected ? "bg-muted-surface border border-input-border" : "hover:bg-input border border-transparent"
       }`}
     >
       <div className="shrink-0">
         {insight.health_score != null ? (
           <span className={`text-sm font-bold ${healthColor(insight.health_score)}`}>{insight.health_score}</span>
         ) : (
-          <span className="text-slate-600 text-sm">—</span>
+          <span className="text-subtle text-sm">—</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -224,13 +224,13 @@ function InsightHistoryRow({ insight, onSelect, selected }: { insight: Portfolio
               ? "text-blue-400 animate-pulse"
               : insight.status === "failed"
               ? "text-red-400"
-              : "text-slate-500"
+              : "text-muted"
           }`}>
             {insight.status === "running" ? "Generating…" : insight.status === "pending" ? "Queued…" : timeAgo(insight.generated_at)}
           </span>
         </div>
       </div>
-      <span className="text-xs text-slate-600 shrink-0">
+      <span className="text-xs text-subtle shrink-0">
         {insight.trigger === "scheduled" ? "⏰" : "▶"}
       </span>
     </button>
@@ -272,17 +272,17 @@ function GenerateForm({
   });
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 space-y-3">
-      <p className="text-slate-400 text-sm">
+    <div className="bg-input/60 border border-input-border rounded-lg p-4 space-y-3">
+      <p className="text-muted text-sm">
         Generate a full AI analysis of your portfolio — health score, action items, risk alerts, and sector breakdown.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-slate-400 text-xs mb-1">Provider</label>
+          <label className="block text-muted text-xs mb-1">Provider</label>
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+            className="bg-page border border-input-border rounded-sm px-3 py-1.5 text-fg text-sm focus:outline-hidden focus:border-blue-600"
           >
             {PROVIDERS.map((p) => (
               <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -290,12 +290,12 @@ function GenerateForm({
           </select>
         </div>
         <div>
-          <label className="block text-slate-400 text-xs mb-1">Model</label>
+          <label className="block text-muted text-xs mb-1">Model</label>
           {models.length > 0 ? (
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+              className="bg-page border border-input-border rounded-sm px-3 py-1.5 text-fg text-sm focus:outline-hidden focus:border-blue-600"
             >
               <option value="">— select model —</option>
               {models.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -306,14 +306,14 @@ function GenerateForm({
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PROVIDER_PLACEHOLDERS[provider]}
-              className="bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600 w-48"
+              className="bg-page border border-input-border rounded-sm px-3 py-1.5 text-fg text-sm focus:outline-hidden focus:border-blue-600 w-48"
             />
           )}
         </div>
         <button
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending}
-          className="px-4 py-1.5 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+          className="px-4 py-1.5 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-fg transition-colors"
         >
           {mutation.isPending ? "Starting…" : "Generate Insights"}
         </button>
@@ -363,10 +363,10 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
         <div>
-          <p className="text-slate-300 text-sm font-medium">
+          <p className="text-fg-secondary text-sm font-medium">
             {insight.status === "pending" ? "Queued for analysis…" : "Generating insights…"}
           </p>
-          <p className="text-slate-500 text-xs mt-1">
+          <p className="text-muted text-xs mt-1">
             Using {insight.llm_provider} / {insight.llm_model} · typically 15–45 seconds
           </p>
         </div>
@@ -386,7 +386,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
   return (
     <div className="space-y-5">
       {/* Header: score + stance + summary */}
-      <div className={`bg-slate-800/40 border rounded-lg p-4 flex items-start gap-6 ${healthBg(insight.health_score ?? 5)}`}>
+      <div className={`bg-input/40 border rounded-lg p-4 flex items-start gap-6 ${healthBg(insight.health_score ?? 5)}`}>
         <HealthScoreRing score={insight.health_score ?? 0} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
@@ -395,18 +395,18 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
                 {insight.overall_stance}
               </span>
             )}
-            <span className="text-slate-600 text-xs">{fmtDate(insight.generated_at)}</span>
-            <span className="text-slate-600 text-xs">·</span>
-            <span className="text-slate-600 text-xs capitalize">{insight.trigger}</span>
+            <span className="text-subtle text-xs">{fmtDate(insight.generated_at)}</span>
+            <span className="text-subtle text-xs">·</span>
+            <span className="text-subtle text-xs capitalize">{insight.trigger}</span>
             <div className="flex-1" />
             <button
               onClick={handleExportPdf}
               disabled={pdfLoading}
-              className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded-sm px-2.5 py-1 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
+              className="text-xs text-muted hover:text-fg border border-input-border rounded-sm px-2.5 py-1 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
             >
               {pdfLoading ? (
                 <>
-                  <span className="inline-block w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="inline-block w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
                   Generating…
                 </>
               ) : (
@@ -420,7 +420,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
               )}
             </button>
           </div>
-          <p className="text-slate-300 text-sm leading-relaxed">{insight.summary}</p>
+          <p className="text-fg-secondary text-sm leading-relaxed">{insight.summary}</p>
         </div>
       </div>
 
@@ -428,7 +428,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
         {/* Action Items */}
         {insight.action_items && insight.action_items.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+            <h3 className="text-muted text-xs font-semibold uppercase tracking-wider">
               Action Items
             </h3>
             <div className="space-y-2">
@@ -442,7 +442,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
         {/* Risk Alerts */}
         {insight.risk_alerts && insight.risk_alerts.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+            <h3 className="text-muted text-xs font-semibold uppercase tracking-wider">
               Risk Alerts
             </h3>
             <div className="space-y-2">
@@ -457,10 +457,10 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
       {/* Sector Analysis */}
       {insight.sector_analysis && Object.keys(insight.sector_analysis).length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <h3 className="text-muted text-xs font-semibold uppercase tracking-wider">
             Sector Exposure
           </h3>
-          <div className="bg-slate-800/30 rounded-lg p-4">
+          <div className="bg-input/30 rounded-lg p-4">
             <SectorChart data={insight.sector_analysis} />
           </div>
         </div>
@@ -475,7 +475,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
               {insight.strengths.map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="text-green-500 text-xs mt-0.5">✓</span>
-                  <p className="text-slate-300 text-xs leading-relaxed">{s}</p>
+                  <p className="text-fg-secondary text-xs leading-relaxed">{s}</p>
                 </div>
               ))}
             </div>
@@ -486,7 +486,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
               {insight.weaknesses.map((w, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="text-red-500 text-xs mt-0.5">!</span>
-                  <p className="text-slate-300 text-xs leading-relaxed">{w}</p>
+                  <p className="text-fg-secondary text-xs leading-relaxed">{w}</p>
                 </div>
               ))}
             </div>
@@ -563,7 +563,7 @@ export function InsightsDashboard({ portfolioId, hasHoldings, portfolioName }: I
 
   if (!hasHoldings) {
     return (
-      <div className="text-center py-16 text-slate-500 text-sm">
+      <div className="text-center py-16 text-muted text-sm">
         Upload a portfolio CSV to enable AI insights.
       </div>
     );
@@ -572,13 +572,13 @@ export function InsightsDashboard({ portfolioId, hasHoldings, portfolioName }: I
   return (
     <div>
       <BehavioralAlerts portfolioId={portfolioId} />
-      <div className="flex gap-5">
+      <div className="flex flex-col lg:flex-row gap-5">
       {/* Sidebar: history + generate button */}
-      <div className="w-52 shrink-0 space-y-2">
+      <div className="w-full lg:w-52 shrink-0 space-y-2">
         <button
           onClick={() => setShowGenerate((v) => !v)}
           disabled={isRunning}
-          className="w-full px-3 py-2 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2"
+          className="w-full px-3 py-2 rounded-sm text-sm font-medium bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-fg transition-colors flex items-center justify-center gap-2"
         >
           {isRunning ? (
             <>
@@ -592,7 +592,7 @@ export function InsightsDashboard({ portfolioId, hasHoldings, portfolioName }: I
 
         {history.length > 0 && (
           <div className="space-y-0.5">
-            <p className="text-slate-600 text-xs px-1 py-1">History</p>
+            <p className="text-subtle text-xs px-1 py-1">History</p>
             {history.map((insight) => (
               <InsightHistoryRow
                 key={insight.id}
@@ -612,7 +612,7 @@ export function InsightsDashboard({ portfolioId, hasHoldings, portfolioName }: I
         )}
 
         {!showGenerate && !selectedInsight && (
-          <div className="text-center py-16 text-slate-500 text-sm">
+          <div className="text-center py-16 text-muted text-sm">
             No insights yet.{" "}
             <button
               onClick={() => setShowGenerate(true)}

@@ -33,14 +33,14 @@ export function ApiKeyRow({ provider, label, description, placeholder, docsUrl, 
     <div className="flex items-start gap-4 px-4 py-3">
       <div className="w-36 shrink-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-200 text-sm">{displayName}</span>
+          <span className="text-fg text-sm">{displayName}</span>
           {docsUrl && (
             <a
               href={docsUrl}
               target="_blank"
               rel="noreferrer"
               title="Get API key"
-              className="text-slate-500 hover:text-blue-400 transition-colors"
+              className="text-muted hover:text-blue-400 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
                 <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
@@ -49,9 +49,9 @@ export function ApiKeyRow({ provider, label, description, placeholder, docsUrl, 
             </a>
           )}
         </div>
-        {description && <div className="text-slate-500 text-xs mt-0.5">{description}</div>}
+        {description && <div className="text-muted text-xs mt-0.5">{description}</div>}
       </div>
-      <span className={`text-xs w-28 shrink-0 mt-0.5 ${isSet ? "text-green-400" : "text-slate-500"}`}>
+      <span className={`text-xs w-28 shrink-0 mt-0.5 ${isSet ? "text-green-400" : "text-muted"}`}>
         {isSet ? "Configured ✓" : "Not configured"}
       </span>
       <input
@@ -59,12 +59,12 @@ export function ApiKeyRow({ provider, label, description, placeholder, docsUrl, 
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder ?? "sk-…"}
-        className="bg-slate-800 border border-slate-700 rounded-sm px-2 py-1 text-xs text-slate-200 w-64 focus:outline-hidden focus:border-blue-500"
+        className="bg-input border border-input-border rounded-sm px-2 py-1 text-xs text-fg w-full sm:max-w-xs focus:outline-hidden focus:border-blue-500"
       />
       <button
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || !value}
-        className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1 text-xs disabled:opacity-50 shrink-0"
+        className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-3 py-1 text-xs disabled:opacity-50 shrink-0"
       >
         {mutation.isPending ? "Saving…" : "Save"}
       </button>

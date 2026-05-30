@@ -4,7 +4,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createRun, getProviderModels } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
 
-const ANALYSTS = ["market", "social", "news", "fundamentals", "technical"];
+import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
+
+const ANALYSTS = ANALYST_OPTIONS;
 const LOCAL_PROVIDERS = ["ollama", "vllm"];
 
 const PLACEHOLDERS: Record<string, string> = {
@@ -51,7 +53,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   const [label, setLabel] = useState(initialValues?.label ?? "");
   const [analysisDate, setAnalysisDate] = useState(new Date().toISOString().slice(0, 10));
   const [analysts, setAnalysts] = useState<string[]>(
-    initialValues?.analysts ?? ["market", "social", "news", "fundamentals", "technical"]
+    initialValues?.analysts ?? DEFAULT_ANALYSTS
   );
   const [provider, setProvider] = useState(initialValues?.provider ?? "ionos");
   const [model, setModel] = useState(initialValues?.model ?? "");
@@ -120,20 +122,20 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-navy-700 border border-slate-800 rounded-lg p-6 max-w-lg">
+    <form onSubmit={handleSubmit} className="bg-surface border border-border rounded-lg p-6 max-w-lg">
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">Label <span className="text-slate-600">(optional)</span></label>
+        <label className="block text-muted text-xs mb-1">Label <span className="text-subtle">(optional)</span></label>
         <input
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. pre-earnings check"
-          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
         />
       </div>
 
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">Ticker</label>
+        <label className="block text-muted text-xs mb-1">Ticker</label>
         <input
           required
           type="text"
@@ -141,7 +143,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           placeholder="AAPL"
-          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
         />
         <datalist id="ticker-suggestions">
           {POPULAR_TICKERS.map((t) => <option key={t} value={t} />)}
@@ -149,18 +151,18 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">Analysis Date</label>
+        <label className="block text-muted text-xs mb-1">Analysis Date</label>
         <input
           required
           type="date"
           value={analysisDate}
           onChange={(e) => setAnalysisDate(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
         />
       </div>
 
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">Analysts</label>
+        <label className="block text-muted text-xs mb-1">Analysts</label>
         <div className="flex flex-wrap gap-2">
           {ANALYSTS.map((a) => {
             const selected = analysts.includes(a);
@@ -171,8 +173,8 @@ export function RunForm({ onSuccess, initialValues }: Props) {
                 onClick={() => toggleAnalyst(a)}
                 className={`px-3 py-1 rounded border text-xs capitalize ${
                   selected
-                    ? "bg-blue-700 text-white border-blue-600"
-                    : "bg-slate-800 text-slate-400 border-slate-700"
+                    ? "bg-blue-700 text-fg border-blue-600"
+                    : "bg-input text-muted border-input-border"
                 }`}
               >
                 {a}
@@ -186,11 +188,11 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">LLM Provider</label>
+        <label className="block text-muted text-xs mb-1">LLM Provider</label>
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
         >
           <option value="openai">openai</option>
           <option value="anthropic">anthropic</option>
@@ -203,16 +205,16 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-slate-400 text-xs mb-1">LLM Model</label>
+        <label className="block text-muted text-xs mb-1">LLM Model</label>
         {modelsLoading ? (
-          <select disabled className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-500 text-sm">
+          <select disabled className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-muted text-sm">
             <option>Loading models…</option>
           </select>
         ) : models.length > 0 ? (
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+            className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
           >
             {models.map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -225,7 +227,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PLACEHOLDERS[provider]}
-              className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+              className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
             />
             {isLocal && <p className="text-amber-400 text-xs mt-1">Server unreachable — enter model name manually</p>}
           </>
@@ -233,11 +235,11 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       </div>
 
       <div className="mb-6">
-        <label className="block text-slate-400 text-xs mb-1">Research Depth</label>
+        <label className="block text-muted text-xs mb-1">Research Depth</label>
         <select
           value={depth}
           onChange={(e) => setDepth(e.target.value as "quick" | "standard" | "deep")}
-          className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 text-sm focus:outline-hidden focus:border-blue-600"
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
         >
           <option value="quick">Quick — 1 debate round, faster</option>
           <option value="standard">Standard — 2 debate rounds</option>
@@ -248,7 +250,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       <button
         type="submit"
         disabled={mutation.isPending || analysts.length === 0}
-        className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+        className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {mutation.isPending ? "Launching…" : "Launch Run"}
       </button>

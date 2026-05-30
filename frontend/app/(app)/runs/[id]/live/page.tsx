@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { TopNav } from "@/components/layout/TopNav";
 import { AgentFeed } from "@/components/runs/AgentFeed";
 import { AgentSidebar } from "@/components/runs/AgentSidebar";
 import { PipelinePanel } from "@/components/runs/PipelinePanel";
@@ -23,8 +22,6 @@ export default function LiveRunPage() {
     refetchInterval: 3000,
   });
 
-  // Seed historical events on mount so revisiting a live or completed run
-  // shows all past events rather than a blank feed.
   useEffect(() => {
     getRunEvents(id).then((past) => {
       setEvents(past);
@@ -35,7 +32,6 @@ export default function LiveRunPage() {
   }, [id]);
 
   const handleEvent = useCallback((e: AgentEventPayload) => {
-    // Deduplicate against events already loaded from the REST endpoint.
     if (e.sequence != null && seenSequences.current.has(e.sequence)) return;
     if (e.sequence != null) seenSequences.current.add(e.sequence);
     setEvents((prev) => [...prev, e]);
@@ -58,10 +54,9 @@ export default function LiveRunPage() {
     run?.status === "aborted";
 
   return (
-    <div className="h-screen flex flex-col bg-navy-900">
-      <TopNav />
-      <div className="flex gap-4 p-6 max-w-7xl mx-auto w-full flex-1 overflow-hidden">
-        <div className="w-64 shrink-0 flex flex-col gap-4 overflow-y-auto">
+    <div className="min-h-0 flex-1 flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 p-4 sm:p-6 max-w-7xl mx-auto w-full flex-1 overflow-hidden">
+        <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4 overflow-y-auto">
           <AgentSidebar run={run} onAbort={handleAbort} />
           {run && <PipelinePanel analysts={run.analysts} events={events} />}
           {isDone && (
@@ -75,8 +70,8 @@ export default function LiveRunPage() {
         </div>
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-slate-200 text-sm font-semibold">Live Event Feed</h1>
-            <span className="text-slate-500 text-xs">{events.length} events</span>
+            <h1 className="text-fg text-sm font-semibold">Live Event Feed</h1>
+            <span className="text-muted text-xs">{events.length} events</span>
           </div>
           <AgentFeed events={events} />
         </div>

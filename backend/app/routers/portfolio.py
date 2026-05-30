@@ -984,7 +984,7 @@ class BatchAnalyzeRequest(BaseModel):
     llm_provider: str
     llm_model: str
     depth: str = "standard"
-    analysts: list[str] = ["market", "social", "news", "fundamentals", "technical"]
+    analysts: list[str] = ["market", "social", "news", "fundamentals"]
     staleness_days: int = 7
 
 

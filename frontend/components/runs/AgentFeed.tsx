@@ -8,7 +8,7 @@ interface AgentFeedProps {
 
 const agentNameColor: Record<AgentEventPayload["type"], string> = {
   started: "text-blue-300",
-  token: "text-slate-400",
+  token: "text-muted",
   completed: "text-green-400",
   error: "text-red-400",
   run_completed: "text-green-400",
@@ -23,13 +23,13 @@ export function AgentFeed({ events }: AgentFeedProps) {
   }, [events]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-navy-900 rounded-sm border border-slate-800 p-3 space-y-1">
+    <div className="flex-1 overflow-y-auto bg-page rounded-sm border border-border p-3 space-y-1">
       {events.map((event, i) => (
         <div key={i} className="flex gap-2">
           <span className={`text-xs font-mono w-28 shrink-0 ${agentNameColor[event.type]}`}>
             {event.agent ?? event.type}
           </span>
-          <span className="text-slate-300 text-xs font-mono whitespace-pre-wrap flex-1">
+          <span className="text-fg-secondary text-xs font-mono whitespace-pre-wrap flex-1">
             {event.token ?? event.summary ?? event.message ?? ""}
           </span>
         </div>

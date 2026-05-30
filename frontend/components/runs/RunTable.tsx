@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
+import { Archive, ArchiveRestore, Check, Eye, LoaderCircle, RefreshCcw, Trash2, X } from "lucide-react";
 import { archiveRun, deleteRun } from "@/lib/api";
+import { IconButton, IconLink } from "@/components/ui/IconButton";
 import type { Run } from "@/lib/types";
 
 function rerunUrl(run: Run): string {
@@ -32,7 +33,7 @@ interface RunTableProps {
 }
 
 const statusBadge: Record<Run["status"], string> = {
-  pending: "bg-slate-700 text-slate-300",
+  pending: "bg-muted-surface text-fg-secondary",
   running: "bg-blue-900 text-blue-300",
   completed: "bg-green-900 text-green-300",
   aborted: "bg-yellow-900 text-yellow-300",
@@ -47,12 +48,12 @@ const verdictBadge: Record<NonNullable<Run["verdict"]>, string> = {
 
 function PriceSummary({ run }: { run: Run }) {
   const { suggested_entry: entry, suggested_stop: stop, suggested_target: target } = run;
-  if (!entry && !stop && !target) return <span className="text-slate-600">—</span>;
+  if (!entry && !stop && !target) return <span className="text-subtle">—</span>;
 
   const fmt = (v: string | null) => (v ? `$${v}` : "—");
   return (
     <span
-      className="font-mono text-xs text-slate-300"
+      className="font-mono text-xs text-fg-secondary"
       title="Entry · Stop · Target"
     >
       {fmt(entry)} · {fmt(stop)} · {fmt(target)}
@@ -88,7 +89,7 @@ function RunRow({
   const isRunning = run.status === "running";
 
   return (
-    <tr className={`border-t border-slate-800 hover:bg-slate-800/40 ${selected ? "bg-blue-950/30" : ""}`}>
+    <tr className={`border-t border-border hover:bg-input/40 ${selected ? "bg-blue-950/30" : ""}`}>
       {onToggle !== undefined && (
         <td className="px-3 py-3">
           <input
@@ -100,8 +101,8 @@ function RunRow({
         </td>
       )}
       <td className="px-4 py-3">
-        <span className="text-slate-200 font-mono">{run.ticker}</span>
-        {run.label && <p className="text-slate-500 text-xs mt-0.5">{run.label}</p>}
+        <span className="text-fg font-mono">{run.ticker}</span>
+        {run.label && <p className="text-muted text-xs mt-0.5">{run.label}</p>}
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium ${statusBadge[run.status]}`}>
@@ -117,59 +118,71 @@ function RunRow({
             {run.verdict}
           </span>
         ) : (
-          <span className="text-slate-600">—</span>
+          <span className="text-subtle">—</span>
         )}
       </td>
       <td className="px-4 py-3">
         <PriceSummary run={run} />
       </td>
-      <td className="px-4 py-3 text-slate-400 text-xs">{run.analysts.join(", ")}</td>
-      <td className="px-4 py-3 text-slate-400 text-xs font-mono">{run.llm_model}</td>
-      <td className="px-4 py-3 text-slate-400 text-xs">
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">{run.analysts.join(", ")}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-mono">{run.llm_model}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">
         {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
       </td>
-      <td className="px-4 py-3 text-slate-400 text-xs">{formatDuration(run.started_at, run.completed_at)}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">{formatDuration(run.started_at, run.completed_at)}</td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link href={`/runs/${run.id}`} className="text-blue-400 hover:underline text-xs">
-            View
-          </Link>
-          <Link href={rerunUrl(run)} className="text-slate-400 hover:text-blue-400 text-xs">
-            Re-run
-          </Link>
-          <button
+        <div className="flex items-center gap-1.5">
+          <IconLink
+            href={`/runs/${run.id}`}
+            icon={Eye}
+            label={`View ${run.ticker} run`}
+            title="View"
+            tone="primary"
+          />
+          <IconLink
+            href={rerunUrl(run)}
+            icon={RefreshCcw}
+            label={`Re-run ${run.ticker} analysis`}
+            title="Re-run"
+            tone="primary"
+          />
+          <IconButton
+            icon={archiveMutation.isPending ? LoaderCircle : archived ? ArchiveRestore : Archive}
+            label={archived ? `Unarchive ${run.ticker} run` : `Archive ${run.ticker} run`}
+            title={isRunning ? "Cannot archive a running run" : archived ? "Unarchive" : "Archive"}
+            tone="default"
             onClick={() => archiveMutation.mutate()}
             disabled={archiveMutation.isPending || isRunning}
-            className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
-            title={isRunning ? "Cannot archive a running run" : archived ? "Unarchive" : "Archive"}
-          >
-            {archiveMutation.isPending ? "…" : archived ? "Unarchive" : "Archive"}
-          </button>
+            iconClassName={archiveMutation.isPending ? "animate-spin" : undefined}
+          />
           {confirmDelete ? (
             <span className="flex items-center gap-1">
-              <button
+              <IconButton
+                icon={deleteMutation.isPending ? LoaderCircle : Check}
+                label={`Confirm deleting ${run.ticker} run`}
+                title="Confirm delete"
+                tone="danger"
                 onClick={() => deleteMutation.mutate()}
                 disabled={deleteMutation.isPending}
-                className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
-              >
-                {deleteMutation.isPending ? "…" : "Confirm"}
-              </button>
-              <button
+                iconClassName={deleteMutation.isPending ? "animate-spin" : undefined}
+              />
+              <IconButton
+                icon={X}
+                label={`Cancel deleting ${run.ticker} run`}
+                title="Cancel"
+                tone="default"
                 onClick={() => setConfirmDelete(false)}
-                className="text-xs text-slate-500 hover:text-slate-300"
-              >
-                Cancel
-              </button>
+              />
             </span>
           ) : (
-            <button
+            <IconButton
+              icon={Trash2}
+              label={`Delete ${run.ticker} run`}
+              title={isRunning ? "Abort the run before deleting" : "Delete permanently"}
+              tone="danger"
               onClick={() => setConfirmDelete(true)}
               disabled={isRunning}
-              className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={isRunning ? "Abort the run before deleting" : "Delete permanently"}
-            >
-              Delete
-            </button>
+            />
           )}
         </div>
       </td>
@@ -203,9 +216,9 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
   }
 
   return (
-    <div className="overflow-x-auto rounded-sm border border-slate-800">
+    <div className="overflow-x-auto rounded-sm border border-border">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
+        <thead className="sticky top-0 bg-surface text-muted text-xs uppercase tracking-wider">
           <tr>
             {showCheckboxes && (
               <th className="px-3 py-3 w-8">
@@ -223,17 +236,17 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
             <th className="text-left px-4 py-3">Status</th>
             <th className="text-left px-4 py-3">Verdict</th>
             <th className="text-left px-4 py-3">Prices</th>
-            <th className="text-left px-4 py-3">Analysts</th>
-            <th className="text-left px-4 py-3">Model</th>
-            <th className="text-left px-4 py-3">Started</th>
-            <th className="text-left px-4 py-3">Duration</th>
+            <th className="hidden lg:table-cell text-left px-4 py-3">Analysts</th>
+            <th className="hidden lg:table-cell text-left px-4 py-3">Model</th>
+            <th className="hidden lg:table-cell text-left px-4 py-3">Started</th>
+            <th className="hidden lg:table-cell text-left px-4 py-3">Duration</th>
             <th className="text-left px-4 py-3">Actions</th>
           </tr>
         </thead>
         <tbody>
           {runs.length === 0 ? (
             <tr>
-              <td colSpan={showCheckboxes ? 10 : 9} className="text-center text-slate-500 px-4 py-8">
+              <td colSpan={showCheckboxes ? 10 : 9} className="text-center text-muted px-4 py-8">
                 {archived ? "No archived runs." : "No runs yet."}
               </td>
             </tr>

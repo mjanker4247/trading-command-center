@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TopNav } from "@/components/layout/TopNav";
 import { RunFilters, dateRangeToFrom, type DateRangePreset } from "@/components/runs/RunFilters";
 import { RunTable } from "@/components/runs/RunTable";
 import { StatsBar } from "@/components/runs/StatsBar";
@@ -90,14 +89,12 @@ export default function RunsPage() {
   const canCompare = selectedIds.length === 2 && selectedRuns.every((r) => r.status === "completed");
 
   return (
-    <>
-      <TopNav />
-      <main className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-slate-200 text-lg font-semibold">Run History</h1>
-          <div className="flex items-center gap-3">
+    <main className="px-4 py-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h1 className="text-fg text-lg font-semibold">Run History</h1>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {lastUpdated && (
-              <span className="text-slate-500 text-xs">
+              <span className="text-muted text-xs">
                 Updated {secondsAgo < 5 ? "just now" : `${secondsAgo}s ago`}
               </span>
             )}
@@ -105,7 +102,7 @@ export default function RunsPage() {
               onClick={() => refetch()}
               disabled={isFetching}
               title="Refresh"
-              className="text-slate-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
+              className="text-muted hover:text-fg disabled:opacity-40 transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -120,20 +117,20 @@ export default function RunsPage() {
               onClick={() => downloadRunsCsv(runs)}
               disabled={runs.length === 0}
               title="Export current view to CSV"
-              className="text-slate-400 hover:text-slate-200 disabled:opacity-40 text-xs border border-slate-700 rounded px-2 py-1.5"
+              className="text-muted hover:text-fg disabled:opacity-40 text-xs border border-input-border rounded px-2 py-1.5"
             >
               Export CSV
             </button>
             <Link
               href="/runs/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-3 py-1.5 text-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-3 py-1.5 text-sm"
             >
               New Run
             </Link>
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-slate-800 mb-4">
+        <div className="flex gap-1 border-b border-border mb-4">
           {(["active", "archived"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -141,7 +138,7 @@ export default function RunsPage() {
               className={
                 tab === t
                   ? "px-4 py-2 text-sm border-b-2 border-blue-400 text-blue-400 capitalize"
-                  : "px-4 py-2 text-sm text-slate-500 hover:text-slate-300 capitalize border-b-2 border-transparent"
+                  : "px-4 py-2 text-sm text-muted hover:text-fg-secondary capitalize border-b-2 border-transparent"
               }
             >
               {t}
@@ -153,14 +150,14 @@ export default function RunsPage() {
         <RunFilters value={filters} onChange={setFilters} />
 
         {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2.5 mb-1">
-            <span className="text-sm text-slate-300">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-input/80 border border-input-border rounded-lg px-4 py-2.5 mb-1">
+            <span className="text-sm text-fg-secondary">
               {selectedIds.length} {selectedIds.length === 1 ? "run" : "runs"} selected
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 onClick={() => { setSelectedIds([]); setConfirmBulkDelete(false); }}
-                className="text-xs text-slate-400 hover:text-slate-200"
+                className="text-xs text-muted hover:text-fg"
               >
                 Clear
               </button>
@@ -187,7 +184,7 @@ export default function RunsPage() {
                     </button>
                     <button
                       onClick={() => setConfirmBulkDelete(false)}
-                      className="text-xs text-slate-500 hover:text-slate-300"
+                      className="text-xs text-muted hover:text-fg-secondary"
                     >
                       Cancel
                     </button>
@@ -195,7 +192,7 @@ export default function RunsPage() {
                 ) : (
                   <button
                     onClick={() => setConfirmBulkDelete(true)}
-                    className="text-xs text-slate-400 hover:text-red-400"
+                    className="text-xs text-muted hover:text-red-400"
                   >
                     Delete {deletableCount}
                   </button>
@@ -205,7 +202,7 @@ export default function RunsPage() {
               {canCompare && (
                 <button
                   onClick={() => router.push(`/runs/compare?a=${selectedIds[0]}&b=${selectedIds[1]}`)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-fg text-xs px-3 py-1.5 rounded-sm"
                 >
                   Compare 2 runs →
                 </button>
@@ -214,7 +211,7 @@ export default function RunsPage() {
           </div>
         )}
 
-        {isLoading && <p className="text-slate-500 text-sm">Loading…</p>}
+        {isLoading && <p className="text-muted text-sm">Loading…</p>}
         {isError && <p className="text-red-400 text-sm">Failed to load runs.</p>}
         {!isLoading && !isError && (
           <RunTable
@@ -226,6 +223,5 @@ export default function RunsPage() {
           />
         )}
       </main>
-    </>
   );
 }

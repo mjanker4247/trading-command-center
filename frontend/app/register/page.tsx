@@ -30,22 +30,22 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-900">
-      <div className="w-80 bg-navy-700 border border-slate-800 rounded-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-page">
+      <div className="w-full max-w-sm mx-4 bg-surface border border-border rounded-lg p-8">
         <div className="flex justify-center mb-4">
           <Logo height={44} />
         </div>
-        <p className="text-slate-500 text-xs text-center mb-6">Create your account</p>
+        <p className="text-muted text-xs text-center mb-6">Create your account</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {([["Name", "text", name, setName], ["Email", "email", email, setEmail], ["Password", "password", password, setPassword]] as [string, string, string, (v: string) => void][]).map(([label, type, value, setter]) => (
             <div key={label}>
-              <label className="text-slate-400 text-xs uppercase tracking-wide block mb-1">{label}</label>
+              <label className="text-muted text-xs uppercase tracking-wide block mb-1">{label}</label>
               <input type={type} value={value} onChange={e => setter(e.target.value)} required
-                className="w-full bg-slate-800 border border-slate-700 rounded-sm px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-blue-500" />
+                className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-sm text-fg focus:outline-hidden focus:border-blue-500" />
             </div>
           ))}
           {error && <p className="text-red-400 text-xs">{error}</p>}
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-sm px-4 py-2 text-sm font-medium">Create Account</button>
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-4 py-2 text-sm font-medium">Create Account</button>
         </form>
       </div>
     </div>
