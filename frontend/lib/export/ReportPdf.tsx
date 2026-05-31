@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Run, Report } from "../types";
 import { getAnalystReportContent } from "@/lib/analystReports";
+import { normalizeMarkdownBlock } from "@/lib/normalizeMarkdown";
 import { parseMdForPdf, type MdSegment } from "./parseMdForPdf";
 
 const HEADER_HEIGHT = 36;
@@ -292,7 +293,7 @@ function PdfTable({ rows }: { rows: string[][] }) {
 
 // ── markdown content renderer ─────────────────────────────────────────────
 function MdContent({ text }: { text: string }) {
-  const segments = parseMdForPdf(text);
+  const segments = parseMdForPdf(normalizeMarkdownBlock(text));
   return (
     <View>
       {segments.map((seg: MdSegment, i: number) => {

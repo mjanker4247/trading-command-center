@@ -1,7 +1,6 @@
 "use client";
 import type { Run, Report } from "@/lib/types";
 import { Markdown } from "@/components/ui/Markdown";
-import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 interface Props {
   run: Run | undefined;
@@ -73,7 +72,7 @@ export function TraderDecision({ run, report }: Props) {
           )}
 
           {report.trader_decision && (
-            <Markdown>{normalizeMarkdown(report.trader_decision)}</Markdown>
+            <Markdown>{report.trader_decision}</Markdown>
           )}
         </div>
       )}

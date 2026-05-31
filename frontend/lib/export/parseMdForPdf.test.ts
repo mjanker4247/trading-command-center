@@ -23,7 +23,7 @@ test("parses bullet with asterisk", () => {
 });
 
 test("parses blank line", () => {
-  assert.deepEqual(parseMdForPdf(""), [{ kind: "blank" }]);
+  assert.deepEqual(parseMdForPdf(""), []);
 });
 
 test("parses paragraph", () => {
@@ -37,8 +37,11 @@ test("strips trailing whitespace", () => {
 test("parses multi-line input", () => {
   assert.deepEqual(parseMdForPdf("# H1\n\nParagraph.\n- Bullet"), [
     { kind: "h1", text: "H1" },
-    { kind: "blank" },
     { kind: "paragraph", text: "Paragraph." },
     { kind: "bullet", text: "Bullet" },
   ]);
+});
+
+test("parses thematic break as blank spacer", () => {
+  assert.deepEqual(parseMdForPdf("---"), [{ kind: "blank" }]);
 });

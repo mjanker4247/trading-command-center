@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { Report } from "@/lib/types";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { Markdown } from "@/components/ui/Markdown";
-import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 interface Props {
   report: Report | undefined;
@@ -48,7 +47,7 @@ export function AnalystReports({ report, analysts }: Props) {
         ))}
       </div>
       {display ? (
-        <Markdown>{normalizeMarkdown(display)}</Markdown>
+        <Markdown>{display}</Markdown>
       ) : (
         <p className="text-muted text-sm">No report available.</p>
       )}

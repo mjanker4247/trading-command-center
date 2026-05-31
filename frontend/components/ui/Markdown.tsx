@@ -2,6 +2,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
 import type { Components } from "react-markdown";
+import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const components: Components = {
   h1: ({ children }) => (
@@ -73,5 +74,9 @@ interface Props {
 }
 
 export function Markdown({ children }: Props) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{children}</ReactMarkdown>;
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      {normalizeMarkdown(children)}
+    </ReactMarkdown>
+  );
 }
