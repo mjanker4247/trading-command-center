@@ -503,9 +503,10 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_finnhub_key" && (
-        <div className="text-xs text-muted bg-input/50 border border-input-border rounded-sm px-3 py-2">
-          Live prices unavailable — add your Finnhub API key in{" "}
-          <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>.
+        <div className="text-xs text-amber-400/80 bg-amber-900/20 border border-amber-700/40 rounded-sm px-3 py-2">
+          Showing delayed prices via Yahoo Finance — add your Finnhub API key in{" "}
+          <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>{" "}
+          for real-time data.
         </div>
       )}
 
