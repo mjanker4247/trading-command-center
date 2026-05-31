@@ -13,6 +13,8 @@ import {
 } from "@/lib/api";
 import type { WatchlistItem, AddWatchlistItemRequest } from "@/lib/types";
 import { IconButton } from "@/components/ui/IconButton";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS, responseLanguageLabel } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
 
@@ -212,6 +214,7 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
   const [model, setModel] = useState("");
   const [depth, setDepth] = useState<"quick" | "standard" | "deep">("standard");
   const [analysts, setAnalysts] = useState<string[]>(DEFAULT_ANALYSTS);
+  const [responseLanguage, setResponseLanguage] = useState<ResponseLanguage>(DEFAULT_RESPONSE_LANGUAGE);
   const [cron, setCron] = useState<string | null>("0 9 * * 1");
 
   const isLocal = LOCAL_PROVIDERS.includes(provider);
@@ -239,6 +242,7 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
       llm_model: model || PLACEHOLDERS[provider] || "",
       depth,
       analysts,
+      response_language: responseLanguage,
       schedule_cron: cron,
     });
     setTicker("");
@@ -249,7 +253,7 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
   return (
     <div className="flex flex-col gap-5">
       {/* Row 1: ticker + provider + model + depth */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Ticker</label>
           <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" className={inputCls} />
@@ -287,6 +291,15 @@ function AddItemForm({ onAdd, isPending }: { onAdd: (req: AddWatchlistItemReques
             <option value="quick">Quick</option>
             <option value="standard">Standard</option>
             <option value="deep">Deep</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted">Language</label>
+          <select value={responseLanguage} onChange={(e) => setResponseLanguage(e.target.value as ResponseLanguage)} className={inputCls}>
+            {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -338,6 +351,7 @@ function ItemRow({ item, onRemove, onToggle, onRunNow }: {
       <td className="px-4 py-3 font-semibold text-fg">{item.ticker}</td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-sm">{item.llm_provider} / {item.llm_model}</td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-sm">{item.depth}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-sm">{responseLanguageLabel(item.response_language)}</td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">{item.analysts.join(", ")}</td>
       <td className="hidden lg:table-cell px-4 py-3"><CronLabel cron={item.schedule_cron} /></td>
       <td className="px-4 py-3 text-xs">
@@ -461,6 +475,7 @@ export default function WatchlistPage() {
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Ticker</th>
                     <th className="hidden lg:table-cell px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Model</th>
                     <th className="hidden lg:table-cell px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Depth</th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Language</th>
                     <th className="hidden lg:table-cell px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Analysts</th>
                     <th className="hidden lg:table-cell px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Schedule</th>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Last Run</th>

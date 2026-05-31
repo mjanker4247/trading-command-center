@@ -231,6 +231,75 @@ Nginx listens on port 80 and routes `/api/*` to FastAPI, `/ws/*` to the WebSocke
 </details>
 
 <details>
+<summary>Database migrations</summary>
+
+AgentFloor uses Alembic for database schema changes. Run migrations whenever you pull a version that adds or changes SQLAlchemy models.
+
+### Local development database
+
+Start Postgres first:
+
+```bash
+cd /path/to/trading-command-center
+docker compose up db -d
+```
+
+Then apply all pending migrations from the backend directory:
+
+```bash
+cd backend
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
+  uv run alembic upgrade head
+```
+
+If you are not using `uv`, run the same command with your activated Python environment:
+
+```bash
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
+  alembic upgrade head
+```
+
+### Full-stack Docker database
+
+For the compose-managed stack, run Alembic from the backend container against the internal database host:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+If your backend container does not already have `DATABASE_URL` in its environment, pass it explicitly:
+
+```bash
+docker compose exec \
+  -e DATABASE_URL=postgresql://agentfloor:agentfloor@db:5432/agentfloor \
+  backend alembic upgrade head
+```
+
+### Verify current schema revision
+
+```bash
+cd backend
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
+  uv run alembic current
+```
+
+The output should show the latest revision with `(head)`.
+
+### Roll back the latest migration
+
+Use this only if you need to undo the most recent schema change:
+
+```bash
+cd backend
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
+  uv run alembic downgrade -1
+```
+
+> **Note:** Local development Postgres is exposed on port **5433**. Inside Docker Compose, services talk to the database at host `db` on port **5432**.
+
+</details>
+
+<details>
 <summary>Environment variables</summary>
 
 | Variable | Required | Description |

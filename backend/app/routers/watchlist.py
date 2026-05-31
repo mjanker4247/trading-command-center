@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.watchlist import Watchlist, WatchlistItem
 from app.models.user import User
 from app.dependencies import get_current_user
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
 
 router = APIRouter()
 
@@ -22,7 +23,13 @@ class WatchlistItemCreate(BaseModel):
     llm_model: str
     depth: str = "standard"
     analysts: list[str] = _DEFAULT_ANALYSTS
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
     schedule_cron: str | None = None
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
 
 class WatchlistItemUpdate(BaseModel):
@@ -32,6 +39,14 @@ class WatchlistItemUpdate(BaseModel):
     llm_model: str | None = None
     depth: str | None = None
     analysts: list[str] | None = None
+    response_language: str | None = None
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_response_language(v)
 
 
 class WatchlistItemResponse(BaseModel):
@@ -42,6 +57,7 @@ class WatchlistItemResponse(BaseModel):
     llm_model: str
     depth: str
     analysts: list[str]
+    response_language: str
     schedule_cron: str | None
     enabled: bool
     last_run_at: datetime | None
@@ -110,6 +126,7 @@ async def add_watchlist_item(
         llm_model=req.llm_model,
         depth=req.depth,
         analysts=analysts,
+        response_language=req.response_language,
         schedule_cron=req.schedule_cron,
     )
     db.add(item)
@@ -206,6 +223,7 @@ async def trigger_watchlist_run(
         llm_model=item.llm_model,
         depth=item.depth,
         analysts=analysts,
+        response_language=item.response_language,
         label=f"Watchlist: {item.ticker}",
     )
     db.add(run)
@@ -220,5 +238,6 @@ async def trigger_watchlist_run(
         "llm_model": run.llm_model,
         "depth": run.depth,
         "analysts": run.analysts,
+        "response_language": run.response_language,
     })
     return {"run_id": str(run.id)}

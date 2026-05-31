@@ -43,6 +43,7 @@ async def _fire_watchlist_item(item_id: str) -> None:
             llm_model=item.llm_model,
             depth=item.depth,
             analysts=_crypto_safe_analysts(item.ticker, item.analysts or ["market", "social", "news", "fundamentals"]),
+            response_language=item.response_language,
             label=f"Scheduled: {item.ticker}",
         )
         db.add(run)
@@ -57,6 +58,7 @@ async def _fire_watchlist_item(item_id: str) -> None:
             "llm_model": run.llm_model,
             "depth": run.depth,
             "analysts": run.analysts,
+            "response_language": run.response_language,
         })
 
 

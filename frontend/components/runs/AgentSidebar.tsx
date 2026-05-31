@@ -1,5 +1,6 @@
 "use client";
 import type { Run } from "@/lib/types";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
 
 interface AgentSidebarProps {
   run: Run | undefined;
@@ -63,6 +64,10 @@ export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
             <li key={a} className="text-fg-secondary text-xs capitalize">{a}</li>
           ))}
         </ul>
+      </div>
+      <div>
+        <p className="text-muted text-xs uppercase tracking-wider mb-1">Response Language</p>
+        <p className="text-fg-secondary text-xs">{responseLanguageLabel(run.response_language)}</p>
       </div>
       <div>
         <p className="text-muted text-xs uppercase tracking-wider mb-1">Created</p>

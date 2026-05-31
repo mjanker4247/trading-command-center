@@ -1,6 +1,7 @@
 import type { Run, Report } from "../types";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
 
 /** "fundamental_analysis" → "Fundamental Analysis" */
 function humanize(s: string): string {
@@ -53,7 +54,8 @@ export function buildMarkdown(run: Run, report: Report): string {
     `**Verdict:** ${report.verdict.toUpperCase()}\n\n` +
     pricesLine +
     `**Model:** ${run.llm_provider} / ${run.llm_model}` +
-    ` · **Depth:** ${String(run.depth)}\n\n` +
+    ` · **Depth:** ${String(run.depth)}` +
+    ` · **Language:** ${responseLanguageLabel(run.response_language)}\n\n` +
     `**Analysts:** ${run.analysts.map((a) => humanize(a)).join(", ")}\n\n`;
 
   const situationSummary = (raw?.situation_summary as string | undefined)?.trim() ?? "";

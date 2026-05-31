@@ -101,6 +101,7 @@ async def execute_run(run_id: str, config: dict) -> None:
     from app.models.report import Report
     from app.services.websocket_manager import ws_manager
     from app.utils.asset_type import is_crypto as _is_crypto
+    from app.utils.response_language import normalize_response_language
     from app.utils.tradingagents_analysts import normalize_analysts
 
     sync_q: SyncQueue = SyncQueue()
@@ -160,6 +161,7 @@ async def execute_run(run_id: str, config: dict) -> None:
         model = config.get("llm_model", "")
         depth = config.get("depth", "standard")
         ticker = config.get("ticker", "")
+        response_language = normalize_response_language(config.get("response_language"))
         analysts = normalize_analysts(
             config.get("analysts"),
             exclude_fundamentals=_is_crypto(ticker),
@@ -173,7 +175,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             llm_provider=ta_provider,
             deep_think_llm=model,
             quick_think_llm=model,
-            response_language="en-US",
+            response_language=response_language,
             **depth_params,
         )
 

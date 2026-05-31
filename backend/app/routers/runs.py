@@ -124,6 +124,7 @@ async def create_run(
         llm_model=req.llm_model,
         depth=req.depth,
         analysts=analysts,
+        response_language=req.response_language,
         label=req.label,
     )
     db.add(run)
@@ -136,6 +137,7 @@ async def create_run(
         "llm_model": run.llm_model,
         "depth": run.depth,
         "analysts": run.analysts,
+        "response_language": run.response_language,
     })
     return run
 

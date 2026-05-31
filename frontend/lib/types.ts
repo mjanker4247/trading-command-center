@@ -1,3 +1,5 @@
+import type { ResponseLanguage } from "./responseLanguage";
+
 export interface User {
   id: string;
   email: string;
@@ -14,6 +16,7 @@ export interface Run {
   llm_model: string;
   depth: "quick" | "standard" | "deep";
   analysts: string[];
+  response_language: ResponseLanguage;
   label: string | null;
   notes: string | null;
   status: "pending" | "running" | "completed" | "aborted" | "failed";
@@ -72,6 +75,7 @@ export interface CreateRunRequest {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language?: ResponseLanguage;
   label?: string;
 }
 
@@ -108,6 +112,7 @@ export interface WatchlistItem {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language: ResponseLanguage;
   schedule_cron: string | null;
   enabled: boolean;
   last_run_at: string | null;
@@ -130,6 +135,7 @@ export interface AddWatchlistItemRequest {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language?: ResponseLanguage;
   schedule_cron?: string | null;
 }
 

@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createRun, getProviderModels } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
 
@@ -40,6 +42,7 @@ export interface RunFormInitialValues {
   model?: string;
   depth?: string;
   analysts?: string[];
+  response_language?: ResponseLanguage;
   label?: string;
 }
 
@@ -59,6 +62,9 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   const [model, setModel] = useState(initialValues?.model ?? "");
   const [depth, setDepth] = useState<"quick" | "standard" | "deep">(
     (initialValues?.depth as "quick" | "standard" | "deep") ?? "standard"
+  );
+  const [responseLanguage, setResponseLanguage] = useState<ResponseLanguage>(
+    initialValues?.response_language ?? DEFAULT_RESPONSE_LANGUAGE
   );
 
   const isLocal = LOCAL_PROVIDERS.includes(provider);
@@ -117,6 +123,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       llm_provider: provider,
       llm_model: model || PLACEHOLDERS[provider],
       depth,
+      response_language: responseLanguage,
       ...(label ? { label } : {}),
     });
   }
@@ -244,6 +251,19 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           <option value="quick">Quick — 1 debate round, faster</option>
           <option value="standard">Standard — 2 debate rounds</option>
           <option value="deep">Deep — 3 debate rounds, most thorough</option>
+        </select>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-muted text-xs mb-1">Response Language</label>
+        <select
+          value={responseLanguage}
+          onChange={(e) => setResponseLanguage(e.target.value as ResponseLanguage)}
+          className="w-full bg-input border border-input-border rounded-sm px-3 py-2 text-fg text-sm focus:outline-hidden focus:border-blue-600"
+        >
+          {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </select>
       </div>
 

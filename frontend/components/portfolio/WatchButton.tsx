@@ -5,11 +5,14 @@ import { Check, LoaderCircle, Star, X } from "lucide-react";
 import { addWatchlistItem, getWatchlist, getProviderModels } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
 import { IconButton } from "@/components/ui/IconButton";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 
 interface WatchDraft {
   llm_provider: string;
   llm_model: string;
   depth: string;
+  response_language: ResponseLanguage;
 }
 
 const PROVIDERS = ["openai", "anthropic", "google", "groq", "ionos", "ollama", "vllm"];
@@ -20,7 +23,12 @@ export type { WatchDraft };
 export function WatchButton({ ticker, compact = false }: { ticker: string; compact?: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<WatchDraft>({ llm_provider: "openai", llm_model: "", depth: "standard" });
+  const [draft, setDraft] = useState<WatchDraft>({
+    llm_provider: "openai",
+    llm_model: "",
+    depth: "standard",
+    response_language: DEFAULT_RESPONSE_LANGUAGE,
+  });
   const [success, setSuccess] = useState(false);
 
   const { data: watchlist } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
@@ -45,6 +53,7 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
         llm_provider: draft.llm_provider,
         llm_model: draft.llm_model || (models[0] ?? ""),
         depth: draft.depth,
+        response_language: draft.response_language,
         analysts: isCrypto(ticker)
           ? ["market", "social", "news"]
           : ["market", "social", "news", "fundamentals"],
@@ -125,6 +134,14 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
         className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
       >
         {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <select
+        value={draft.response_language}
+        onChange={(e) => setDraft((d) => ({ ...d, response_language: e.target.value as ResponseLanguage }))}
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
+        title="Response language"
+      >
+        {RESPONSE_LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
       <button
         onClick={() => addMutation.mutate()}

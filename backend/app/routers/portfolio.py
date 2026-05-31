@@ -8,7 +8,7 @@ from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
@@ -28,6 +28,7 @@ from app.services.trim_signal_service import score_trim_signal
 from app.services.markov_service import get_regime_for_portfolio
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
 import app.services.crypto_data_service as _crypto
 import app.services.fx_service as fx
 import app.services.yfinance_service as _yf
@@ -1000,7 +1001,13 @@ class BatchAnalyzeRequest(BaseModel):
     llm_model: str
     depth: str = "standard"
     analysts: list[str] = ["market", "social", "news", "fundamentals"]
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
     staleness_days: int = 7
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
 
 class BatchAnalyzeResult(BaseModel):
@@ -1057,6 +1064,7 @@ async def batch_analyze_holdings(
             llm_model=body.llm_model,
             depth=body.depth,
             analysts=body.analysts,
+            response_language=body.response_language,
             label=f"Portfolio batch: {holding.ticker}",
         )
         db.add(run)
@@ -1073,6 +1081,7 @@ async def batch_analyze_holdings(
             "llm_model": body.llm_model,
             "depth": body.depth,
             "analysts": body.analysts,
+            "response_language": body.response_language,
         })
         for item in queued
     ])

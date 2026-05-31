@@ -14,6 +14,7 @@ function NewRunContent() {
     model: params.get("model") ?? undefined,
     depth: params.get("depth") ?? undefined,
     analysts: params.get("analysts") ? params.get("analysts")!.split(",") : undefined,
+    response_language: (params.get("response_language") as RunFormInitialValues["response_language"]) ?? undefined,
     label: params.get("label") ?? undefined,
   };
 

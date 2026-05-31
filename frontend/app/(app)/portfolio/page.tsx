@@ -32,6 +32,8 @@ import { TickerDrawer } from "@/components/portfolio/TickerDrawer";
 import { DiscoverPanel } from "@/components/portfolio/DiscoverPanel";
 import { DeliverySettingsModal } from "@/components/portfolio/DeliverySettingsModal";
 import { SellCandidatesPanel } from "@/components/portfolio/SellCandidatesPanel";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 
 type Tab = "holdings" | "insights" | "earnings" | "news" | "trending" | "discover" | "chat" | "thesis";
 
@@ -42,6 +44,7 @@ interface BatchAnalyzeForm {
   llm_provider: string;
   llm_model: string;
   depth: string;
+  response_language: ResponseLanguage;
   staleness_days: number;
 }
 
@@ -56,6 +59,7 @@ function BatchAnalyzeModal({
     llm_provider: "openai",
     llm_model: "",
     depth: "quick",
+    response_language: DEFAULT_RESPONSE_LANGUAGE,
     staleness_days: 7,
   });
   const [result, setResult] = useState<{ queued: { ticker: string; run_id: string }[]; skipped: string[] } | null>(null);
@@ -77,6 +81,7 @@ function BatchAnalyzeModal({
         llm_provider: form.llm_provider,
         llm_model: form.llm_model || (models[0] ?? ""),
         depth: form.depth,
+        response_language: form.response_language,
         staleness_days: form.staleness_days,
       }),
     onSuccess: (data) => setResult({ queued: data.queued, skipped: data.skipped }),
@@ -126,6 +131,18 @@ function BatchAnalyzeModal({
                   className="w-full bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
                 >
                   {models.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted">Response Language</label>
+                <select
+                  value={form.response_language}
+                  onChange={(e) => setForm((f) => ({ ...f, response_language: e.target.value as ResponseLanguage }))}
+                  className="w-full bg-input border border-input-border rounded-sm px-2 py-1.5 text-sm text-fg focus:outline-hidden focus:border-blue-500"
+                >
+                  {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-1">

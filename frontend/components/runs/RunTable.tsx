@@ -5,6 +5,7 @@ import { Archive, ArchiveRestore, Check, Eye, LoaderCircle, RefreshCcw, Trash2, 
 import { archiveRun, deleteRun } from "@/lib/api";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
 import type { Run } from "@/lib/types";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
 
 function rerunUrl(run: Run): string {
   const p = new URLSearchParams({
@@ -13,6 +14,7 @@ function rerunUrl(run: Run): string {
     model: run.llm_model,
     depth: run.depth,
     analysts: run.analysts.join(","),
+    response_language: run.response_language,
   });
   return `/runs/new?${p.toString()}`;
 }
@@ -124,7 +126,9 @@ function RunRow({
       <td className="px-4 py-3">
         <PriceSummary run={run} />
       </td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">{run.analysts.join(", ")}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">
+        {run.analysts.join(", ")} · {responseLanguageLabel(run.response_language)}
+      </td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-mono">{run.llm_model}</td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">
         {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}

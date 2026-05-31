@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Run, Report } from "../types";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { normalizeMarkdownBlock } from "@/lib/normalizeMarkdown";
 import { parseMdForPdf, type MdSegment } from "./parseMdForPdf";
@@ -417,6 +418,7 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
     { label: "Provider", value: run.llm_provider },
     { label: "Model", value: run.llm_model },
     { label: "Depth", value: run.depth },
+    { label: "Language", value: responseLanguageLabel(run.response_language) },
     { label: "Analysts", value: run.analysts.map(capitalize).join(", ") },
   ];
 

@@ -1,5 +1,6 @@
 import { getSession, signOut } from "next-auth/react";
 import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse } from "./types";
+import type { ResponseLanguage } from "./responseLanguage";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -222,7 +223,7 @@ export async function addWatchlistItem(req: AddWatchlistItemRequest): Promise<Wa
 
 export async function updateWatchlistItem(
   itemId: string,
-  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts">>
+  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts" | "response_language">>
 ): Promise<WatchlistItem> {
   const r = await fetchWithAuth(`/watchlist/items/${itemId}`, { method: "PATCH", body: JSON.stringify(req) });
   if (!r.ok) throw new Error("Failed to update item");
@@ -359,7 +360,7 @@ export async function getInsight(portfolioId: string, insightId: string): Promis
 
 export async function batchAnalyzePortfolio(
   portfolioId: string,
-  req: { llm_provider: string; llm_model: string; depth: string; staleness_days?: number },
+  req: { llm_provider: string; llm_model: string; depth: string; response_language?: ResponseLanguage; staleness_days?: number },
 ): Promise<BatchRunResult> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/runs/batch`, {
     method: "POST",

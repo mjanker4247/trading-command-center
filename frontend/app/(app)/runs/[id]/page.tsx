@@ -10,15 +10,17 @@ import { getRun, getReport, getRunOutcome, updateRun } from "@/lib/api";
 import { DownloadMenu } from "@/components/runs/DownloadMenu";
 import { OutcomeCard } from "@/components/runs/OutcomeCard";
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
-import type { RunOutcome } from "@/lib/types";
+import type { Run, RunOutcome } from "@/lib/types";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
 
-function rerunUrl(run: { ticker: string; llm_provider: string; llm_model: string; depth: string; analysts: string[] }): string {
+function rerunUrl(run: Run): string {
   const p = new URLSearchParams({
     ticker: run.ticker,
     provider: run.llm_provider,
     model: run.llm_model,
     depth: run.depth,
     analysts: run.analysts.join(","),
+    response_language: run.response_language,
   });
   return `/runs/new?${p.toString()}`;
 }
@@ -200,6 +202,11 @@ export default function RunResultsPage() {
 
         <TraderDecision run={run} report={report} />
         {run && <MarkovConfirmation ticker={run.ticker} verdict={run.verdict} />}
+        {run && (
+          <div className="bg-surface border border-input-border rounded-lg px-4 py-3 text-xs text-muted">
+            Response language: <span className="text-fg-secondary">{responseLanguageLabel(run.response_language)}</span>
+          </div>
+        )}
         {outcome && <OutcomeCard outcome={outcome} />}
         {run && <NotesEditor id={id} notes={run.notes} />}
         <AnalystReports report={report} analysts={run?.analysts ?? []} />
