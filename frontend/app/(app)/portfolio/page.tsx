@@ -10,12 +10,13 @@ import {
   exportPortfolioCsv,
   getPortfolioFundamentals,
   getPortfolioRegime,
+  getPortfolioWave,
   getPortfolioTrimSignals,
   batchAnalyzePortfolio,
   getProviderModels,
   getBehavioralAlerts,
 } from "@/lib/api";
-import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
+import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, WaveSummary, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
 import { isCrypto } from "@/lib/asset";
 import { PortfolioSwitcher } from "@/components/portfolio/PortfolioSwitcher";
 import { PortfolioHeader } from "@/components/portfolio/PortfolioHeader";
@@ -253,6 +254,13 @@ export default function PortfolioPage() {
     staleTime: 1000 * 60 * 60 * 4,  // 4h — matches backend cache TTL
   });
 
+  const { data: wave = {} } = useQuery<Record<string, WaveSummary>>({
+    queryKey: ["portfolio-wave", selectedId],
+    queryFn: () => getPortfolioWave(selectedId!),
+    enabled: selectedId != null && tab === "holdings",
+    staleTime: 1000 * 60 * 60 * 4,
+  });
+
   const { data: trimSignals } = useQuery<TrimSignalsResponse>({
     queryKey: ["portfolio-trim-signals", selectedId],
     queryFn: () => getPortfolioTrimSignals(selectedId!),
@@ -473,6 +481,7 @@ export default function PortfolioPage() {
                   displayCurrency={current.display_currency ?? "USD"}
                   fundamentals={fundamentals}
                   regime={regime}
+                  wave={wave}
                   trimSignals={trimByHoldingId}
                   onTickerClick={setDrawerHolding}
                 />

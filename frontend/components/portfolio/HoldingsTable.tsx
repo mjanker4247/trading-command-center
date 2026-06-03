@@ -9,7 +9,8 @@ import { WatchButton } from "@/components/portfolio/WatchButton";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
-import type { PortfolioHolding, FundamentalsData, RegimeData, TrimSignalEntry } from "@/lib/types";
+import { WaveBadge } from "@/components/wave/WaveBadge";
+import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry } from "@/lib/types";
 
 interface HoldingsTableProps {
   portfolioId: string;
@@ -18,6 +19,7 @@ interface HoldingsTableProps {
   displayCurrency: string;
   fundamentals?: Record<string, FundamentalsData>;
   regime?: Record<string, RegimeData>;
+  wave?: Record<string, WaveSummary>;
   trimSignals?: Record<string, TrimSignalEntry>;
   onTickerClick?: (holding: PortfolioHolding) => void;
 }
@@ -338,7 +340,7 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
   );
 }
 
-export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, displayCurrency, fundamentals, regime, trimSignals, onTickerClick }: HoldingsTableProps) {
+export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, onTickerClick }: HoldingsTableProps) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
@@ -698,6 +700,9 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                                 <PegBadge peg={fundData.peg_ratio} />
                               )}
                               {regime?.[h.ticker] && <RegimeBadge data={regime[h.ticker]} />}
+                              {wave?.[h.ticker.toUpperCase()] && (
+                                <WaveBadge data={wave[h.ticker.toUpperCase()]} />
+                              )}
                             </div>
                           </div>
                         )}

@@ -1,5 +1,6 @@
 import { getSession, signOut } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse, WaveSummary } from "./types";
+import type { AnalyzeResponse } from "./wave/types";
 import type { ResponseLanguage } from "./responseLanguage";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -420,6 +421,35 @@ export async function getTickerRegime(ticker: string): Promise<RegimeData | null
   if (!r.ok) return null;
   const data = await r.json();
   return data ?? null;
+}
+
+export async function getTickerWaveSummary(ticker: string): Promise<WaveSummary | null> {
+  const r = await fetchWithAuth(`/wave/${encodeURIComponent(ticker)}`);
+  if (!r.ok) return null;
+  const data = await r.json();
+  return data ?? null;
+}
+
+export async function analyzeWave(ticker: string): Promise<AnalyzeResponse> {
+  const r = await fetchWithAuth(`/wave/${encodeURIComponent(ticker)}/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ period: "2y", interval: "1d", profile: "full_confluence" }),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? "Wave analysis failed");
+  }
+  return r.json();
+}
+
+export async function getPortfolioWave(
+  portfolioId: string,
+): Promise<Record<string, WaveSummary>> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/wave`);
+  if (!r.ok) return {};
+  const data = await r.json();
+  return data ?? {};
 }
 
 export async function getPortfolioTrimSignals(

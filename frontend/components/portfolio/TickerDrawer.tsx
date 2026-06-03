@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTickerSnapshot } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { WavePanel } from "@/components/wave/WavePanel";
 import type { PortfolioHolding, TickerChart } from "@/lib/types";
 
 interface TickerDrawerProps {
@@ -251,6 +252,9 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
           </Section>
         </>
       )}
+
+      <Divider />
+      <WavePanel ticker={ticker} />
 
       {/* Last analysis */}
       {holding.last_run && (

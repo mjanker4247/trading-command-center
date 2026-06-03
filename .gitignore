@@ -39,6 +39,9 @@ docs/launch/
 # TradingAgents output cache
 backend/results/
 
+# Standalone Elliott app reference copy (vendored code: backend/elliott_wave/)
+external/
+
 logs/
 .vscode/mcp.json
 .vscode/settings.json

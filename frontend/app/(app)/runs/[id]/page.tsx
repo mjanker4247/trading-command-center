@@ -10,6 +10,7 @@ import { getRun, getReport, getRunOutcome, updateRun } from "@/lib/api";
 import { DownloadMenu } from "@/components/runs/DownloadMenu";
 import { OutcomeCard } from "@/components/runs/OutcomeCard";
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
+import { WaveConfirmation } from "@/components/wave/WaveConfirmation";
 import { LanguageFlag } from "@/components/runs/RunContextIcons";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { Run, RunOutcome } from "@/lib/types";
@@ -212,6 +213,15 @@ export default function RunResultsPage() {
           metadata={run ? tickerMetadata[run.ticker.toUpperCase()] : undefined}
         />
         {run && <MarkovConfirmation ticker={run.ticker} verdict={run.verdict} />}
+        {run && (
+          <WaveConfirmation
+            ticker={run.ticker}
+            verdict={run.verdict}
+            suggestedEntry={report?.suggested_entry}
+            suggestedStop={report?.suggested_stop}
+            suggestedTarget={report?.suggested_target}
+          />
+        )}
         {run && (
           <div className="bg-surface border border-input-border rounded-lg px-4 py-3 text-xs text-muted flex items-center gap-2">
             Response language:

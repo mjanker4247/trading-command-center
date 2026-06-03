@@ -366,6 +366,21 @@ export interface FundamentalsData {
   category?: string | null;
 }
 
+export interface WaveSummary {
+  ticker: string;
+  top_scenario: string | null;
+  top_direction: string | null;
+  pattern: string | null;
+  trend: string | null;
+  scenario_score: number | null;
+  invalidation_level: number | null;
+  confidence: number | null;
+  zone_low: number | null;
+  zone_high: number | null;
+  warnings: string[];
+  computed_at: string;
+}
+
 export interface RegimeData {
   ticker: string;
   current_regime: "Bull" | "Sideways" | "Bear";
