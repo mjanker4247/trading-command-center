@@ -1,10 +1,12 @@
 "use client";
-import type { Run, Report } from "@/lib/types";
+import { TickerLabel } from "@/components/ui/TickerLabel";
+import type { Run, Report, TickerMetadata } from "@/lib/types";
 import { Markdown } from "@/components/ui/Markdown";
 
 interface Props {
   run: Run | undefined;
   report: Report | undefined;
+  metadata?: TickerMetadata;
 }
 
 const verdictStyles: Record<string, string> = {
@@ -27,7 +29,7 @@ function PriceLevel({ label, value }: PriceLevelProps) {
   );
 }
 
-export function TraderDecision({ run, report }: Props) {
+export function TraderDecision({ run, report, metadata }: Props) {
   const isTerminated = run?.status === "aborted" || run?.status === "failed";
   const hasPrices =
     report?.suggested_entry || report?.suggested_stop || report?.suggested_target;
@@ -36,7 +38,11 @@ export function TraderDecision({ run, report }: Props) {
     <div className="bg-surface border border-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-fg text-lg font-semibold">
-          {run?.ticker ?? "—"}
+          {run ? (
+            <TickerLabel ticker={run.ticker} metadata={metadata}>
+              <span className="font-mono">{run.ticker}</span>
+            </TickerLabel>
+          ) : "—"}
         </h2>
         {run?.analysis_date && (
           <span className="text-muted text-sm">{run.analysis_date}</span>

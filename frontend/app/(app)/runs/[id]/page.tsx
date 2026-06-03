@@ -11,6 +11,7 @@ import { DownloadMenu } from "@/components/runs/DownloadMenu";
 import { OutcomeCard } from "@/components/runs/OutcomeCard";
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
 import { LanguageFlag } from "@/components/runs/RunContextIcons";
+import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { Run, RunOutcome } from "@/lib/types";
 
 function rerunUrl(run: Run): string {
@@ -165,6 +166,11 @@ export default function RunResultsPage() {
     retry: false,
   });
 
+  const { data: tickerMetadata = {} } = useTickerMetadata(
+    run ? [run.ticker] : [],
+    { enabled: !!run }
+  );
+
   const isRunning = run?.status === "pending" || run?.status === "running";
 
   return (
@@ -200,7 +206,11 @@ export default function RunResultsPage() {
           </div>
         )}
 
-        <TraderDecision run={run} report={report} />
+        <TraderDecision
+          run={run}
+          report={report}
+          metadata={run ? tickerMetadata[run.ticker.toUpperCase()] : undefined}
+        />
         {run && <MarkovConfirmation ticker={run.ticker} verdict={run.verdict} />}
         {run && (
           <div className="bg-surface border border-input-border rounded-lg px-4 py-3 text-xs text-muted flex items-center gap-2">
