@@ -14,6 +14,7 @@ BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_HOST="${FRONTEND_HOST:-127.0.0.1}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:$BACKEND_PORT}"
+FRONTEND_READY_TIMEOUT="${FRONTEND_READY_TIMEOUT:-60}"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
@@ -44,7 +45,8 @@ Commands:
 
 Environment overrides:
   DATABASE_URL, BACKEND_HOST, BACKEND_PORT, FRONTEND_HOST, FRONTEND_PORT,
-  NEXT_PUBLIC_API_URL, DEV_STACK_STATE_DIR
+  NEXT_PUBLIC_API_URL, FRONTEND_READY_TIMEOUT, DEV_STACK_STATE_DIR
+  NO_OPEN        Set to 1 to skip opening the frontend in a browser
 EOF
 }
 
@@ -122,7 +124,7 @@ migrate() {
 
 start_backend() {
   require_cmd uv
-  local file
+  local file pid
   file="$(pid_file backend)"
 
   if is_pid_running "$file"; then
@@ -139,13 +141,15 @@ start_backend() {
   echo "Starting backend on http://$BACKEND_HOST:$BACKEND_PORT ..."
   (
     cd "$BACKEND_DIR"
-    exec env DATABASE_URL="$DATABASE_URL" uv run python -m uvicorn main:app \
+    exec nohup env DATABASE_URL="$DATABASE_URL" uv run python -m uvicorn main:app \
       --reload \
       --host "$BACKEND_HOST" \
       --port "$BACKEND_PORT"
   ) >"$LOG_DIR/backend.log" 2>&1 &
-  echo "$!" > "$file"
-  echo "Backend pid $(cat "$file"), log: $LOG_DIR/backend.log"
+  pid="$!"
+  echo "$pid" > "$file"
+  disown 2>/dev/null || true
+  echo "Backend pid $pid, log: $LOG_DIR/backend.log"
 }
 
 stop_service() {
@@ -187,7 +191,7 @@ stop_service() {
 
 start_frontend() {
   require_cmd npm
-  local file
+  local file pid
   file="$(pid_file frontend)"
 
   if is_pid_running "$file"; then
@@ -204,12 +208,56 @@ start_frontend() {
   echo "Starting frontend on http://$FRONTEND_HOST:$FRONTEND_PORT ..."
   (
     cd "$FRONTEND_DIR"
-    exec env NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" npm run dev -- \
+    exec nohup env NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" npm run dev -- \
       --hostname "$FRONTEND_HOST" \
       --port "$FRONTEND_PORT"
   ) >"$LOG_DIR/frontend.log" 2>&1 &
-  echo "$!" > "$file"
-  echo "Frontend pid $(cat "$file"), log: $LOG_DIR/frontend.log"
+  pid="$!"
+  echo "$pid" > "$file"
+  disown 2>/dev/null || true
+  echo "Frontend pid $pid, log: $LOG_DIR/frontend.log"
+  wait_for_frontend
+  open_frontend
+}
+
+wait_for_frontend() {
+  local url="http://localhost:$FRONTEND_PORT"
+  local deadline=$((SECONDS + FRONTEND_READY_TIMEOUT))
+
+  echo "Waiting for frontend at $url ..."
+
+  while (( SECONDS < deadline )); do
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fs -o /dev/null "$url"; then
+        echo "Frontend is ready at $url"
+        return 0
+      fi
+    elif port_is_listening "$FRONTEND_PORT"; then
+      echo "Frontend port is listening at $url"
+      return 0
+    fi
+
+    sleep 1
+  done
+
+  echo "Frontend did not become ready within ${FRONTEND_READY_TIMEOUT}s." >&2
+  echo "Check the log: $LOG_DIR/frontend.log" >&2
+  return 1
+}
+
+open_frontend() {
+  local url="http://localhost:$FRONTEND_PORT"
+
+  if [[ "${NO_OPEN:-0}" == "1" ]]; then
+    return 0
+  fi
+
+  if command -v open >/dev/null 2>&1; then
+    echo "Opening $url"
+    open "$url" || echo "Could not open browser automatically. Frontend is ready at $url"
+  else
+    echo "Frontend is ready at $url"
+  fi
 }
 
 status() {
