@@ -154,8 +154,12 @@ async def execute_run(run_id: str, config: dict) -> None:
     process_task = asyncio.create_task(_process())
 
     try:
-        from app.services.tradingagents_grounding import apply_analyst_specific_grounding_patch
+        from app.services.tradingagents_grounding import (
+            apply_analyst_specific_grounding_patch,
+            apply_reasoning_effort_patch,
+        )
         apply_analyst_specific_grounding_patch()
+        apply_reasoning_effort_patch()
 
         from tradingagents.graph.trading_graph import TradingAgentsGraph
         from tradingagents.config import TradingAgentsConfig

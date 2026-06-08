@@ -1,15 +1,22 @@
-"""Runtime compatibility patches for TradingAgents report grounding checks.
+"""Runtime compatibility patches for TradingAgents.
 
-TradingAgents marks analyst sections unavailable when the model writes a final
-report before any tool output is observed. Upstream currently treats any prior
-ToolMessage as evidence, which can let one analyst appear grounded by another
-analyst's tools. This patch tightens the check to the current analyst's tool set
-without modifying the installed dependency in site-packages.
+Patch 1 — Analyst grounding: TradingAgents marks analyst sections unavailable
+when the model writes a final report before any tool output is observed.
+Upstream currently treats any prior ToolMessage as evidence, which can let one
+analyst appear grounded by another analyst's tools. This patch tightens the
+check to the current analyst's tool set.
+
+Patch 2 — Groq/IONOS reasoning_effort: Groq and IONOS expose an
+OpenAI-compatible API but reject the `reasoning_effort` parameter that
+langchain-openai forwards. When OPENAI_BASE_URL is set to a non-native OpenAI
+endpoint we strip that kwarg from _apply_reasoning so the request succeeds.
 """
 
+import os
 from typing import Any
 
 _PATCHED = False
+_REASONING_PATCHED = False
 
 _ANALYST_NAME_TO_KEY = {
     "Market Analyst": "market",
@@ -104,3 +111,33 @@ def apply_analyst_specific_grounding_patch() -> None:
     social_media_analyst.analyst_report_or_evidence_warning = patched_guard
 
     _PATCHED = True
+
+
+# Base URLs known to reject reasoning_effort (OpenAI-compatible but not native OpenAI).
+_NON_REASONING_URL_FRAGMENTS = ("groq.com", "ionos.com")
+
+
+def apply_reasoning_effort_patch() -> None:
+    """Patch _apply_reasoning to skip reasoning_effort for non-native OpenAI endpoints.
+
+    Groq and IONOS expose an OpenAI-compatible API but reject the
+    reasoning_effort parameter. We detect them via OPENAI_BASE_URL at runtime
+    so the guard is evaluated per-request when the env var is already set.
+    """
+    global _REASONING_PATCHED
+    if _REASONING_PATCHED:
+        return
+
+    import tradingagents.llm as llm_module
+
+    original_apply_reasoning = llm_module._apply_reasoning
+
+    def _patched_apply_reasoning(provider, effort, kwargs):
+        if provider == "openai":
+            base_url = os.environ.get("OPENAI_BASE_URL", "")
+            if any(fragment in base_url for fragment in _NON_REASONING_URL_FRAGMENTS):
+                return
+        original_apply_reasoning(provider, effort, kwargs)
+
+    llm_module._apply_reasoning = _patched_apply_reasoning
+    _REASONING_PATCHED = True

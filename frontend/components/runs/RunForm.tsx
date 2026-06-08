@@ -58,7 +58,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   const [analysts, setAnalysts] = useState<string[]>(
     initialValues?.analysts ?? DEFAULT_ANALYSTS
   );
-  const [provider, setProvider] = useState(initialValues?.provider ?? "ionos");
+  const [provider, setProvider] = useState(initialValues?.provider ?? "openai");
   const [model, setModel] = useState(initialValues?.model ?? "");
   const [depth, setDepth] = useState<"quick" | "standard" | "deep">(
     (initialValues?.depth as "quick" | "standard" | "deep") ?? "standard"

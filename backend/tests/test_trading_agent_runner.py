@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -54,3 +55,47 @@ async def test_extract_trader_decision_falls_back_to_state():
     )
     rec = SimpleNamespace(rationale="")
     assert "BUY" in _extract_trader_decision(state, rec)
+
+
+# ── reasoning_effort guard (Groq / IONOS) ────────────────────────────────────
+
+def _apply_reasoning_via_module(provider: str, effort: str, base_url: str | None) -> dict:
+    """Call tradingagents._apply_reasoning with a controlled OPENAI_BASE_URL."""
+    from app.services.tradingagents_grounding import apply_reasoning_effort_patch
+    apply_reasoning_effort_patch()
+
+    import tradingagents.llm as llm_module
+    old = os.environ.get("OPENAI_BASE_URL")
+    try:
+        if base_url is None:
+            os.environ.pop("OPENAI_BASE_URL", None)
+        else:
+            os.environ["OPENAI_BASE_URL"] = base_url
+        kwargs: dict = {}
+        llm_module._apply_reasoning(provider, effort, kwargs)
+        return kwargs
+    finally:
+        if old is None:
+            os.environ.pop("OPENAI_BASE_URL", None)
+        else:
+            os.environ["OPENAI_BASE_URL"] = old
+
+
+async def test_groq_reasoning_effort_skipped():
+    kwargs = _apply_reasoning_via_module("openai", "medium", "https://api.groq.com/openai/v1")
+    assert "reasoning_effort" not in kwargs
+
+
+async def test_ionos_reasoning_effort_skipped():
+    kwargs = _apply_reasoning_via_module("openai", "medium", "https://openai.inference.de-txl.ionos.com/v1")
+    assert "reasoning_effort" not in kwargs
+
+
+async def test_native_openai_reasoning_effort_applied():
+    kwargs = _apply_reasoning_via_module("openai", "medium", None)
+    assert kwargs.get("reasoning_effort") == "medium"
+
+
+async def test_native_openai_reasoning_effort_max_maps_to_xhigh():
+    kwargs = _apply_reasoning_via_module("openai", "max", None)
+    assert kwargs.get("reasoning_effort") == "xhigh"
