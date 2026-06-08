@@ -1,3 +1,5 @@
+import type { ResponseLanguage } from "./responseLanguage";
+
 export interface User {
   id: string;
   email: string;
@@ -14,6 +16,7 @@ export interface Run {
   llm_model: string;
   depth: "quick" | "standard" | "deep";
   analysts: string[];
+  response_language: ResponseLanguage;
   label: string | null;
   notes: string | null;
   status: "pending" | "running" | "completed" | "aborted" | "failed";
@@ -72,6 +75,7 @@ export interface CreateRunRequest {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language?: ResponseLanguage;
   label?: string;
 }
 
@@ -108,6 +112,7 @@ export interface WatchlistItem {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language: ResponseLanguage;
   schedule_cron: string | null;
   enabled: boolean;
   last_run_at: string | null;
@@ -130,6 +135,7 @@ export interface AddWatchlistItemRequest {
   llm_model: string;
   depth: string;
   analysts: string[];
+  response_language?: ResponseLanguage;
   schedule_cron?: string | null;
 }
 
@@ -236,6 +242,29 @@ export interface TickerSnapshot {
   } | null;
 }
 
+export interface TickerMetadata {
+  ticker: string;
+  asset_type: "stock" | "crypto" | string;
+  company_name: string | null;
+  display_name: string | null;
+  sector: string | null;
+  industry: string | null;
+  logo_url: string | null;
+  website: string | null;
+  exchange: string | null;
+  country: string | null;
+  currency: string | null;
+  market_cap: number | null;
+  ipo_date: string | null;
+  source: string;
+  fetched_at: string;
+  expires_at: string;
+}
+
+export interface TickerMetadataResponse {
+  items: Record<string, TickerMetadata>;
+}
+
 export interface PortfolioHolding {
   id: string;
   ticker: string;
@@ -335,6 +364,21 @@ export interface FundamentalsData {
   price_change_24h_pct?: number | null;
   price_change_7d_pct?: number | null;
   category?: string | null;
+}
+
+export interface WaveSummary {
+  ticker: string;
+  top_scenario: string | null;
+  top_direction: string | null;
+  pattern: string | null;
+  trend: string | null;
+  scenario_score: number | null;
+  invalidation_level: number | null;
+  confidence: number | null;
+  zone_low: number | null;
+  zone_high: number | null;
+  warnings: string[];
+  computed_at: string;
 }
 
 export interface RegimeData {

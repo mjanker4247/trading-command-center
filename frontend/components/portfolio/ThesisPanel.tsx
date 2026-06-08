@@ -37,9 +37,9 @@ function AlignmentGauge({ score }: { score: number }) {
         </span>
       </div>
       <div>
-        <p className="text-xs text-slate-400 mb-0.5">Alignment score</p>
+        <p className="text-xs text-muted mb-0.5">Alignment score</p>
         <p className={`text-lg font-semibold ${color}`}>{label}</p>
-        <p className="text-xs text-slate-500">out of 10</p>
+        <p className="text-xs text-muted">out of 10</p>
       </div>
     </div>
   );
@@ -61,13 +61,13 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
       )}
 
       {result.thesis_summary && (
-        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
-          <p className="text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Thesis extracted</p>
-          <p className="text-sm text-slate-200 italic leading-relaxed">{result.thesis_summary}</p>
+        <div className="bg-input/60 border border-input-border rounded-lg p-4">
+          <p className="text-xs text-muted mb-1.5 font-medium uppercase tracking-wide">Thesis extracted</p>
+          <p className="text-sm text-fg italic leading-relaxed">{result.thesis_summary}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {result.aligned_positions && result.aligned_positions.length > 0 && (
           <div className="bg-green-900/10 border border-green-800/40 rounded-lg p-4">
             <p className="text-xs text-green-400 font-medium uppercase tracking-wide mb-2">
@@ -75,9 +75,9 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
             </p>
             <ul className="space-y-2">
               {result.aligned_positions.map((p: ThesisCrossRefPosition) => (
-                <li key={p.ticker} className="text-xs text-slate-300">
+                <li key={p.ticker} className="text-xs text-fg-secondary">
                   <span className="font-mono font-semibold text-green-400">{p.ticker}</span>
-                  <span className="text-slate-400 ml-1">— {p.reason}</span>
+                  <span className="text-muted ml-1">— {p.reason}</span>
                 </li>
               ))}
             </ul>
@@ -91,9 +91,9 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
             </p>
             <ul className="space-y-2">
               {result.misaligned_positions.map((p: ThesisCrossRefPosition) => (
-                <li key={p.ticker} className="text-xs text-slate-300">
+                <li key={p.ticker} className="text-xs text-fg-secondary">
                   <span className="font-mono font-semibold text-red-400">{p.ticker}</span>
-                  <span className="text-slate-400 ml-1">— {p.reason}</span>
+                  <span className="text-muted ml-1">— {p.reason}</span>
                 </li>
               ))}
             </ul>
@@ -101,10 +101,10 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {result.missing_exposure && result.missing_exposure.length > 0 && (
           <div>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Missing exposure</p>
+            <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Missing exposure</p>
             <div className="flex flex-wrap gap-1.5">
               {result.missing_exposure.map((e: string) => (
                 <span key={e} className="text-xs px-2 py-1 bg-yellow-900/20 border border-yellow-700/40 text-yellow-400 rounded-md">
@@ -117,7 +117,7 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
 
         {result.excess_exposure && result.excess_exposure.length > 0 && (
           <div>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Excess exposure</p>
+            <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Excess exposure</p>
             <div className="flex flex-wrap gap-1.5">
               {result.excess_exposure.map((e: string) => (
                 <span key={e} className="text-xs px-2 py-1 bg-orange-900/20 border border-orange-700/40 text-orange-400 rounded-md">
@@ -131,16 +131,16 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
 
       {result.recommendations && result.recommendations.length > 0 && (
         <div>
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Recommendations</p>
+          <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Recommendations</p>
           <div className="space-y-2">
             {result.recommendations.map((r: ThesisCrossRefRecommendation, i: number) => (
-              <div key={i} className="flex items-start gap-3 py-2 border-b border-slate-800 last:border-0">
+              <div key={i} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
                 <span className={`text-xs font-mono font-bold shrink-0 mt-0.5 ${
                   r.action === "TRIM" || r.action === "EXIT" ? "text-red-400" :
-                  r.action === "CONSIDER" ? "text-blue-400" : "text-slate-400"
+                  r.action === "CONSIDER" ? "text-blue-400" : "text-muted"
                 }`}>{r.action}</span>
-                <span className="text-xs font-mono font-semibold text-slate-200 shrink-0">{r.ticker}</span>
-                <span className="text-xs text-slate-400 leading-relaxed">{r.rationale}</span>
+                <span className="text-xs font-mono font-semibold text-fg shrink-0">{r.ticker}</span>
+                <span className="text-xs text-muted leading-relaxed">{r.rationale}</span>
               </div>
             ))}
           </div>
@@ -148,9 +148,9 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
       )}
 
       {result.summary && (
-        <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Narrative</p>
-          <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{result.summary}</p>
+        <div className="bg-input/40 border border-input-border rounded-lg p-4">
+          <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Narrative</p>
+          <p className="text-sm text-fg-secondary leading-relaxed whitespace-pre-wrap">{result.summary}</p>
         </div>
       )}
     </div>
@@ -198,16 +198,16 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
     <div className="flex gap-5 h-[calc(100vh-220px)]">
       {/* Left sidebar — history */}
       <div className="w-56 shrink-0 flex flex-col gap-3">
-        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3">
-          <p className="text-xs font-medium text-slate-300 mb-0.5">Thesis Check</p>
-          <p className="text-xs text-slate-500 leading-relaxed">
+        <div className="bg-input/60 border border-input-border rounded-lg p-3">
+          <p className="text-xs font-medium text-fg-secondary mb-0.5">Thesis Check</p>
+          <p className="text-xs text-muted leading-relaxed">
             Paste any investment thesis and see how your portfolio aligns with it.
           </p>
         </div>
 
         {history.length > 0 && (
           <div className="flex-1 overflow-y-auto">
-            <p className="text-xs text-slate-500 px-1 mb-1.5 uppercase tracking-wide">History</p>
+            <p className="text-xs text-muted px-1 mb-1.5 uppercase tracking-wide">History</p>
             <ul className="space-y-1">
               {history.map((item) => (
                 <li key={item.id} className="group flex items-center gap-1">
@@ -215,8 +215,8 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
                     onClick={() => setActiveResult(item)}
                     className={`flex-1 text-left rounded-lg px-2 py-2 text-xs transition-colors truncate ${
                       activeResult?.id === item.id
-                        ? "bg-slate-700 text-slate-100"
-                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        ? "bg-muted-surface text-fg"
+                        : "text-muted hover:bg-input hover:text-fg"
                     }`}
                   >
                     <span className={`font-bold mr-1.5 ${
@@ -229,7 +229,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
                   </button>
                   <button
                     onClick={() => deleteMutation.mutate(item.id)}
-                    className="opacity-0 group-hover:opacity-100 shrink-0 p-1 text-slate-600 hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 shrink-0 p-1 text-subtle hover:text-red-400 transition-all"
                   >
                     ×
                   </button>
@@ -240,30 +240,30 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
         )}
 
         {history.length === 0 && (
-          <p className="text-xs text-slate-600 px-1">No analyses yet.</p>
+          <p className="text-xs text-subtle px-1">No analyses yet.</p>
         )}
       </div>
 
       {/* Main area */}
       <div className="flex-1 flex flex-col gap-4 overflow-hidden">
         {/* Input form */}
-        <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 shrink-0">
+        <div className="bg-page/50 border border-input-border rounded-xl p-4 shrink-0">
           <textarea
             value={thesisText}
             onChange={(e) => setThesisText(e.target.value)}
             rows={5}
             placeholder="Paste an investment thesis, article excerpt, podcast notes, or any text (50–10,000 characters)…"
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none"
+            className="w-full bg-input border border-input-border rounded-lg px-3 py-2.5 text-sm text-fg placeholder:text-subtle focus:outline-hidden focus:border-blue-500 resize-none"
           />
           <div className="flex items-center justify-between mt-2">
-            <span className={`text-xs ${charValid ? "text-slate-500" : charCount > 0 ? "text-red-400" : "text-slate-600"}`}>
+            <span className={`text-xs ${charValid ? "text-muted" : charCount > 0 ? "text-red-400" : "text-subtle"}`}>
               {charCount > 0 ? `${charCount.toLocaleString()} / 10,000` : "50 characters minimum"}
             </span>
             <div className="flex items-center gap-2">
               <select
                 value={provider}
                 onChange={(e) => { setProvider(e.target.value); setModel(PROVIDER_DEFAULT_MODELS[e.target.value] ?? ""); }}
-                className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
+                className="bg-input border border-input-border rounded-sm px-2 py-1.5 text-xs text-fg-secondary focus:outline-hidden focus:border-blue-500"
               >
                 {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -272,12 +272,12 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="model"
-                className="w-40 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-blue-500"
+                className="w-40 bg-input border border-input-border rounded-sm px-2 py-1.5 text-xs text-fg-secondary placeholder:text-subtle focus:outline-hidden focus:border-blue-500"
               />
               <button
                 onClick={() => analyzeMutation.mutate()}
                 disabled={!charValid || analyzeMutation.isPending}
-                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-medium rounded-lg transition-colors"
+                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-muted-surface disabled:text-muted text-fg text-xs font-medium rounded-lg transition-colors"
               >
                 {analyzeMutation.isPending ? "Analyzing…" : "Analyze thesis"}
               </button>
@@ -288,14 +288,14 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
         {/* Results */}
         <div className="flex-1 overflow-y-auto">
           {activeResult ? (
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
+            <div className="bg-page/50 border border-input-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs text-slate-500 truncate max-w-md">
+                <p className="text-xs text-muted truncate max-w-md">
                   {new Date(activeResult.created_at).toLocaleString()} · {activeResult.llm_provider} / {activeResult.llm_model}
                 </p>
                 <button
                   onClick={() => setActiveResult(null)}
-                  className="text-xs text-slate-500 hover:text-slate-300"
+                  className="text-xs text-muted hover:text-fg-secondary"
                 >
                   ✕ clear
                 </button>
@@ -307,12 +307,12 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
               <div className="w-12 h-12 rounded-full bg-purple-900/20 border border-purple-800/40 flex items-center justify-center">
                 <span className="text-purple-400 text-xl">⊗</span>
               </div>
-              <p className="text-slate-400 text-sm font-medium">No thesis analyzed yet</p>
-              <p className="text-slate-600 text-xs max-w-xs">
+              <p className="text-muted text-sm font-medium">No thesis analyzed yet</p>
+              <p className="text-subtle text-xs max-w-xs">
                 Paste an investment thesis above to see how your current portfolio stacks up.
               </p>
               {history.length > 0 && (
-                <p className="text-slate-600 text-xs">
+                <p className="text-subtle text-xs">
                   Or select a past analysis from the history on the left.
                 </p>
               )}

@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -9,11 +9,12 @@ from app.database import get_db
 from app.models.watchlist import Watchlist, WatchlistItem
 from app.models.user import User
 from app.dependencies import get_current_user
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
 
 router = APIRouter()
 
 
-_DEFAULT_ANALYSTS = ["market", "social", "news", "fundamentals", "technical"]
+_DEFAULT_ANALYSTS = ["market", "social", "news", "fundamentals"]
 
 
 class WatchlistItemCreate(BaseModel):
@@ -22,7 +23,13 @@ class WatchlistItemCreate(BaseModel):
     llm_model: str
     depth: str = "standard"
     analysts: list[str] = _DEFAULT_ANALYSTS
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
     schedule_cron: str | None = None
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
 
 class WatchlistItemUpdate(BaseModel):
@@ -32,6 +39,14 @@ class WatchlistItemUpdate(BaseModel):
     llm_model: str | None = None
     depth: str | None = None
     analysts: list[str] | None = None
+    response_language: str | None = None
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_response_language(v)
 
 
 class WatchlistItemResponse(BaseModel):
@@ -42,6 +57,7 @@ class WatchlistItemResponse(BaseModel):
     llm_model: str
     depth: str
     analysts: list[str]
+    response_language: str
     schedule_cron: str | None
     enabled: bool
     last_run_at: datetime | None
@@ -98,13 +114,19 @@ async def add_watchlist_item(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, f"{req.ticker.upper()} already in watchlist")
+    from app.utils.asset_type import is_crypto
+    from app.utils.tradingagents_analysts import normalize_analysts
+
+    ticker = req.ticker.upper()
+    analysts = normalize_analysts(req.analysts, exclude_fundamentals=is_crypto(ticker))
     item = WatchlistItem(
         watchlist_id=wl.id,
-        ticker=req.ticker.upper(),
+        ticker=ticker,
         llm_provider=req.llm_provider,
         llm_model=req.llm_model,
         depth=req.depth,
-        analysts=req.analysts,
+        analysts=analysts,
+        response_language=req.response_language,
         schedule_cron=req.schedule_cron,
     )
     db.add(item)
@@ -187,9 +209,12 @@ async def trigger_watchlist_run(
     from app.models.run import Run
     from app.services.job_manager import start_run
     from app.utils.asset_type import is_crypto as _is_crypto
-    analysts = item.analysts or _DEFAULT_ANALYSTS
-    if _is_crypto(item.ticker):
-        analysts = [a for a in analysts if a != "fundamentals"]
+    from app.utils.tradingagents_analysts import normalize_analysts
+
+    analysts = normalize_analysts(
+        item.analysts or _DEFAULT_ANALYSTS,
+        exclude_fundamentals=_is_crypto(item.ticker),
+    )
     run = Run(
         created_by=user.id,
         ticker=item.ticker,
@@ -198,6 +223,7 @@ async def trigger_watchlist_run(
         llm_model=item.llm_model,
         depth=item.depth,
         analysts=analysts,
+        response_language=item.response_language,
         label=f"Watchlist: {item.ticker}",
     )
     db.add(run)
@@ -212,5 +238,6 @@ async def trigger_watchlist_run(
         "llm_model": run.llm_model,
         "depth": run.depth,
         "analysts": run.analysts,
+        "response_language": run.response_language,
     })
     return {"run_id": str(run.id)}

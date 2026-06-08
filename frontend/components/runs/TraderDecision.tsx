@@ -1,10 +1,12 @@
 "use client";
-import type { Run, Report } from "@/lib/types";
+import { TickerLabel } from "@/components/ui/TickerLabel";
+import type { Run, Report, TickerMetadata } from "@/lib/types";
 import { Markdown } from "@/components/ui/Markdown";
 
 interface Props {
   run: Run | undefined;
   report: Report | undefined;
+  metadata?: TickerMetadata;
 }
 
 const verdictStyles: Record<string, string> = {
@@ -21,36 +23,40 @@ interface PriceLevelProps {
 function PriceLevel({ label, value }: PriceLevelProps) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-slate-400 text-xs uppercase tracking-wider">{label}</span>
-      <span className="text-slate-200 font-mono text-sm">{value ? `$${value}` : "—"}</span>
+      <span className="text-muted text-xs uppercase tracking-wider">{label}</span>
+      <span className="text-fg font-mono text-sm">{value ? `$${value}` : "—"}</span>
     </div>
   );
 }
 
-export function TraderDecision({ run, report }: Props) {
+export function TraderDecision({ run, report, metadata }: Props) {
   const isTerminated = run?.status === "aborted" || run?.status === "failed";
   const hasPrices =
     report?.suggested_entry || report?.suggested_stop || report?.suggested_target;
 
   return (
-    <div className="bg-navy-700 border border-slate-800 rounded-lg p-6">
+    <div className="bg-surface border border-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-slate-200 text-lg font-semibold">
-          {run?.ticker ?? "—"}
+        <h2 className="text-fg text-lg font-semibold">
+          {run ? (
+            <TickerLabel ticker={run.ticker} metadata={metadata}>
+              <span className="font-mono">{run.ticker}</span>
+            </TickerLabel>
+          ) : "—"}
         </h2>
         {run?.analysis_date && (
-          <span className="text-slate-500 text-sm">{run.analysis_date}</span>
+          <span className="text-muted text-sm">{run.analysis_date}</span>
         )}
       </div>
 
       {isTerminated && !report && (
-        <p className="text-slate-500 text-sm">
+        <p className="text-muted text-sm">
           This run did not complete successfully.
         </p>
       )}
 
       {!report && !isTerminated && (
-        <p className="text-slate-500 text-sm">Results not yet available.</p>
+        <p className="text-muted text-sm">Results not yet available.</p>
       )}
 
       {report && (
@@ -62,11 +68,11 @@ export function TraderDecision({ run, report }: Props) {
           </div>
 
           {hasPrices && (
-            <div className="flex gap-6 border-t border-slate-700 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 border-t border-input-border pt-4">
               <PriceLevel label="Entry" value={report.suggested_entry} />
-              <div className="w-px bg-slate-700" />
+              <div className="w-px bg-muted-surface" />
               <PriceLevel label="Stop" value={report.suggested_stop} />
-              <div className="w-px bg-slate-700" />
+              <div className="w-px bg-muted-surface" />
               <PriceLevel label="Target" value={report.suggested_target} />
             </div>
           )}

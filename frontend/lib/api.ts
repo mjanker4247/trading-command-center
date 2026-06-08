@@ -1,5 +1,7 @@
 import { getSession, signOut } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse, WaveSummary } from "./types";
+import type { AnalyzeResponse } from "./wave/types";
+import type { ResponseLanguage } from "./responseLanguage";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -173,6 +175,23 @@ export async function getTickerSnapshot(ticker: string): Promise<TickerSnapshot>
   return r.json();
 }
 
+export async function getTickerMetadata(
+  tickers: string[],
+  options: { forceRefresh?: boolean } = {}
+): Promise<TickerMetadataResponse> {
+  const symbols = Array.from(
+    new Set(tickers.map((t) => t.trim().toUpperCase()).filter(Boolean))
+  ).slice(0, 50);
+  if (symbols.length === 0) return { items: {} };
+
+  const qs = new URLSearchParams({ symbols: symbols.join(",") });
+  if (options.forceRefresh) qs.set("force_refresh", "true");
+
+  const r = await fetchWithAuth(`/tickers/metadata?${qs.toString()}`);
+  if (!r.ok) throw new Error("Failed to fetch ticker metadata");
+  return r.json();
+}
+
 export async function getMe(): Promise<User> {
   const r = await fetchWithAuth("/auth/me");
   if (!r.ok) throw new Error("Failed to fetch profile");
@@ -222,7 +241,7 @@ export async function addWatchlistItem(req: AddWatchlistItemRequest): Promise<Wa
 
 export async function updateWatchlistItem(
   itemId: string,
-  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts">>
+  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts" | "response_language">>
 ): Promise<WatchlistItem> {
   const r = await fetchWithAuth(`/watchlist/items/${itemId}`, { method: "PATCH", body: JSON.stringify(req) });
   if (!r.ok) throw new Error("Failed to update item");
@@ -359,7 +378,7 @@ export async function getInsight(portfolioId: string, insightId: string): Promis
 
 export async function batchAnalyzePortfolio(
   portfolioId: string,
-  req: { llm_provider: string; llm_model: string; depth: string; staleness_days?: number },
+  req: { llm_provider: string; llm_model: string; depth: string; response_language?: ResponseLanguage; staleness_days?: number },
 ): Promise<BatchRunResult> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/runs/batch`, {
     method: "POST",
@@ -402,6 +421,35 @@ export async function getTickerRegime(ticker: string): Promise<RegimeData | null
   if (!r.ok) return null;
   const data = await r.json();
   return data ?? null;
+}
+
+export async function getTickerWaveSummary(ticker: string): Promise<WaveSummary | null> {
+  const r = await fetchWithAuth(`/wave/${encodeURIComponent(ticker)}`);
+  if (!r.ok) return null;
+  const data = await r.json();
+  return data ?? null;
+}
+
+export async function analyzeWave(ticker: string): Promise<AnalyzeResponse> {
+  const r = await fetchWithAuth(`/wave/${encodeURIComponent(ticker)}/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ period: "2y", interval: "1d", profile: "full_confluence" }),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? "Wave analysis failed");
+  }
+  return r.json();
+}
+
+export async function getPortfolioWave(
+  portfolioId: string,
+): Promise<Record<string, WaveSummary>> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/wave`);
+  if (!r.ok) return {};
+  const data = await r.json();
+  return data ?? {};
 }
 
 export async function getPortfolioTrimSignals(

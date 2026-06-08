@@ -139,6 +139,18 @@ async def _call_llm(provider: str, model: str, api_key: Optional[str], prompt: s
             r.raise_for_status()
             return r.json()["choices"][0]["message"]["content"]
 
+    if provider == "ionos":
+        if not api_key:
+            raise ValueError("IONOS API key is not configured. Add it in Settings → API Keys.")
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.post(
+                "https://openai.inference.de-txl.ionos.com/v1/chat/completions",
+                json=_json_payload, headers=headers,
+            )
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"]
+
     if provider == "vllm":
         # vLLM exposes an OpenAI-compatible endpoint at a local base URL.
         from app.config import settings as _s

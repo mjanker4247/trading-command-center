@@ -73,38 +73,38 @@ export function DownloadMenu({ run, report }: Props) {
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={disabled || pdfLoading}
-        className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-3 py-1 disabled:opacity-40 flex items-center gap-1.5"
+        className="text-xs text-muted hover:text-fg border border-input-border rounded-sm px-3 py-1 disabled:opacity-40 flex items-center gap-1.5"
       >
         {pdfLoading ? (
           <>
-            <span className="inline-block w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+            <span className="inline-block w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
             Generating PDF…
           </>
         ) : (
           <>
             Download
-            <span className="text-slate-500">▾</span>
+            <span className="text-muted">▾</span>
           </>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-44 bg-navy-800 border border-slate-700 rounded shadow-lg z-20 py-1">
+        <div className="absolute right-0 mt-1 w-44 bg-elevated border border-input-border rounded-sm shadow-lg z-20 py-1">
           <button
             onClick={handleJson}
-            className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+            className="w-full text-left px-4 py-2 text-xs text-fg-secondary hover:bg-input hover:text-fg"
           >
             Download JSON
           </button>
           <button
             onClick={handleMarkdown}
-            className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+            className="w-full text-left px-4 py-2 text-xs text-fg-secondary hover:bg-input hover:text-fg"
           >
             Download Markdown
           </button>
           <button
             onClick={handlePdf}
-            className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+            className="w-full text-left px-4 py-2 text-xs text-fg-secondary hover:bg-input hover:text-fg"
           >
             Download PDF
           </button>

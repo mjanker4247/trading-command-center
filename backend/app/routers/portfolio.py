@@ -8,7 +8,7 @@ from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
@@ -24,10 +24,12 @@ from app.models.report import Report
 from app.models.api_key import ApiKey
 from app.services.encryption import decrypt_key
 from app.services.portfolio_parser import parse_portfolio_csv
+from app.services.ticker_metadata_service import get_many_ticker_metadata
 from app.services.trim_signal_service import score_trim_signal
 from app.services.markov_service import get_regime_for_portfolio
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
 import app.services.crypto_data_service as _crypto
 import app.services.fx_service as fx
 import app.services.yfinance_service as _yf
@@ -231,11 +233,16 @@ async def _fetch_prices_bulk(
             result[ticker] = price
             _price_cache[ticker] = (price, now + _CACHE_TTL)
 
-    # Fetch stocks concurrently — Finnhub when key is present, yfinance fallback otherwise
+    # Stock portfolio prices require Finnhub so the API can clearly signal when
+    # real-time stock pricing is unavailable. Crypto prices still work above.
     if uncached_stock:
-        stock_prices = await asyncio.gather(*[_fetch_price(t, api_key) for t in uncached_stock])
-        for ticker, price in zip(uncached_stock, stock_prices):
-            result[ticker] = price
+        if not api_key:
+            for ticker in uncached_stock:
+                result[ticker] = None
+        else:
+            stock_prices = await asyncio.gather(*[_fetch_price(t, api_key) for t in uncached_stock])
+            for ticker, price in zip(uncached_stock, stock_prices):
+                result[ticker] = price
 
     return result
 
@@ -999,8 +1006,14 @@ class BatchAnalyzeRequest(BaseModel):
     llm_provider: str
     llm_model: str
     depth: str = "standard"
-    analysts: list[str] = ["market", "social", "news", "fundamentals", "technical"]
+    analysts: list[str] = ["market", "social", "news", "fundamentals"]
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
     staleness_days: int = 7
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
 
 class BatchAnalyzeResult(BaseModel):
@@ -1057,6 +1070,7 @@ async def batch_analyze_holdings(
             llm_model=body.llm_model,
             depth=body.depth,
             analysts=body.analysts,
+            response_language=body.response_language,
             label=f"Portfolio batch: {holding.ticker}",
         )
         db.add(run)
@@ -1073,6 +1087,7 @@ async def batch_analyze_holdings(
             "llm_model": body.llm_model,
             "depth": body.depth,
             "analysts": body.analysts,
+            "response_language": body.response_language,
         })
         for item in queued
     ])
@@ -1325,27 +1340,6 @@ async def get_portfolio_news(
 
 # ── Sector gaps ───────────────────────────────────────────────────────────────
 
-_profile_cache: dict[str, tuple[dict, float]] = {}
-_PROFILE_TTL = 86400  # 24 hours
-
-
-async def _fetch_profile(ticker: str, api_key: str) -> dict:
-    now = time.time()
-    if ticker in _profile_cache:
-        data, expiry = _profile_cache[ticker]
-        if now < expiry:
-            return data
-    try:
-        url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={api_key}"
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            data = r.json()
-    except Exception:
-        data = {}
-    _profile_cache[ticker] = (data, now + _PROFILE_TTL)
-    return data
-
 
 @router.get("/portfolio/{portfolio_id}/sector-gaps")
 async def get_sector_gaps(
@@ -1356,8 +1350,6 @@ async def get_sector_gaps(
     from app.services.sp500_sectors import SP500_SECTOR_WEIGHTS
 
     finnhub_key = await _get_finnhub_key(db)
-    if not finnhub_key:
-        return []
 
     try:
         snap = await _get_latest_snapshot(portfolio_id, user.id, db)
@@ -1372,20 +1364,27 @@ async def get_sector_gaps(
         return []
 
     tickers = [h.ticker for h in holdings]
-    prices_map, profiles = await asyncio.gather(
-        _fetch_prices_bulk(tickers, finnhub_key),
-        asyncio.gather(*[_fetch_profile(t, finnhub_key) for t in tickers]),
-    )
+    metadata = await get_many_ticker_metadata(tickers, db, finnhub_key)
+    sector_by_ticker = {
+        ticker: row.sector
+        for ticker, row in metadata.items()
+        if row.sector
+    }
+    if not sector_by_ticker:
+        return []
+
+    prices_map = await _fetch_prices_bulk(list(sector_by_ticker.keys()), finnhub_key)
 
     sector_values: dict[str, float] = {}
     total_value = 0.0
-    for holding, profile in zip(holdings, profiles):
-        price = prices_map.get(holding.ticker)
+    for holding in holdings:
+        ticker = holding.ticker.upper()
+        price = prices_map.get(ticker)
         if price is None:
             continue
         market_value = price * holding.shares
-        sector = profile.get("finnhubIndustry") or "Unknown"
-        if sector == "Unknown":
+        sector = sector_by_ticker.get(ticker)
+        if not sector:
             continue
         sector_values[sector] = sector_values.get(sector, 0.0) + market_value
         total_value += market_value
@@ -1445,11 +1444,11 @@ async def discover_stocks(
     llm_provider = body.get("llm_provider")
     llm_model = body.get("llm_model")
     if not llm_provider:
-        for prov in ["openai", "anthropic", "google"]:
+        for prov in ["openai", "anthropic", "google", "ionos"]:
             row = (await db.execute(select(ApiKey).where(ApiKey.provider == prov))).scalar_one_or_none()
             if row and row.is_valid:
                 llm_provider = prov
-                llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash"}[prov]
+                llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash", "ionos": "openai/gpt-oss-120b"}[prov]
                 break
     if not llm_provider:
         _discover_in_flight.discard(cache_key)
@@ -1815,12 +1814,19 @@ async def get_portfolio_trim_signals(
         current_verdict = current_verdict_raw.upper() if current_verdict_raw else None
         previous_verdict = previous_verdict_raw.upper() if previous_verdict_raw else None
 
-        regime_data = regime_map.get(h.ticker)
-        regime = regime_data.get("current_regime") if regime_data else None
-        regime_signal = regime_data.get("signal") if regime_data else None
+        if last_run:
+            regime_data = regime_map.get(h.ticker)
+            regime = regime_data.get("current_regime") if regime_data else None
+            regime_signal = regime_data.get("signal") if regime_data else None
 
-        fund = fundamentals_map.get(h.ticker, {})
-        peg = fund.get("peg_ratio")
+            fund = fundamentals_map.get(h.ticker, {})
+            peg = fund.get("peg_ratio")
+        else:
+            regime = None
+            regime_signal = None
+            peg = None
+            pnl_pct = None
+            weight_pct = None
 
         signal = score_trim_signal(
             ticker=h.ticker,

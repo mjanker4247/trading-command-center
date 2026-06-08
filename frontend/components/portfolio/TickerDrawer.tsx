@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getTickerSnapshot } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
+import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { WavePanel } from "@/components/wave/WavePanel";
 import type { PortfolioHolding, TickerChart } from "@/lib/types";
 
 interface TickerDrawerProps {
@@ -19,7 +21,7 @@ function Sparkline({ chart, days }: { chart: TickerChart; days: number }) {
   const uid = useId();
   const closes = chart.c.slice(-days);
   if (closes.length < 2) {
-    return <p className="text-slate-500 text-xs text-center py-6">Chart data unavailable</p>;
+    return <p className="text-muted text-xs text-center py-6">Chart data unavailable</p>;
   }
   const W = 460, H = 96;
   const pad = { t: 6, r: 4, b: 6, l: 4 };
@@ -46,9 +48,9 @@ function Sparkline({ chart, days }: { chart: TickerChart; days: number }) {
         <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5"
           strokeLinejoin="round" strokeLinecap="round" />
       </svg>
-      <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+      <div className="flex justify-between text-[10px] text-muted font-mono">
         <span>${minV.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span className="text-slate-600">USD · {days}D</span>
+        <span className="text-subtle">USD · {days}D</span>
         <span>${maxV.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
     </div>
@@ -65,7 +67,7 @@ function PctBadge({ value, label }: { value: number | null; label: string }) {
       <span className={`text-xs font-semibold tabular-nums ${pos ? "text-green-400" : "text-red-400"}`}>
         {pos ? "+" : ""}{value.toFixed(2)}%
       </span>
-      <span className="text-[10px] text-slate-500">{label}</span>
+      <span className="text-[10px] text-muted">{label}</span>
     </div>
   );
 }
@@ -73,8 +75,8 @@ function PctBadge({ value, label }: { value: number | null; label: string }) {
 function StatCell({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
-      <span className="text-xs text-slate-200 font-mono">{value ?? "—"}</span>
+      <span className="text-[10px] text-muted uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-fg font-mono">{value ?? "—"}</span>
     </div>
   );
 }
@@ -82,24 +84,28 @@ function StatCell({ label, value }: { label: string; value: string | null | unde
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">{title}</p>
+      <p className="text-[10px] text-muted uppercase tracking-widest font-medium">{title}</p>
       {children}
     </div>
   );
 }
 
 function Divider() {
-  return <div className="border-t border-slate-800" />;
+  return <div className="border-t border-border" />;
 }
 
 // ── Drawer content ────────────────────────────────────────────────────────────
 
 function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: PortfolioHolding; displayCurrency: string; hidePosition?: boolean }) {
   const [chartDays, setChartDays] = useState<7 | 30 | 90>(30);
+  const ticker = holding.ticker.toUpperCase();
+
+  const { data: metadataByTicker = {} } = useTickerMetadata([ticker]);
+  const metadata = metadataByTicker[ticker];
 
   const { data: snap, isLoading, isError } = useQuery({
-    queryKey: ["ticker-snapshot", holding.ticker],
-    queryFn: () => getTickerSnapshot(holding.ticker),
+    queryKey: ["ticker-snapshot", ticker],
+    queryFn: () => getTickerSnapshot(ticker),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -110,7 +116,12 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
   };
 
   // ── Header ─────────────────────────────────────────────────────────────────
-  const name = snap?.name ?? holding.ticker;
+  const name = metadata?.company_name ?? metadata?.display_name ?? snap?.name ?? ticker;
+  const sector = metadata?.sector ?? snap?.sector;
+  const website = metadata?.website ?? snap?.website;
+  const logo = metadata?.logo_url ?? snap?.logo;
+  const exchange = metadata?.exchange ?? snap?.exchange;
+  const country = metadata?.country ?? snap?.country;
   const hasChart = (snap?.chart?.c?.length ?? 0) >= 2;
 
   return (
@@ -119,19 +130,19 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
       {/* Ticker + name */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xl font-bold text-white font-mono">{holding.ticker}</p>
-          {name !== holding.ticker && (
-            <p className="text-sm text-slate-400 mt-0.5">{name}</p>
+          <p className="text-xl font-bold text-fg font-mono">{ticker}</p>
+          {name !== ticker && (
+            <p className="text-sm text-muted mt-0.5">{name}</p>
           )}
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {snap?.exchange && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.exchange}</span>}
-            {snap?.sector && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.sector}</span>}
-            {snap?.country && <span className="text-[10px] text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">{snap.country}</span>}
+            {exchange && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{exchange}</span>}
+            {sector && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{sector}</span>}
+            {country && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{country}</span>}
           </div>
         </div>
-        {snap?.logo && (
+        {logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={snap.logo} alt={name} className="h-10 w-10 rounded object-contain bg-slate-800 p-1 shrink-0" />
+          <img src={logo} alt={name} className="h-10 w-10 rounded-sm object-contain bg-input p-1 shrink-0" />
         )}
       </div>
 
@@ -171,7 +182,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
 
       {/* Chart */}
       <Section title="Price History">
-        {isLoading && <div className="h-24 bg-slate-800/50 rounded animate-pulse" />}
+        {isLoading && <div className="h-24 bg-input/50 rounded-sm animate-pulse" />}
         {!isLoading && hasChart && (
           <>
             <div className="flex gap-1 mb-2">
@@ -181,8 +192,8 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
                   onClick={() => setChartDays(d)}
                   className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
                     chartDays === d
-                      ? "bg-purple-600 text-white"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      ? "bg-purple-600 text-fg"
+                      : "text-muted hover:text-fg hover:bg-input"
                   }`}
                 >
                   {d === 7 ? "1W" : d === 30 ? "1M" : "3M"}
@@ -193,7 +204,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
           </>
         )}
         {!isLoading && !hasChart && !isError && (
-          <p className="text-slate-500 text-xs">Chart data unavailable — Finnhub key required for stocks.</p>
+          <p className="text-muted text-xs">Chart data unavailable — Finnhub key required for stocks.</p>
         )}
       </Section>
 
@@ -231,16 +242,19 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
         <>
           <Divider />
           <Section title="About">
-            <p className="text-xs text-slate-400 leading-relaxed">{snap.description}</p>
-            {snap.website && (
-              <a href={snap.website} target="_blank" rel="noreferrer"
+            <p className="text-xs text-muted leading-relaxed">{snap.description}</p>
+            {website && (
+              <a href={website} target="_blank" rel="noreferrer"
                 className="text-xs text-blue-400 hover:underline mt-1 inline-block">
-                {snap.website.replace(/^https?:\/\//, "")} ↗
+                {website.replace(/^https?:\/\//, "")} ↗
               </a>
             )}
           </Section>
         </>
       )}
+
+      <Divider />
+      <WavePanel ticker={ticker} />
 
       {/* Last analysis */}
       {holding.last_run && (
@@ -248,10 +262,10 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
           <Divider />
           <Section title="Last Analysis">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className={`rounded px-2 py-0.5 text-xs font-medium ${verdictColors[holding.last_run.verdict?.toLowerCase()] ?? "bg-slate-700 text-slate-300 border border-slate-600"}`}>
+              <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictColors[holding.last_run.verdict?.toLowerCase()] ?? "bg-muted-surface text-fg-secondary border border-input-border"}`}>
                 {holding.last_run.verdict?.toUpperCase()}
               </span>
-              <span className="text-xs text-slate-400">{holding.last_run.analysis_date}</span>
+              <span className="text-xs text-muted">{holding.last_run.analysis_date}</span>
               <Link href={`/runs/${holding.last_run.run_id}`}
                 className="text-xs text-purple-400 hover:underline ml-auto">
                 View Report →
@@ -275,9 +289,9 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
           <Section title="Next Earnings">
             <div className="flex items-center gap-4">
               <div className="flex flex-col">
-                <span className="text-sm text-slate-200 font-medium">{snap.next_earnings.date}</span>
+                <span className="text-sm text-fg font-medium">{snap.next_earnings.date}</span>
                 {snap.next_earnings.hour && (
-                  <span className="text-[10px] text-slate-500">{snap.next_earnings.hour === "bmo" ? "Before market open" : snap.next_earnings.hour === "amc" ? "After market close" : snap.next_earnings.hour}</span>
+                  <span className="text-[10px] text-muted">{snap.next_earnings.hour === "bmo" ? "Before market open" : snap.next_earnings.hour === "amc" ? "After market close" : snap.next_earnings.hour}</span>
                 )}
               </div>
               {snap.next_earnings.eps_estimate != null && (
@@ -300,13 +314,13 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
                   <div className="flex gap-3">
                     {article.image && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={article.image} alt="" className="w-14 h-10 object-cover rounded shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <img src={article.image} alt="" className="w-14 h-10 object-cover rounded-sm shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs text-slate-300 group-hover:text-white transition-colors leading-snug line-clamp-2">
+                      <p className="text-xs text-fg-secondary group-hover:text-fg transition-colors leading-snug line-clamp-2">
                         {article.headline}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className="text-[10px] text-muted mt-0.5">
                         {article.source}{article.datetime ? ` · ${timeAgo(article.datetime)}` : ""}
                       </p>
                     </div>
@@ -319,7 +333,7 @@ function DrawerContent({ holding, displayCurrency, hidePosition }: { holding: Po
       )}
 
       {isError && (
-        <p className="text-xs text-slate-500 text-center py-2">
+        <p className="text-xs text-muted text-center py-2">
           Could not load ticker details.
         </p>
       )}
@@ -373,14 +387,14 @@ export function TickerDrawer({ holding, displayCurrency, onClose, hidePosition }
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-navy-800 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-200 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-elevated border-l border-input-border shadow-2xl flex flex-col transition-transform duration-200 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header bar */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
-          <span className="text-sm font-semibold text-slate-200">Ticker Detail</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <span className="text-sm font-semibold text-fg">Ticker Detail</span>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-200 transition-colors text-lg leading-none"
+            className="text-muted hover:text-fg transition-colors text-lg leading-none"
             aria-label="Close"
           >
             ✕

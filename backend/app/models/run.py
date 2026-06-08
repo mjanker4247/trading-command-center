@@ -26,6 +26,7 @@ class Run(Base):
     llm_model: Mapped[str] = mapped_column(String)
     depth: Mapped[str] = mapped_column(String)  # quick|standard|deep
     analysts: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    response_language: Mapped[str] = mapped_column(String(16), default="en-US")
     label: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[RunStatus] = mapped_column(SAEnum(RunStatus), default=RunStatus.pending)

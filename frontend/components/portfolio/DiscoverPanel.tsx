@@ -48,14 +48,14 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
       {/* Left: Sector Gap Analysis */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-slate-300">
+        <h3 className="text-sm font-semibold text-fg-secondary">
           Sector Gap Analysis
-          <span className="ml-2 text-xs font-normal text-slate-500">your portfolio vs S&P 500</span>
+          <span className="ml-2 text-xs font-normal text-muted">your portfolio vs S&P 500</span>
         </h3>
         {gapsLoading ? (
-          <p className="text-xs text-slate-500 italic">Loading…</p>
+          <p className="text-xs text-muted italic">Loading…</p>
         ) : gaps.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">
+          <p className="text-xs text-muted italic">
             Add a Finnhub key in Settings to see sector analysis.
           </p>
         ) : (
@@ -70,11 +70,11 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
       {/* Right: AI Recommendations */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-300">AI Recommendations</h3>
+          <h3 className="text-sm font-semibold text-fg-secondary">AI Recommendations</h3>
           <button
             onClick={() => discoverMutation.mutate()}
             disabled={discoverMutation.isPending}
-            className="text-xs font-semibold px-3 py-1 rounded bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white transition-colors"
+            className="text-xs font-semibold px-3 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-fg transition-colors"
           >
             {discoverMutation.isPending ? "Generating…" : hasLoaded ? "↺ Refresh" : "Generate"}
           </button>
@@ -89,7 +89,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
                 className={`text-xs px-2 py-0.5 rounded border transition-colors ${
                   filter === t
                     ? "bg-violet-800 text-violet-200 border-violet-600"
-                    : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    : "bg-input text-muted border-input-border hover:border-border-strong"
                 }`}
               >
                 {t}
@@ -105,7 +105,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
         )}
 
         {!hasLoaded && !discoverMutation.isPending && (
-          <p className="text-xs text-slate-500 italic">
+          <p className="text-xs text-muted italic">
             Click Generate to get AI-curated stock recommendations based on your portfolio gaps and today&apos;s market activity.
           </p>
         )}
@@ -130,22 +130,22 @@ function SectorRow({ gap, maxWeight }: { gap: SectorGap; maxWeight: number }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-0.5 text-xs">
-        <span className="text-slate-300">{gap.sector}</span>
+        <span className="text-fg-secondary">{gap.sector}</span>
         <div className="flex gap-3">
           <span className="text-blue-400 font-semibold">{(gap.your_weight * 100).toFixed(1)}%</span>
-          <span className="text-slate-500">{(gap.sp500_weight * 100).toFixed(1)}%</span>
-          <span className={isUnder ? "text-emerald-400 font-semibold" : isOver ? "text-red-400 font-semibold" : "text-slate-500"}>
+          <span className="text-muted">{(gap.sp500_weight * 100).toFixed(1)}%</span>
+          <span className={isUnder ? "text-emerald-400 font-semibold" : isOver ? "text-red-400 font-semibold" : "text-muted"}>
             {gap.delta >= 0 ? "+" : ""}{(gap.delta * 100).toFixed(1)}%
           </span>
         </div>
       </div>
-      <div className="h-1.5 bg-slate-800 rounded relative">
+      <div className="h-1.5 bg-input rounded-sm relative">
         <div
-          className="h-full bg-blue-500 rounded"
+          className="h-full bg-blue-500 rounded-sm"
           style={{ width: `${(gap.your_weight / maxWeight) * 100}%` }}
         />
         <div
-          className="absolute top-0 h-full w-0.5 bg-slate-500"
+          className="absolute top-0 h-full w-0.5 bg-subtle"
           style={{ left: `${(gap.sp500_weight / maxWeight) * 100}%` }}
         />
       </div>
@@ -161,21 +161,21 @@ function RecommendationCard({
   onAnalyze: () => void;
 }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+    <div className="bg-input border border-input-border rounded-lg p-3">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-slate-100 font-bold text-sm">{rec.ticker}</span>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TAG_COLORS[rec.tag] ?? "bg-slate-700 text-slate-300"}`}>
+          <span className="text-fg font-bold text-sm">{rec.ticker}</span>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${TAG_COLORS[rec.tag] ?? "bg-muted-surface text-fg-secondary"}`}>
             {rec.tag}
           </span>
           {rec.sector && (
-            <span className="text-xs text-slate-500">{rec.sector}</span>
+            <span className="text-xs text-muted">{rec.sector}</span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={onAnalyze}
-            className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+            className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-violet-700 hover:bg-violet-600 text-fg transition-colors"
           >
             ⚡ Analyze
           </button>
@@ -183,7 +183,7 @@ function RecommendationCard({
         </div>
       </div>
       {rec.reason && (
-        <p className="text-xs text-slate-400">{rec.reason}</p>
+        <p className="text-xs text-muted">{rec.reason}</p>
       )}
     </div>
   );

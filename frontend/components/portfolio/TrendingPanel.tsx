@@ -55,7 +55,7 @@ function TickerCard({
   const up = (item.change_pct ?? 0) >= 0;
 
   return (
-    <div className="w-full text-left bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-slate-600 rounded-xl p-4 transition-all group">
+    <div className="w-full text-left bg-input/60 hover:bg-input border border-input-border/60 hover:border-input-border rounded-xl p-4 transition-all group">
       <button onClick={() => onClick(item.ticker)} className="w-full text-left">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -64,18 +64,18 @@ function TickerCard({
               <img
                 src={item.logo}
                 alt={item.ticker}
-                className="w-8 h-8 rounded object-contain bg-slate-700 p-0.5 shrink-0"
+                className="w-8 h-8 rounded-sm object-contain bg-muted-surface p-0.5 shrink-0"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               />
             ) : (
-              <div className="w-8 h-8 rounded bg-slate-700 flex items-center justify-center shrink-0">
-                <span className="text-[9px] font-bold text-slate-400">{item.ticker.slice(0, 2)}</span>
+              <div className="w-8 h-8 rounded-sm bg-muted-surface flex items-center justify-center shrink-0">
+                <span className="text-[9px] font-bold text-muted">{item.ticker.slice(0, 2)}</span>
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white font-mono leading-tight">{item.ticker}</p>
+              <p className="text-sm font-bold text-fg font-mono leading-tight">{item.ticker}</p>
               {item.name && (
-                <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">{item.name}</p>
+                <p className="text-[11px] text-muted truncate leading-tight mt-0.5">{item.name}</p>
               )}
             </div>
           </div>
@@ -90,7 +90,7 @@ function TickerCard({
 
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-base font-semibold text-white font-mono tabular-nums">
+            <p className="text-base font-semibold text-fg font-mono tabular-nums">
               ${fmtPrice(item.price)}
             </p>
             <p className={`text-xs tabular-nums ${up ? "text-green-400" : "text-red-400"}`}>
@@ -99,10 +99,10 @@ function TickerCard({
           </div>
           <div className="text-right">
             {item.market_cap != null && (
-              <p className="text-[11px] text-slate-500">Mkt cap {fmtMarketCap(item.market_cap)}</p>
+              <p className="text-[11px] text-muted">Mkt cap {fmtMarketCap(item.market_cap)}</p>
             )}
             {item.sector && (
-              <p className="text-[10px] text-slate-600 truncate max-w-[100px]">{item.sector}</p>
+              <p className="text-[10px] text-subtle truncate max-w-[100px]">{item.sector}</p>
             )}
           </div>
         </div>
@@ -110,11 +110,11 @@ function TickerCard({
         {/* Day range bar */}
         {item.high != null && item.low != null && item.price != null && item.high > item.low && (
           <div className="mt-3">
-            <div className="flex justify-between text-[10px] text-slate-600 mb-1">
+            <div className="flex justify-between text-[10px] text-subtle mb-1">
               <span>L ${fmtPrice(item.low)}</span>
               <span>H ${fmtPrice(item.high)}</span>
             </div>
-            <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-1 bg-muted-surface rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${up ? "bg-green-500" : "bg-red-500"}`}
                 style={{
@@ -129,7 +129,7 @@ function TickerCard({
       <div className="flex gap-1.5 mt-3">
         <button
           onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker)}`)}
-          className="flex-1 text-xs font-semibold py-1 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+          className="flex-1 text-xs font-semibold py-1 rounded-sm bg-violet-700 hover:bg-violet-600 text-fg transition-colors"
         >
           ⚡ Analyze
         </button>
@@ -152,29 +152,29 @@ function MoverRow({
   const up = (item.change_pct ?? 0) >= 0;
 
   return (
-    <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/80 transition-colors group">
+    <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-input/80 transition-colors group">
       <button onClick={() => onClick(item.ticker)} className="flex-1 flex items-center gap-3 text-left min-w-0">
         {item.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.logo}
             alt={item.ticker}
-            className="w-7 h-7 rounded object-contain bg-slate-700 p-0.5 shrink-0"
+            className="w-7 h-7 rounded-sm object-contain bg-muted-surface p-0.5 shrink-0"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <div className="w-7 h-7 rounded bg-slate-700 flex items-center justify-center shrink-0">
-            <span className="text-[9px] font-bold text-slate-400">{item.ticker.slice(0, 2)}</span>
+          <div className="w-7 h-7 rounded-sm bg-muted-surface flex items-center justify-center shrink-0">
+            <span className="text-[9px] font-bold text-muted">{item.ticker.slice(0, 2)}</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-white font-mono leading-tight">{item.ticker}</p>
+          <p className="text-sm font-bold text-fg font-mono leading-tight">{item.ticker}</p>
           {item.name && (
-            <p className="text-[10px] text-slate-500 truncate">{item.name}</p>
+            <p className="text-[10px] text-muted truncate">{item.name}</p>
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-semibold text-white font-mono tabular-nums">
+          <p className="text-sm font-semibold text-fg font-mono tabular-nums">
             ${fmtPrice(item.price)}
           </p>
           <p className={`text-xs font-semibold tabular-nums ${up ? "text-green-400" : "text-red-400"}`}>
@@ -184,7 +184,7 @@ function MoverRow({
       </button>
       <button
         onClick={() => router.push(`/runs/new?ticker=${encodeURIComponent(item.ticker)}`)}
-        className="shrink-0 text-xs font-semibold px-2 py-1 rounded bg-violet-700 hover:bg-violet-600 text-white transition-colors"
+        className="shrink-0 text-xs font-semibold px-2 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 text-fg transition-colors"
       >
         ⚡ Analyze
       </button>
@@ -208,10 +208,10 @@ function SectorHeatmap({ sectors }: { sectors: SectorData[] }) {
 
         return (
           <div key={s.sector} className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400 w-36 shrink-0 truncate">{s.sector}</span>
-            <div className="flex-1 h-5 bg-slate-800 rounded overflow-hidden relative">
+            <span className="text-[11px] text-muted w-36 shrink-0 truncate">{s.sector}</span>
+            <div className="flex-1 h-5 bg-input rounded-sm overflow-hidden relative">
               <div
-                className={`h-full rounded transition-all ${up ? "bg-green-500/30" : "bg-red-500/30"}`}
+                className={`h-full rounded-sm transition-all ${up ? "bg-green-500/30" : "bg-red-500/30"}`}
                 style={{ width }}
               />
               <span
@@ -222,7 +222,7 @@ function SectorHeatmap({ sectors }: { sectors: SectorData[] }) {
                 {fmtPct(s.change_pct)}
               </span>
             </div>
-            <span className="text-[10px] text-slate-600 w-12 text-right font-mono tabular-nums shrink-0">
+            <span className="text-[10px] text-subtle w-12 text-right font-mono tabular-nums shrink-0">
               {s.ticker}
             </span>
           </div>
@@ -236,17 +236,17 @@ function SectorHeatmap({ sectors }: { sectors: SectorData[] }) {
 
 function CardSkeleton() {
   return (
-    <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4 space-y-3 animate-pulse">
+    <div className="bg-input/40 border border-input-border/40 rounded-xl p-4 space-y-3 animate-pulse">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded bg-slate-700" />
+        <div className="w-8 h-8 rounded-sm bg-muted-surface" />
         <div className="space-y-1.5 flex-1">
-          <div className="h-3 w-16 bg-slate-700 rounded" />
-          <div className="h-2.5 w-28 bg-slate-700/60 rounded" />
+          <div className="h-3 w-16 bg-muted-surface rounded-sm" />
+          <div className="h-2.5 w-28 bg-muted-surface/60 rounded-sm" />
         </div>
-        <div className="h-5 w-14 bg-slate-700 rounded-full" />
+        <div className="h-5 w-14 bg-muted-surface rounded-full" />
       </div>
-      <div className="h-4 w-24 bg-slate-700 rounded" />
-      <div className="h-1 bg-slate-700 rounded-full" />
+      <div className="h-4 w-24 bg-muted-surface rounded-sm" />
+      <div className="h-1 bg-muted-surface rounded-full" />
     </div>
   );
 }
@@ -254,14 +254,14 @@ function CardSkeleton() {
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="flex items-baseline gap-2 mb-4">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      {subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
+      <h3 className="text-sm font-semibold text-fg">{title}</h3>
+      {subtitle && <span className="text-[11px] text-muted">{subtitle}</span>}
     </div>
   );
 }
 
 const NO_KEY_MSG = (
-  <div className="text-slate-400 text-sm py-10 text-center space-y-1">
+  <div className="text-muted text-sm py-10 text-center space-y-1">
     <p>Market data requires a Finnhub API key.</p>
     <p>
       <a href="/settings" className="text-blue-400 hover:underline">
@@ -314,14 +314,14 @@ export function TrendingPanel() {
         {loadingMovers ? (
           <div className="grid grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-40 bg-slate-800/40 border border-slate-700/40 rounded-xl animate-pulse" />
+              <div key={i} className="h-40 bg-input/40 border border-input-border/40 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : movers && (movers.gainers.length > 0 || movers.losers.length > 0) ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Gainers */}
-            <div className="bg-slate-800/40 border border-green-500/20 rounded-xl overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-700/60 flex items-center gap-1.5">
+            <div className="bg-input/40 border border-green-500/20 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-input-border/60 flex items-center gap-1.5">
                 <span className="text-green-400 text-sm">▲</span>
                 <span className="text-xs font-semibold text-green-400">Top Gainers</span>
               </div>
@@ -333,8 +333,8 @@ export function TrendingPanel() {
             </div>
 
             {/* Losers */}
-            <div className="bg-slate-800/40 border border-red-500/20 rounded-xl overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-700/60 flex items-center gap-1.5">
+            <div className="bg-input/40 border border-red-500/20 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-input-border/60 flex items-center gap-1.5">
                 <span className="text-red-400 text-sm">▼</span>
                 <span className="text-xs font-semibold text-red-400">Top Losers</span>
               </div>
@@ -346,7 +346,7 @@ export function TrendingPanel() {
             </div>
           </div>
         ) : (
-          <p className="text-slate-500 text-sm">Market data unavailable during off-hours or on weekends.</p>
+          <p className="text-muted text-sm">Market data unavailable during off-hours or on weekends.</p>
         )}
       </div>
 
@@ -364,7 +364,7 @@ export function TrendingPanel() {
             ))}
           </div>
         ) : (
-          <p className="text-slate-500 text-sm">No trending tickers available right now.</p>
+          <p className="text-muted text-sm">No trending tickers available right now.</p>
         )}
       </div>
 
@@ -374,13 +374,13 @@ export function TrendingPanel() {
         {loadingSectors ? (
           <div className="space-y-1.5">
             {[...Array(11)].map((_, i) => (
-              <div key={i} className="h-5 bg-slate-800/40 rounded animate-pulse" />
+              <div key={i} className="h-5 bg-input/40 rounded-sm animate-pulse" />
             ))}
           </div>
         ) : sectors.length > 0 ? (
           <SectorHeatmap sectors={sectors} />
         ) : (
-          <p className="text-slate-500 text-sm">Sector data unavailable.</p>
+          <p className="text-muted text-sm">Sector data unavailable.</p>
         )}
       </div>
 

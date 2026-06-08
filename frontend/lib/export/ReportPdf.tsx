@@ -1,6 +1,9 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Run, Report } from "../types";
+import { responseLanguageLabel } from "@/lib/responseLanguage";
+import { getAnalystReportContent } from "@/lib/analystReports";
+import { normalizeMarkdownBlock } from "@/lib/normalizeMarkdown";
 import { parseMdForPdf, type MdSegment } from "./parseMdForPdf";
 
 const HEADER_HEIGHT = 36;
@@ -127,6 +130,55 @@ const styles = StyleSheet.create({
   numberedText: { fontSize: 10, color: "#1e293b", lineHeight: 1.6, flex: 1 },
   boldInline: { fontFamily: "Helvetica-Bold" },
   italicInline: { fontFamily: "Helvetica-Oblique" },
+
+  // ── tables ───────────────────────────────────────────────────────────────
+    table: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 3,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  tableRowLast: {
+    flexDirection: "row",
+  },
+  tableHeaderCell: {
+    flex: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    backgroundColor: "#f1f5f9",
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+  },
+  tableCell: {
+    flex: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+  },
+  tableCellLast: {
+    flex: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+  },
+  tableHeaderText: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f3460",
+    lineHeight: 1.4,
+  },
+  tableCellText: {
+    fontSize: 8.5,
+    color: "#1e293b",
+    lineHeight: 1.4,
+  },
 });
 
 type PDFStyle = typeof styles[keyof typeof styles];
@@ -188,9 +240,61 @@ function InlineText({ raw, style }: { raw: string; style: PDFStyle }) {
   );
 }
 
+// ── table renderer ─────────────────────────────────────────────────────
+function PdfTable({ rows }: { rows: string[][] }) {
+  if (rows.length === 0) return null;
+
+  const colCount = Math.max(...rows.map((row) => row.length));
+
+  function normalizeRow(row: string[]): string[] {
+    return Array.from({ length: colCount }, (_, i) => row[i]?? "");
+  }
+
+  return (
+    <View style={styles.table}>
+      {rows.map((rawRow, rowIndex) => {
+        const row = normalizeRow(rawRow);
+        const isHeader = rowIndex === 0;
+        const isLastRow = rowIndex === rows.length - 1;
+
+        return (
+          <View
+            key={rowIndex}
+            style={isLastRow? styles.tableRowLast: styles.tableRow}
+          >
+            {row.map((cell, cellIndex) => {
+              const isLastCell = cellIndex === row.length - 1;
+
+              return (
+                <View
+                  key={cellIndex}
+                  style={
+                    isHeader
+                      ? isLastCell
+                        ? [styles.tableHeaderCell, { borderRightWidth: 0 }]
+                        : styles.tableHeaderCell
+                      : isLastCell
+                        ? styles.tableCellLast
+                        : styles.tableCell
+                  }
+                >
+                  <InlineText
+                    raw={cell}
+                    style={isHeader? styles.tableHeaderText: styles.tableCellText}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ── markdown content renderer ─────────────────────────────────────────────
 function MdContent({ text }: { text: string }) {
-  const segments = parseMdForPdf(text);
+  const segments = parseMdForPdf(normalizeMarkdownBlock(text));
   return (
     <View>
       {segments.map((seg: MdSegment, i: number) => {
@@ -198,6 +302,7 @@ function MdContent({ text }: { text: string }) {
         if (seg.kind === "h1") return <InlineText key={i} raw={seg.text} style={styles.h1} />;
         if (seg.kind === "h2") return <InlineText key={i} raw={seg.text} style={styles.h2} />;
         if (seg.kind === "h3") return <InlineText key={i} raw={seg.text} style={styles.h3} />;
+        if (seg.kind === "table") return <PdfTable key={i} rows={seg.rows} />;
         if (seg.kind === "bullet") {
           const numMatch = seg.text.match(/^(\d+)\.\s+(.+)/);
           if (numMatch) {
@@ -299,13 +404,11 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
   const raw = report.raw_report;
   const hasPrices = report.suggested_entry || report.suggested_stop || report.suggested_target;
 
-  const analysts = run.analysts.filter((analyst) => {
-    const content =
-      (raw?.[`${analyst}_report`] as string | undefined) ??
-      (raw?.[analyst] as string | undefined) ?? "";
-    return content.trim().length > 0;
-  });
+  const analysts = run.analysts.filter(
+    (analyst) => getAnalystReportContent(raw, analyst).trim().length > 0,
+  );
 
+  const situationSummary = (raw?.situation_summary as string | undefined)?.trim() ?? "";
   const debateHistory = extractHistory(raw?.investment_debate_state);
   const riskHistory = extractHistory(raw?.risk_debate_state);
   const investmentPlan = raw?.investment_plan as string | undefined;
@@ -315,6 +418,7 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
     { label: "Provider", value: run.llm_provider },
     { label: "Model", value: run.llm_model },
     { label: "Depth", value: run.depth },
+    { label: "Language", value: responseLanguageLabel(run.response_language) },
     { label: "Analysts", value: run.analysts.map(capitalize).join(", ") },
   ];
 
@@ -340,19 +444,19 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
             {report.suggested_entry && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Entry</Text>
-                <Text style={styles.priceValue}>${report.suggested_entry}</Text>
+                <Text style={styles.priceValue}>{report.suggested_entry}</Text>
               </View>
             )}
             {report.suggested_stop && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Stop</Text>
-                <Text style={styles.priceValue}>${report.suggested_stop}</Text>
+                <Text style={styles.priceValue}>{report.suggested_stop}</Text>
               </View>
             )}
             {report.suggested_target && (
               <View style={styles.priceBox}>
                 <Text style={styles.priceLabel}>Target</Text>
-                <Text style={styles.priceValue}>${report.suggested_target}</Text>
+                <Text style={styles.priceValue}>{report.suggested_target}</Text>
               </View>
             )}
           </View>
@@ -375,11 +479,16 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
           </View>
         )}
 
+        {situationSummary && (
+          <View break>
+            <SectionTitle title="Situation Summary" accent={ACCENT.trader} />
+            <MdContent text={situationSummary} />
+          </View>
+        )}
+
         {/* ── Per-analyst sections ── */}
         {analysts.map((analyst) => {
-          const content =
-            (raw?.[`${analyst}_report`] as string) ??
-            (raw?.[analyst] as string) ?? "";
+          const content = getAnalystReportContent(raw, analyst);
           return (
             <View key={analyst} break>
               <SectionTitle

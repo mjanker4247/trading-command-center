@@ -42,7 +42,8 @@ async def _fire_watchlist_item(item_id: str) -> None:
             llm_provider=item.llm_provider,
             llm_model=item.llm_model,
             depth=item.depth,
-            analysts=_crypto_safe_analysts(item.ticker, item.analysts or ["market", "social", "news", "fundamentals", "technical"]),
+            analysts=_crypto_safe_analysts(item.ticker, item.analysts or ["market", "social", "news", "fundamentals"]),
+            response_language=item.response_language,
             label=f"Scheduled: {item.ticker}",
         )
         db.add(run)
@@ -57,6 +58,7 @@ async def _fire_watchlist_item(item_id: str) -> None:
             "llm_model": run.llm_model,
             "depth": run.depth,
             "analysts": run.analysts,
+            "response_language": run.response_language,
         })
 
 
@@ -107,6 +109,7 @@ async def _fire_daily_portfolio_insights() -> None:
                     "anthropic": "claude-haiku-4-5-20251001",
                     "google": "gemini-2.5-flash",
                     "groq": "llama-3.3-70b-versatile",
+                    "ionos": "openai/gpt-oss-120b",
                 }[prov]
                 break
 

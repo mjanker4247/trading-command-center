@@ -2,10 +2,15 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { Check, LoaderCircle, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 import { addHolding, updateHolding, deleteHolding, getLatestRunsByTicker, type LatestRunEntry } from "@/lib/api";
 import { fmtMoney, fmtPnl } from "@/lib/currency";
 import { WatchButton } from "@/components/portfolio/WatchButton";
-import type { PortfolioHolding, FundamentalsData, RegimeData, TrimSignalEntry } from "@/lib/types";
+import { IconButton, IconLink } from "@/components/ui/IconButton";
+import { TickerLabel } from "@/components/ui/TickerLabel";
+import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { WaveBadge } from "@/components/wave/WaveBadge";
+import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry } from "@/lib/types";
 
 interface HoldingsTableProps {
   portfolioId: string;
@@ -14,6 +19,7 @@ interface HoldingsTableProps {
   displayCurrency: string;
   fundamentals?: Record<string, FundamentalsData>;
   regime?: Record<string, RegimeData>;
+  wave?: Record<string, WaveSummary>;
   trimSignals?: Record<string, TrimSignalEntry>;
   onTickerClick?: (holding: PortfolioHolding) => void;
 }
@@ -34,6 +40,7 @@ function SortableHeader({
   sortDir,
   onSort,
   align = "right",
+  className = "",
 }: {
   label: string;
   colKey: SortKey;
@@ -41,20 +48,21 @@ function SortableHeader({
   sortDir: SortDir;
   onSort: (key: SortKey) => void;
   align?: "left" | "right";
+  className?: string;
 }) {
   const active = sortKey === colKey;
   const arrow = active ? (sortDir === "asc" ? " ↑" : " ↓") : "";
   return (
     <th
-      className={`px-3 py-3 text-${align} cursor-pointer select-none group whitespace-nowrap`}
+      className={`px-3 py-3 text-${align} cursor-pointer select-none group whitespace-nowrap ${className}`}
       onClick={() => onSort(colKey)}
     >
-      <span className={active ? "text-blue-400" : "group-hover:text-slate-200 transition-colors"}>
+      <span className={active ? "text-blue-400" : "group-hover:text-fg transition-colors"}>
         {label}
         {active ? (
           <span className="text-blue-400">{arrow}</span>
         ) : (
-          <span className="text-slate-600 group-hover:text-slate-400 ml-0.5">↕</span>
+          <span className="text-subtle group-hover:text-muted ml-0.5">↕</span>
         )}
       </span>
     </th>
@@ -101,7 +109,7 @@ function EditInput({
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
-      className={`bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 ${className ?? ""}`}
+      className={`bg-input border border-input-border rounded-sm px-2 py-1 text-xs text-fg focus:outline-hidden focus:border-blue-500 ${className ?? ""}`}
     />
   );
 }
@@ -134,13 +142,13 @@ function FundamentalsRow({ data, colSpan }: { data: FundamentalsData; colSpan: n
       ];
 
   return (
-    <tr className="border-t border-slate-700/50 bg-slate-800/20">
+    <tr className="border-t border-input-border/50 bg-input/20">
       <td colSpan={colSpan} className="px-6 py-2">
         <div className="flex flex-wrap gap-4">
           {metrics.map((m) => (
             <div key={m.label} className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">{m.label}</span>
-              <span className={`text-xs font-mono ${m.color ?? "text-slate-300"}`}>{m.value}</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">{m.label}</span>
+              <span className={`text-xs font-mono ${m.color ?? "text-fg-secondary"}`}>{m.value}</span>
             </div>
           ))}
         </div>
@@ -169,7 +177,7 @@ function PegBadge({ peg }: { peg: number | null | undefined }) {
   }
   return (
     <span
-      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-slate-500 bg-slate-800"
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-muted bg-input"
       title="PEG unavailable — negative earnings or no 3-year growth data from Finnhub"
     >
       PEG N/A
@@ -203,7 +211,7 @@ function TrimBadge({ entry }: { entry?: TrimSignalEntry }) {
 
 function RegimeBadge({ data }: { data: RegimeData | undefined | null }) {
   if (!data) return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-slate-500 bg-slate-800">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-muted bg-input">
       ● —
     </span>
   );
@@ -223,11 +231,11 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
   const [showMatrix, setShowMatrix] = useState(false);
   const { text } = regimeColors(data.current_regime);
   const signStr = data.signal >= 0 ? `+${data.signal.toFixed(2)}` : data.signal.toFixed(2);
-  const sharpeColor = data.walk_forward.sharpe == null ? "text-slate-500"
+  const sharpeColor = data.walk_forward.sharpe == null ? "text-muted"
     : data.walk_forward.sharpe > 0.5 ? "text-green-400"
     : data.walk_forward.sharpe > 0 ? "text-yellow-400" : "text-red-400";
   const ddColor = (data.walk_forward.max_drawdown ?? 0) < -0.2 ? "text-red-400"
-    : (data.walk_forward.max_drawdown ?? 0) < -0.1 ? "text-yellow-400" : "text-slate-300";
+    : (data.walk_forward.max_drawdown ?? 0) < -0.1 ? "text-yellow-400" : "text-fg-secondary";
   const signalColor = data.signal >= 0.3 ? "text-green-400" : data.signal <= -0.3 ? "text-red-400" : "text-yellow-400";
 
   const statBars: Array<{ label: string; value: number; color: string }> = [
@@ -237,30 +245,30 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
   ];
 
   return (
-    <tr className="border-t border-slate-700/30 bg-slate-900/30">
+    <tr className="border-t border-input-border/30 bg-page/30">
       <td colSpan={colSpan} className="px-6 py-2">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-4 text-xs">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">Regime</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">Regime</span>
               <span className={`font-mono font-semibold ${text}`}>{data.current_regime}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">Signal</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">Signal</span>
               <span className={`font-mono ${signalColor}`}>{signStr}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">Persistence</span>
-              <span className="font-mono text-slate-300">{(data.persistence * 100).toFixed(0)}%</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">Persistence</span>
+              <span className="font-mono text-fg-secondary">{(data.persistence * 100).toFixed(0)}%</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">Sharpe (WF)</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">Sharpe (WF)</span>
               <span className={`font-mono ${sharpeColor}`}>
                 {data.walk_forward.sharpe != null ? data.walk_forward.sharpe.toFixed(2) : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">Max DD</span>
+              <span className="text-[10px] text-muted uppercase tracking-wide">Max DD</span>
               <span className={`font-mono ${ddColor}`}>
                 {data.walk_forward.max_drawdown != null
                   ? `${(data.walk_forward.max_drawdown * 100).toFixed(1)}%`
@@ -269,18 +277,18 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
             </div>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wide" title="Long-run % of time this asset spends in each regime (Markov stationary distribution).">Long-run distribution</span>
+            <span className="text-[10px] text-muted uppercase tracking-wide" title="Long-run % of time this asset spends in each regime (Markov stationary distribution).">Long-run distribution</span>
             <div className="space-y-0.5">
               {statBars.map((b) => (
                 <div key={b.label} className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 w-10">{b.label}</span>
-                  <div className="flex-1 bg-slate-700 rounded h-1.5">
+                  <span className="text-[10px] text-muted w-10">{b.label}</span>
+                  <div className="flex-1 bg-muted-surface rounded h-1.5">
                     <div
                       className={`h-1.5 rounded ${b.color}`}
                       style={{ width: `${(b.value * 100).toFixed(0)}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono text-slate-300 w-8 text-right">
+                  <span className="text-[10px] font-mono text-fg-secondary w-8 text-right">
                     {(b.value * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -290,7 +298,7 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
           <div>
             <button
               onClick={() => setShowMatrix((v) => !v)}
-              className="text-[10px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+              className="text-[10px] text-muted hover:text-fg-secondary underline underline-offset-2"
             >
               {showMatrix ? "Hide matrix" : "Show matrix"}
             </button>
@@ -300,20 +308,20 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
                 if (v >= 0.7) return "text-green-300 bg-green-900/40";
                 if (v >= 0.5) return "text-green-400 bg-green-900/20";
                 if (v >= 0.3) return "text-yellow-400 bg-yellow-900/20";
-                return "text-slate-400";
+                return "text-muted";
               }
               return (
                 <table className="mt-1 text-[10px] font-mono border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-slate-600 pr-2" />
-                      {labels.map((l) => <th key={l} className="px-2 py-0.5 text-slate-500 text-center">{l}</th>)}
+                      <th className="text-subtle pr-2" />
+                      {labels.map((l) => <th key={l} className="px-2 py-0.5 text-muted text-center">{l}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {data.transition_matrix.map((row, i) => (
                       <tr key={i}>
-                        <td className="pr-2 text-slate-500">{labels[i]}</td>
+                        <td className="pr-2 text-muted">{labels[i]}</td>
                         {row.map((v, j) => (
                           <td key={j} className={`px-2 py-0.5 text-center rounded ${matrixCellColor(v)}`}>
                             {(v * 100).toFixed(0)}%
@@ -332,7 +340,7 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
   );
 }
 
-export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, displayCurrency, fundamentals, regime, trimSignals, onTickerClick }: HoldingsTableProps) {
+export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, onTickerClick }: HoldingsTableProps) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
@@ -359,6 +367,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   }
 
   const tickers = holdings.map((h) => h.ticker);
+  const { data: tickerMetadata = {} } = useTickerMetadata(tickers);
   const { data: latestRuns = {} } = useQuery({
     queryKey: ["latest-runs-by-ticker", tickers],
     queryFn: () => getLatestRunsByTicker(tickers),
@@ -499,7 +508,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_finnhub_key" && (
-        <div className="text-xs text-amber-400/80 bg-amber-900/20 border border-amber-700/40 rounded px-3 py-2">
+        <div className="text-xs text-amber-400/80 bg-amber-900/20 border border-amber-700/40 rounded-sm px-3 py-2">
           Showing delayed prices via Yahoo Finance — add your Finnhub API key in{" "}
           <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>{" "}
           for real-time data.
@@ -512,15 +521,15 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           type="text"
           value={filterTicker}
           onChange={(e) => setFilterTicker(e.target.value)}
-          placeholder="Search ticker…"
-          className="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 w-36 focus:outline-none focus:border-blue-500/60 focus:bg-slate-800 placeholder-slate-500 transition-colors"
+          placeholder="Filter by ticker…"
+          className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-xs text-fg w-40 focus:outline-hidden focus:border-blue-500 placeholder-slate-500"
         />
 
         {/* Signal filter */}
         <select
           value={filterSignal}
           onChange={(e) => setFilterSignal(e.target.value)}
-          className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500/60 cursor-pointer transition-colors"
+          className="bg-input border border-input-border rounded-sm px-3 py-1.5 text-xs text-fg focus:outline-hidden focus:border-blue-500"
         >
           <option value="">All signals</option>
           <option value="buy">Buy</option>
@@ -534,7 +543,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           <select
             value={filterPeg}
             onChange={(e) => setFilterPeg(e.target.value)}
-            className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500/60 cursor-pointer transition-colors"
+            className="bg-input/80 border border-input-border rounded-lg px-2.5 py-1.5 text-xs text-fg focus:outline-none focus:border-blue-500/60 cursor-pointer transition-colors"
           >
             <option value="">All PEG</option>
             <option value="undervalued">Undervalued (&lt; 1)</option>
@@ -546,7 +555,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
 
         {/* Regime filter — pill toggles */}
         {hasRegime && (
-          <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800/80 p-0.5 gap-0.5">
+          <div className="flex items-center rounded-lg border border-input-border bg-input/80 p-0.5 gap-0.5">
             {(["", "Bull", "Sideways", "Bear"] as const).map((val) => {
               const isActive = filterRegime === val;
               const label = val === "" ? "All" : val === "Sideways" ? "Sidew." : val;
@@ -554,12 +563,12 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                 val === "Bull" ? "bg-green-800/80 text-green-100" :
                 val === "Bear" ? "bg-red-900/80 text-red-100" :
                 val === "Sideways" ? "bg-yellow-800/80 text-yellow-100" :
-                "bg-slate-600 text-white";
+                "bg-muted-surface text-fg";
               const idleClass =
                 val === "Bull" ? "text-green-500 hover:text-green-300" :
                 val === "Bear" ? "text-red-500 hover:text-red-300" :
                 val === "Sideways" ? "text-yellow-500 hover:text-yellow-300" :
-                "text-slate-400 hover:text-slate-200";
+                "text-muted hover:text-fg";
               return (
                 <button
                   key={val}
@@ -579,7 +588,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
           className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
             trimOnly
               ? "bg-orange-500/20 text-orange-300 border-orange-500/50"
-              : "bg-transparent text-slate-400 border-slate-700 hover:border-slate-500"
+              : "bg-transparent text-muted border-input-border hover:border-border-strong"
           }`}
         >
           Trim signals only
@@ -587,12 +596,12 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
 
         {isFiltered && (
           <div className="flex items-center gap-1.5 ml-1">
-            <span className="text-xs text-slate-500 tabular-nums">
+            <span className="text-xs text-muted tabular-nums">
               {filteredHoldings.length} / {holdings.length}
             </span>
             <button
               onClick={() => { setFilterTicker(""); setFilterSignal(""); setFilterPeg(""); setFilterRegime(""); setTrimOnly(false); }}
-              className="text-[11px] text-slate-500 hover:text-slate-200 border border-slate-700 hover:border-slate-500 rounded px-1.5 py-0.5 transition-colors"
+              className="text-[11px] text-muted hover:text-fg border border-input-border hover:border-border-strong rounded px-1.5 py-0.5 transition-colors"
             >
               ✕ Clear
             </button>
@@ -600,27 +609,27 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
         )}
       </div>
 
-      <div className="overflow-x-auto rounded border border-slate-800">
+      <div className="overflow-x-auto rounded-sm border border-border">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-navy-700 text-slate-400 text-xs uppercase tracking-wider">
+          <thead className="sticky top-0 bg-surface text-muted text-xs uppercase tracking-wider">
             <tr>
               <SortableHeader label="Ticker"         colKey="ticker"         sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="left" />
               <SortableHeader label="Position"       colKey="shares"         sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableHeader label="Current Price"  colKey="current_price"  sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableHeader label="Market Value"   colKey="market_value"   sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableHeader label="Current Price"  colKey="current_price"  sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="hidden lg:table-cell" />
+              <SortableHeader label="Market Value"   colKey="market_value"   sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="hidden lg:table-cell" />
               <SortableHeader label="Unrealized P&L" colKey="unrealized_pnl" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <th className="text-left px-3 py-3 whitespace-nowrap text-slate-400 text-xs uppercase tracking-wider">Last Analysis</th>
+              <th className="text-left px-3 py-3 whitespace-nowrap text-muted text-xs uppercase tracking-wider">Last Analysis</th>
               {hasRegime && (
-                <th className="text-left px-3 py-3 whitespace-nowrap text-slate-400 text-xs uppercase tracking-wider">AI vs Regime</th>
+                <th className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-muted text-xs uppercase tracking-wider">AI vs Regime</th>
               )}
-              <th className="text-left px-3 py-3 whitespace-nowrap text-slate-400 text-xs uppercase tracking-wider">Trim</th>
+              <th className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-muted text-xs uppercase tracking-wider">Trim</th>
               <th className="text-left px-3 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {sortedHoldings.length === 0 && !addingNew ? (
               <tr>
-                <td colSpan={colSpan} className="text-center text-slate-500 px-4 py-8">
+                <td colSpan={colSpan} className="text-center text-muted px-4 py-8">
                   {isFiltered ? "No holdings match the current filters." : "No holdings. Add a row below or upload a CSV."}
                 </td>
               </tr>
@@ -630,7 +639,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                 const isExpanded = expandedIds.has(h.id);
                 const fundData = fundamentals?.[h.ticker] ?? null;
                 const pnl = h.unrealized_pnl;
-                const pnlColor = pnl == null ? "text-slate-500" : pnl >= 0 ? "text-green-400" : "text-red-400";
+                const pnlColor = pnl == null ? "text-muted" : pnl >= 0 ? "text-green-400" : "text-red-400";
                 const rowEntry = latestRuns[h.ticker] ?? null;
                 const rowTint = rowEntry != null && daysAgo(rowEntry.completed_at) <= 14
                   ? rowEntry.verdict === "buy" ? "bg-emerald-900/20"
@@ -640,7 +649,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
 
                 return (
                   <React.Fragment key={h.id}>
-                    <tr className={`border-t border-slate-800 hover:bg-slate-800/30 ${rowTint}`}>
+                    <tr className={`border-t border-border hover:bg-input/30 ${rowTint}`}>
                       {/* Ticker + badges (stacked) + expand toggle */}
                       <td className="px-3 py-2">
                         {isEditing ? (
@@ -658,25 +667,31 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                               {(hasFundamentals || hasRegime) && (fundData || regime?.[h.ticker]) ? (
                                 <button
                                   onClick={() => toggleExpand(h.id)}
-                                  className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-[11px] transition-colors ${isExpanded ? "text-blue-400 bg-blue-900/30" : "text-slate-500 hover:text-slate-200 hover:bg-slate-700"}`}
+                                  className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-[11px] transition-colors ${isExpanded ? "text-blue-400 bg-blue-900/30" : "text-muted hover:text-fg hover:bg-muted-surface"}`}
                                   title={isExpanded ? "Collapse details" : "Expand for fundamentals & regime analysis"}
                                 >
                                   {isExpanded ? "▾" : "▸"}
                                 </button>
                               ) : <span className="w-4 flex-shrink-0" />}
                               {onTickerClick ? (
-                                <button
-                                  onClick={() => onTickerClick(h)}
-                                  className="font-mono font-semibold text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
-                                >
-                                  {h.ticker}
-                                </button>
+                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
+                                  <button
+                                    onClick={() => onTickerClick(h)}
+                                    className="font-mono font-semibold text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
+                                  >
+                                    {h.ticker}
+                                  </button>
+                                </TickerLabel>
                               ) : h.last_run ? (
-                                <Link href={`/runs/${h.last_run.run_id}`} className="font-mono font-semibold text-sm text-purple-400 hover:underline">
-                                  {h.ticker}
-                                </Link>
+                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
+                                  <Link href={`/runs/${h.last_run.run_id}`} className="font-mono font-semibold text-sm text-purple-400 hover:underline">
+                                    {h.ticker}
+                                  </Link>
+                                </TickerLabel>
                               ) : (
-                                <span className="font-mono font-semibold text-sm text-purple-400">{h.ticker}</span>
+                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
+                                  <span className="font-mono font-semibold text-sm text-purple-400">{h.ticker}</span>
+                                </TickerLabel>
                               )}
                             </div>
                             {/* Row 2: badges */}
@@ -685,6 +700,9 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                                 <PegBadge peg={fundData.peg_ratio} />
                               )}
                               {regime?.[h.ticker] && <RegimeBadge data={regime[h.ticker]} />}
+                              {wave?.[h.ticker.toUpperCase()] && (
+                                <WaveBadge data={wave[h.ticker.toUpperCase()]} />
+                              )}
                             </div>
                           </div>
                         )}
@@ -713,17 +731,17 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                           </div>
                         ) : (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-300 font-mono text-xs">{h.shares.toLocaleString("en-US")} sh</span>
-                            <span className="text-slate-500 font-mono text-[10px]">@ {fmtMoney(h.avg_cost, displayCurrency)}</span>
+                            <span className="text-fg-secondary font-mono text-xs">{h.shares.toLocaleString("en-US")} sh</span>
+                            <span className="text-muted font-mono text-[10px]">@ {fmtMoney(h.avg_cost, displayCurrency)}</span>
                           </div>
                         )}
                       </td>
 
                       {/* Current Price (read-only) */}
-                      <td className="px-3 py-2 text-right text-slate-300 tabular-nums font-mono text-xs">{fmtMoney(h.current_price, displayCurrency)}</td>
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">{fmtMoney(h.current_price, displayCurrency)}</td>
 
                       {/* Market Value (read-only) */}
-                      <td className="px-3 py-2 text-right text-slate-300 tabular-nums font-mono text-xs">{fmtMoney(h.market_value, displayCurrency)}</td>
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">{fmtMoney(h.market_value, displayCurrency)}</td>
 
                       {/* Unrealized P&L (read-only) */}
                       <td className={`px-3 py-2 text-right tabular-nums ${pnlColor}`}>
@@ -735,7 +753,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                         {(() => {
                           const entry: LatestRunEntry | null | undefined = latestRuns[h.ticker];
                           if (!entry) {
-                            return <span className="text-xs text-slate-600 italic">Never analyzed</span>;
+                            return <span className="text-xs text-subtle italic">Never analyzed</span>;
                           }
                           const days = daysAgo(entry.completed_at);
                           const stale = days > 14;
@@ -746,7 +764,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                           };
                           return (
                             <div className="flex items-center justify-end gap-1.5">
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${verdictColors[entry.verdict] ?? "bg-slate-700 text-slate-200"}`}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${verdictColors[entry.verdict] ?? "bg-muted-surface text-fg"}`}>
                                 {entry.verdict.toUpperCase()}
                               </span>
                               {h.last_run?.previous_verdict && h.last_run?.previous_run_id && (
@@ -760,7 +778,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                                   ↺ changed
                                 </a>
                               )}
-                              <span className={`text-xs ${stale ? "text-amber-400" : "text-slate-500"}`}>
+                              <span className={`text-xs ${stale ? "text-amber-400" : "text-muted"}`}>
                                 {days === 0 ? "today" : `${days}d ago`}{stale ? " ⚠" : ""}
                               </span>
                               <Link
@@ -779,14 +797,14 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                       {hasRegime && (() => {
                         const r = regime?.[h.ticker];
                         const verdict = rowEntry?.verdict;
-                        if (!r || !verdict) return <td className="px-3 py-2 text-slate-500 text-xs">—</td>;
+                        if (!r || !verdict) return <td className="hidden lg:table-cell px-3 py-2 text-muted text-xs">—</td>;
                         const isConflict =
                           (verdict === "buy" && r.signal < 0) ||
                           (verdict === "sell" && r.signal > 0);
                         const isNeutral = verdict === "hold" || r.current_regime === "Sideways";
                         const signStr = `${r.signal >= 0 ? "+" : ""}${r.signal.toFixed(2)}`;
                         return (
-                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                          <td className="hidden lg:table-cell px-3 py-2 text-xs whitespace-nowrap">
                             {isConflict ? (
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-900/30 text-amber-400 border border-amber-500/30"
@@ -795,7 +813,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                                 ⚠ Conflicts
                               </span>
                             ) : isNeutral ? (
-                              <span className="text-slate-600 text-[11px]">— Neutral</span>
+                              <span className="text-subtle text-[11px]">— Neutral</span>
                             ) : (
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900/30 text-green-400 border border-green-500/30"
@@ -809,50 +827,57 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                       })()}
 
                       {/* Trim */}
-                      <td className="px-3 py-2">
+                      <td className="hidden lg:table-cell px-3 py-2">
                         <TrimBadge entry={trimSignals?.[h.id]} />
                       </td>
 
                       {/* Actions */}
                       <td className="px-3 py-2">
                         {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <button
+                          <div className="flex items-center gap-1.5">
+                            <IconButton
+                              icon={updateMutation.isPending ? LoaderCircle : Check}
+                              label={`Save ${h.ticker} holding`}
+                              title="Save"
+                              tone="success"
                               onClick={saveEdit}
                               disabled={updateMutation.isPending}
-                              className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
-                            >
-                              {updateMutation.isPending ? "Saving…" : "Save"}
-                            </button>
-                            <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-300">
-                              Cancel
-                            </button>
+                              iconClassName={updateMutation.isPending ? "animate-spin" : undefined}
+                            />
+                            <IconButton
+                              icon={X}
+                              label={`Cancel editing ${h.ticker} holding`}
+                              title="Cancel"
+                              tone="default"
+                              onClick={cancelEdit}
+                            />
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <Link
+                            <IconLink
                               href={`/runs/new?ticker=${encodeURIComponent(h.ticker)}`}
-                              className="text-slate-500 hover:text-blue-400 transition-colors leading-none"
+                              icon={Play}
+                              label={`Analyze ${h.ticker}`}
                               title="Analyze"
-                            >
-                              ⚡
-                            </Link>
-                            <WatchButton ticker={h.ticker} />
-                            <button
-                              onClick={() => startEdit(h)}
-                              className="text-slate-500 hover:text-slate-200 transition-colors leading-none"
+                              tone="primary"
+                            />
+                            <WatchButton ticker={h.ticker} compact />
+                            <IconButton
+                              icon={Pencil}
+                              label={`Edit ${h.ticker} holding`}
                               title="Edit"
-                            >
-                              ✎
-                            </button>
-                            <button
+                              tone="default"
+                              onClick={() => startEdit(h)}
+                            />
+                            <IconButton
+                              icon={deleteMutation.isPending ? LoaderCircle : Trash2}
+                              label={`Delete ${h.ticker} holding`}
+                              title="Delete holding"
+                              tone="danger"
                               onClick={() => deleteMutation.mutate(h.id)}
                               disabled={deleteMutation.isPending}
-                              className="text-slate-600 hover:text-red-400 transition-colors disabled:opacity-50 leading-none"
-                              title="Delete holding"
-                            >
-                              ✕
-                            </button>
+                              iconClassName={deleteMutation.isPending ? "animate-spin" : undefined}
+                            />
                           </div>
                         )}
                       </td>
@@ -874,7 +899,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
 
             {/* New row draft */}
             {addingNew && (
-              <tr className="border-t border-slate-700 bg-slate-800/20">
+              <tr className="border-t border-input-border bg-input/20">
                 <td className="px-3 py-2">
                   <EditInput
                     autoFocus
@@ -908,20 +933,23 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
                 </td>
                 <td colSpan={colSpan - 3} />
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <button
+                  <div className="flex items-center gap-1.5">
+                    <IconButton
+                      icon={addMutation.isPending ? LoaderCircle : Check}
+                      label="Add holding"
+                      title="Add"
+                      tone="success"
                       onClick={saveNew}
                       disabled={addMutation.isPending}
-                      className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
-                    >
-                      {addMutation.isPending ? "Adding…" : "Add"}
-                    </button>
-                    <button
+                      iconClassName={addMutation.isPending ? "animate-spin" : undefined}
+                    />
+                    <IconButton
+                      icon={X}
+                      label="Cancel adding holding"
+                      title="Cancel"
+                      tone="default"
                       onClick={() => { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); }}
-                      className="text-xs text-slate-500 hover:text-slate-300"
-                    >
-                      Cancel
-                    </button>
+                    />
                   </div>
                 </td>
               </tr>
@@ -933,9 +961,10 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, d
       {!addingNew && (
         <button
           onClick={() => setAddingNew(true)}
-          className="text-xs text-slate-500 hover:text-slate-300 border border-dashed border-slate-700 hover:border-slate-500 rounded px-3 py-1.5 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg-secondary border border-dashed border-input-border hover:border-border-strong rounded-sm px-3 py-1.5 transition-colors"
         >
-          + Add row
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          Add row
         </button>
       )}
     </div>

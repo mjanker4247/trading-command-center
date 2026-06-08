@@ -37,13 +37,13 @@ function AlertRow({ alert }: { alert: BehavioralAlert }) {
         <div className="flex items-center flex-wrap gap-2 mb-1">
           <span className={`text-xs font-semibold ${style.titleColor}`}>{alert.title}</span>
           {alert.affected_tickers.slice(0, 4).map((t) => (
-            <span key={t} className="text-xs font-mono px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">
+            <span key={t} className="text-xs font-mono px-1.5 py-0.5 bg-input rounded-sm text-fg-secondary">
               {t}
             </span>
           ))}
         </div>
-        <p className="text-xs text-slate-300 leading-relaxed">{alert.description}</p>
-        <p className="text-xs text-slate-500 mt-1 italic">{alert.suggested_action}</p>
+        <p className="text-xs text-fg-secondary leading-relaxed">{alert.description}</p>
+        <p className="text-xs text-muted mt-1 italic">{alert.suggested_action}</p>
       </div>
     </div>
   );
@@ -70,30 +70,30 @@ export function BehavioralAlerts({ portfolioId }: { portfolioId: string }) {
   const isExpanded = expanded ?? false;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-hidden mb-4">
+    <div className="bg-page/50 border border-input-border rounded-xl overflow-hidden mb-4">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/40 transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-input/40 transition-colors text-left"
       >
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-slate-200">Behavioral Alerts</span>
+          <span className="text-sm font-medium text-fg">Behavioral Alerts</span>
           {data.critical_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-sm font-mono">
               {data.critical_count} critical
             </span>
           )}
           {data.warning_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-sm font-mono">
               {data.warning_count} warning
             </span>
           )}
           {data.info_count > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-mono">
+            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-sm font-mono">
               {data.info_count} info
             </span>
           )}
         </div>
-        <span className="text-slate-500 text-xs ml-4 shrink-0">{isExpanded ? "▲" : "▼"}</span>
+        <span className="text-muted text-xs ml-4 shrink-0">{isExpanded ? "▲" : "▼"}</span>
       </button>
       {isExpanded && (
         <div className="px-4 pb-4 space-y-2">

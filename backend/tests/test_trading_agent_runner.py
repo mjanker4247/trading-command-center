@@ -1,73 +1,79 @@
 import os
+from types import SimpleNamespace
 
 import pytest
 
-pytestmark = pytest.mark.unit
+from app.services.trading_agent_runner import (
+    _extract_trader_decision,
+    _normalize_price,
+    _parse_verdict,
+)
+from app.models.run import RunVerdict
 
-from app.services.trading_agent_runner import _extract_prices
+pytestmark = [pytest.mark.unit, pytest.mark.asyncio]
 
 
-def test_extract_prices_full_match():
-    text = (
-        "Recommendation: Entry: $150.00, Stop Loss: $140.00, Target: $175.00. "
-        "This is a strong buy signal."
+@pytest.mark.parametrize(
+    ("signal", "expected"),
+    [
+        ("BUY", RunVerdict.buy),
+        ("buy", RunVerdict.buy),
+        ("SELL", RunVerdict.sell),
+        ("sell", RunVerdict.sell),
+        ("HOLD", RunVerdict.hold),
+        ("", RunVerdict.hold),
+    ],
+)
+async def test_parse_verdict(signal, expected):
+    rec = SimpleNamespace(signal=signal)
+    assert _parse_verdict(rec) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (150.5, "150.5"),
+        ("$142.00", "$142.00"),
+        (None, None),
+        ("n/a", None),
+    ],
+)
+async def test_normalize_price(value, expected):
+    assert _normalize_price(value) == expected
+
+
+async def test_extract_trader_decision_prefers_recommendation_rationale():
+    state = SimpleNamespace(final_trade_decision="legacy text")
+    rec = SimpleNamespace(rationale="Structured rationale from Risk Judge.")
+    assert _extract_trader_decision(state, rec) == "Structured rationale from Risk Judge."
+
+
+async def test_extract_trader_decision_falls_back_to_state():
+    state = SimpleNamespace(
+        final_trade_recommendation=None,
+        final_trade_decision="FINAL TRANSACTION PROPOSAL: **BUY**",
     )
-    entry, stop, target = _extract_prices(text)
-    assert entry == "150.00"
-    assert stop == "140.00"
-    assert target == "175.00"
+    rec = SimpleNamespace(rationale="")
+    assert "BUY" in _extract_trader_decision(state, rec)
 
 
-def test_extract_prices_partial_match():
-    text = "Buy AAPL. Entry: $150. No stop defined. No target given."
-    entry, stop, target = _extract_prices(text)
-    assert entry == "150"
-    assert stop is None
-    assert target is None
+# ── reasoning_effort guard (Groq / IONOS) ────────────────────────────────────
 
+def _apply_reasoning_via_module(provider: str, effort: str, base_url: str | None) -> dict:
+    """Call tradingagents._apply_reasoning with a controlled OPENAI_BASE_URL."""
+    from app.services.tradingagents_grounding import apply_reasoning_effort_patch
+    apply_reasoning_effort_patch()
 
-def test_extract_prices_no_match():
-    text = "This stock looks attractive based on fundamentals."
-    entry, stop, target = _extract_prices(text)
-    assert entry is None
-    assert stop is None
-    assert target is None
-
-
-def test_extract_prices_case_insensitive():
-    text = "ENTRY: $200. STOP LOSS: $185. TAKE PROFIT: $230."
-    entry, stop, target = _extract_prices(text)
-    assert entry == "200"
-    assert stop == "185"
-    assert target == "230"
-
-
-def test_extract_prices_alternative_phrasings():
-    text = "Buy at: $95.50. Stop at: $88.00. Price target: $110.00."
-    entry, stop, target = _extract_prices(text)
-    assert entry == "95.50"
-    assert stop == "88.00"
-    assert target == "110.00"
-
-
-def test_extract_prices_comma_formatted():
-    text = "Entry Price: $1,500.00. Stop Loss: $1,400.00. Profit Target: $1,750.00."
-    entry, stop, target = _extract_prices(text)
-    assert entry == "1,500.00"
-    assert stop == "1,400.00"
-    assert target == "1,750.00"
-
-
-def test_groq_reasoning_effort_skipped():
-    """_apply_reasoning must not set reasoning_effort when OPENAI_BASE_URL is Groq."""
-    from tradingagents.llm import _apply_reasoning
-
+    import tradingagents.llm as llm_module
     old = os.environ.get("OPENAI_BASE_URL")
     try:
-        os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
+        if base_url is None:
+            os.environ.pop("OPENAI_BASE_URL", None)
+        else:
+            os.environ["OPENAI_BASE_URL"] = base_url
         kwargs: dict = {}
-        _apply_reasoning("openai", "medium", kwargs)
-        assert "reasoning_effort" not in kwargs
+        llm_module._apply_reasoning(provider, effort, kwargs)
+        return kwargs
     finally:
         if old is None:
             os.environ.pop("OPENAI_BASE_URL", None)
@@ -75,35 +81,21 @@ def test_groq_reasoning_effort_skipped():
             os.environ["OPENAI_BASE_URL"] = old
 
 
-def test_openai_reasoning_effort_applied_without_base_url():
-    """_apply_reasoning must still set reasoning_effort for native OpenAI (no base URL override)."""
-    from tradingagents.llm import _apply_reasoning
-
-    old = os.environ.get("OPENAI_BASE_URL")
-    try:
-        os.environ.pop("OPENAI_BASE_URL", None)
-        kwargs: dict = {}
-        _apply_reasoning("openai", "medium", kwargs)
-        assert kwargs.get("reasoning_effort") == "medium"
-    finally:
-        if old is None:
-            os.environ.pop("OPENAI_BASE_URL", None)
-        else:
-            os.environ["OPENAI_BASE_URL"] = old
+async def test_groq_reasoning_effort_skipped():
+    kwargs = _apply_reasoning_via_module("openai", "medium", "https://api.groq.com/openai/v1")
+    assert "reasoning_effort" not in kwargs
 
 
-def test_openai_reasoning_effort_max_maps_to_xhigh():
-    """_apply_reasoning must map 'max' -> 'xhigh' for native OpenAI."""
-    from tradingagents.llm import _apply_reasoning
+async def test_ionos_reasoning_effort_skipped():
+    kwargs = _apply_reasoning_via_module("openai", "medium", "https://openai.inference.de-txl.ionos.com/v1")
+    assert "reasoning_effort" not in kwargs
 
-    old = os.environ.get("OPENAI_BASE_URL")
-    try:
-        os.environ.pop("OPENAI_BASE_URL", None)
-        kwargs: dict = {}
-        _apply_reasoning("openai", "max", kwargs)
-        assert kwargs.get("reasoning_effort") == "xhigh"
-    finally:
-        if old is None:
-            os.environ.pop("OPENAI_BASE_URL", None)
-        else:
-            os.environ["OPENAI_BASE_URL"] = old
+
+async def test_native_openai_reasoning_effort_applied():
+    kwargs = _apply_reasoning_via_module("openai", "medium", None)
+    assert kwargs.get("reasoning_effort") == "medium"
+
+
+async def test_native_openai_reasoning_effort_max_maps_to_xhigh():
+    kwargs = _apply_reasoning_via_module("openai", "max", None)
+    assert kwargs.get("reasoning_effort") == "xhigh"

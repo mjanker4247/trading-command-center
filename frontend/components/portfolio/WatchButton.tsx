@@ -1,24 +1,34 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, LoaderCircle, Star, X } from "lucide-react";
 import { addWatchlistItem, getWatchlist, getProviderModels } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
+import { IconButton } from "@/components/ui/IconButton";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 
 interface WatchDraft {
   llm_provider: string;
   llm_model: string;
   depth: string;
+  response_language: ResponseLanguage;
 }
 
-const PROVIDERS = ["openai", "anthropic", "google", "groq", "ollama", "vllm"];
+const PROVIDERS = ["openai", "anthropic", "google", "groq", "ionos", "ollama", "vllm"];
 const DEPTHS = ["quick", "standard", "deep"] as const;
 
 export type { WatchDraft };
 
-export function WatchButton({ ticker }: { ticker: string }) {
+export function WatchButton({ ticker, compact = false }: { ticker: string; compact?: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<WatchDraft>({ llm_provider: "openai", llm_model: "", depth: "standard" });
+  const [draft, setDraft] = useState<WatchDraft>({
+    llm_provider: "openai",
+    llm_model: "",
+    depth: "standard",
+    response_language: DEFAULT_RESPONSE_LANGUAGE,
+  });
   const [success, setSuccess] = useState(false);
 
   const { data: watchlist } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
@@ -43,9 +53,10 @@ export function WatchButton({ ticker }: { ticker: string }) {
         llm_provider: draft.llm_provider,
         llm_model: draft.llm_model || (models[0] ?? ""),
         depth: draft.depth,
+        response_language: draft.response_language,
         analysts: isCrypto(ticker)
-          ? ["market", "social", "news", "technical"]
-          : ["market", "social", "news", "fundamentals", "technical"],
+          ? ["market", "social", "news"]
+          : ["market", "social", "news", "fundamentals"],
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
@@ -56,6 +67,18 @@ export function WatchButton({ ticker }: { ticker: string }) {
   });
 
   if (watched || success) {
+    if (compact) {
+      return (
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-yellow-400"
+          title="Already on watchlist"
+          aria-label={`${ticker} is already on watchlist`}
+        >
+          <Star className="h-4 w-4 fill-current" aria-hidden="true" />
+        </span>
+      );
+    }
+
     return (
       <span className="text-xs text-yellow-400 cursor-default" title="Already on watchlist">
         ★ Watching
@@ -64,10 +87,22 @@ export function WatchButton({ ticker }: { ticker: string }) {
   }
 
   if (!open) {
+    if (compact) {
+      return (
+        <IconButton
+          icon={Star}
+          label={`Add ${ticker} to watchlist`}
+          title="Add to watchlist"
+          tone="warning"
+          onClick={() => setOpen(true)}
+        />
+      );
+    }
+
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-400 hover:text-yellow-400 transition-colors"
+        className="text-xs text-muted hover:text-yellow-400 transition-colors"
         title="Add to watchlist"
       >
         Watch
@@ -80,7 +115,7 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_provider}
         onChange={(e) => setDraft((d) => ({ ...d, llm_provider: e.target.value, llm_model: "" }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
       >
         {PROVIDERS.map((p) => (
           <option key={p} value={p}>{p}</option>
@@ -89,25 +124,46 @@ export function WatchButton({ ticker }: { ticker: string }) {
       <select
         value={draft.llm_model}
         onChange={(e) => setDraft((d) => ({ ...d, llm_model: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none max-w-[140px]"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden max-w-[140px]"
       >
         {models.map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
       <select
         value={draft.depth}
         onChange={(e) => setDraft((d) => ({ ...d, depth: e.target.value }))}
-        className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none"
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
       >
         {DEPTHS.map((d) => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <select
+        value={draft.response_language}
+        onChange={(e) => setDraft((d) => ({ ...d, response_language: e.target.value as ResponseLanguage }))}
+        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
+        title="Response language"
+      >
+        {RESPONSE_LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
       <button
         onClick={() => addMutation.mutate()}
         disabled={addMutation.isPending}
-        className="text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
+        aria-label={`Add ${ticker} to watchlist`}
+        title="Add"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-green-400 hover:text-green-300 hover:bg-green-950/30 disabled:opacity-50"
       >
-        {addMutation.isPending ? "Adding…" : "Add"}
+        {addMutation.isPending ? (
+          <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        ) : (
+          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
       </button>
-      <button onClick={() => setOpen(false)} className="text-xs text-slate-500 hover:text-slate-300">✕</button>
+      <button
+        onClick={() => setOpen(false)}
+        aria-label="Cancel adding to watchlist"
+        title="Cancel"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted hover:text-fg-secondary hover:bg-muted-surface"
+      >
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
     </div>
   );
 }
