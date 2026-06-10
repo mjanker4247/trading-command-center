@@ -1,0 +1,87 @@
+import pandas as pd
+import pytest
+
+from app.services import yfinance_service
+
+pytestmark = pytest.mark.unit
+
+
+@pytest.fixture(autouse=True)
+def clear_history_cache():
+    yfinance_service._history_cache.clear()
+    yield
+    yfinance_service._history_cache.clear()
+
+
+def make_history_frame(first_close: float = 100.0) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "Open": [first_close - 1.0, first_close],
+            "High": [first_close + 1.0, first_close + 2.0],
+            "Low": [first_close - 2.0, first_close - 1.0],
+            "Close": [first_close, first_close + 1.0],
+            "Volume": [1000, 1200],
+        },
+        index=pd.date_range("2024-01-01", periods=2, freq="D"),
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_history_reuses_cached_download(monkeypatch):
+    calls = []
+
+    def fake_download(symbol: str, **kwargs):
+        calls.append((symbol, kwargs))
+        return make_history_frame()
+
+    monkeypatch.setattr(yfinance_service, "_download_history_sync", fake_download)
+
+    first = await yfinance_service.fetch_history("aapl", start="2024-01-01", interval="1d", auto_adjust=False)
+    first.loc[first.index[0], "Close"] = 999.0
+    second = await yfinance_service.fetch_history("AAPL", start="2024-01-01", interval="1d", auto_adjust=False)
+
+    assert len(calls) == 1
+    assert calls[0] == (
+        "AAPL",
+        {"start": "2024-01-01", "end": None, "interval": "1d", "auto_adjust": False},
+    )
+    assert second.loc[second.index[0], "Close"] == pytest.approx(100.0)
+
+
+@pytest.mark.asyncio
+async def test_fetch_history_keeps_auto_adjust_entries_separate(monkeypatch):
+    calls = []
+
+    def fake_download(symbol: str, **kwargs):
+        calls.append((symbol, kwargs))
+        close = 200.0 if kwargs["auto_adjust"] else 100.0
+        return make_history_frame(close)
+
+    monkeypatch.setattr(yfinance_service, "_download_history_sync", fake_download)
+
+    unadjusted = await yfinance_service.fetch_history("MSFT", start="2024-01-01", auto_adjust=False)
+    adjusted = await yfinance_service.fetch_history("MSFT", start="2024-01-01", auto_adjust=True)
+
+    assert len(calls) == 2
+    assert unadjusted.loc[unadjusted.index[0], "Close"] == pytest.approx(100.0)
+    assert adjusted.loc[adjusted.index[0], "Close"] == pytest.approx(200.0)
+
+
+@pytest.mark.asyncio
+async def test_fetch_history_period_uses_period_cache_key(monkeypatch):
+    calls = []
+
+    def fake_download(symbol: str, **kwargs):
+        calls.append((symbol, kwargs))
+        return make_history_frame()
+
+    monkeypatch.setattr(yfinance_service, "_download_history_sync", fake_download)
+
+    await yfinance_service.fetch_history_period("SPY", period="2y", interval="1d")
+    await yfinance_service.fetch_history_period("SPY", period="2y", interval="1d")
+
+    assert len(calls) == 1
+    assert calls[0] == (
+        "SPY",
+        {"period": "2y", "interval": "1d", "auto_adjust": True},
+    )

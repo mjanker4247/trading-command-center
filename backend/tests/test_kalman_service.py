@@ -138,16 +138,24 @@ async def test_cache_miss_on_expired():
     from app.services import kalman_service
 
     fake_result = {"ticker": "TEST2", "signal": 0.5, "trend_direction": "up"}
+    fake_data = make_price_frame([100.0 + i for i in range(25)])
     kalman_service._kalman_cache["TEST2:2015-01-01::1d:True:0.01:0.01:0.1"] = (
         fake_result,
         time.time() - 1,
     )
 
-    with patch("app.services.kalman_service._compute_kalman", return_value=None) as mock_compute:
+    with (
+        patch("app.services.kalman_service.download_price_data", return_value=fake_data) as mock_download,
+        patch("app.services.kalman_service._compute_kalman", return_value=None) as mock_compute,
+    ):
         result = await get_kalman("TEST2")
 
     assert result is None
-    mock_compute.assert_called_once_with("TEST2", "2015-01-01", None, "1d", True, 0.01, 0.01, 0.1)
+    mock_download.assert_awaited_once_with("TEST2", start="2015-01-01", end=None, interval="1d")
+    mock_compute.assert_called_once()
+    args = mock_compute.call_args.args
+    pd.testing.assert_frame_equal(args[0], fake_data)
+    assert args[1:] == ("TEST2", "2015-01-01", None, "1d", True, 0.01, 0.01, 0.1)
 
 
 @pytest.mark.asyncio

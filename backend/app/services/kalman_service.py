@@ -11,11 +11,12 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
+from app.services.yfinance_service import fetch_history
+
 logger = logging.getLogger(__name__)
 
 _kalman_cache: dict[str, tuple[dict | None, float]] = {}
 _CACHE_TTL = 14400  # 4 hours
-_fetch_sem = asyncio.Semaphore(10)
 
 _VALID_INTERVALS = {"1d", "5d", "1wk", "1mo", "3mo"}
 _TICKER_RE = re.compile(r"^[A-Z0-9][A-Z0-9.\-=]{0,14}$")
@@ -70,13 +71,13 @@ def _as_bounded_float(value: float, name: str, minimum: float, maximum: float) -
     return numeric
 
 
-def download_price_data(
+async def download_price_data(
     ticker: str = "SPY",
     start: str = "2015-01-01",
     end: str | None = None,
     interval: str = "1d",
 ) -> pd.DataFrame:
-    """Download historical OHLCV data from yfinance for Kalman analysis."""
+    """Fetch historical OHLCV data from yfinance for Kalman analysis."""
     symbol = _validate_ticker(ticker)
     _validate_date(start, "start")
     _validate_date(end, "end")
@@ -84,26 +85,15 @@ def download_price_data(
         raise KalmanDataError(f"interval must be one of {sorted(_VALID_INTERVALS)}")
 
     try:
-        import yfinance as yf
-
-        data = yf.download(
+        return await fetch_history(
             symbol,
             start=start,
             end=end,
             interval=interval,
             auto_adjust=False,
-            progress=False,
-            threads=False,
         )
     except Exception as exc:
         raise KalmanDataError(f"Failed to download price data for {symbol}") from exc
-
-    if data is None or data.empty:
-        raise KalmanDataError(f"No price data available for {symbol}")
-
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-    return data
 
 
 def prepare_price_series(data: pd.DataFrame) -> pd.Series:
@@ -227,6 +217,7 @@ def _compute_signal(filtered_trend: float, price: float) -> float:
 
 
 def _compute_kalman(
+    data: pd.DataFrame,
     ticker: str,
     start: str = "2015-01-01",
     end: str | None = None,
@@ -257,7 +248,6 @@ def _compute_kalman(
             _OBSERVATION_COVARIANCE_MIN,
             _OBSERVATION_COVARIANCE_MAX,
         )
-        data = download_price_data(symbol, start=start, end=end, interval=interval)
         price = prepare_price_series(data)
         result = apply_kalman_filter(
             price,
@@ -342,18 +332,27 @@ async def get_kalman(
         if now < expiry:
             return result
 
-    async with _fetch_sem:
-        result = await asyncio.to_thread(
-            _compute_kalman,
-            symbol,
-            start,
-            end,
-            interval,
-            real_time,
-            q_level,
-            q_trend,
-            r_value,
-        )
+    try:
+        data = await download_price_data(symbol, start=start, end=end, interval=interval)
+    except KalmanDataError:
+        logger.exception("kalman: computation failed for %s", symbol)
+        result = None
+        ttl = 300
+        _kalman_cache[cache_key] = (result, now + ttl)
+        return result
+
+    result = await asyncio.to_thread(
+        _compute_kalman,
+        data,
+        symbol,
+        start,
+        end,
+        interval,
+        real_time,
+        q_level,
+        q_trend,
+        r_value,
+    )
 
     ttl = _CACHE_TTL if result is not None else 300
     _kalman_cache[cache_key] = (result, now + ttl)
