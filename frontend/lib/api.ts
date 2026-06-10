@@ -1,5 +1,5 @@
 import { getSession, signOut } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, TrimSignalsResponse, WaveSummary } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, KalmanData, TrimSignalsResponse, WaveSummary } from "./types";
 import type { AnalyzeResponse } from "./wave/types";
 import type { ResponseLanguage } from "./responseLanguage";
 
@@ -418,6 +418,22 @@ export async function getPortfolioRegime(
 
 export async function getTickerRegime(ticker: string): Promise<RegimeData | null> {
   const r = await fetchWithAuth(`/regime/${ticker}`);
+  if (!r.ok) return null;
+  const data = await r.json();
+  return data ?? null;
+}
+
+export async function getPortfolioKalman(
+  portfolioId: string
+): Promise<Record<string, KalmanData>> {
+  const r = await fetchWithAuth(`/portfolio/${portfolioId}/kalman`);
+  if (!r.ok) return {};
+  const data = await r.json();
+  return data ?? {};
+}
+
+export async function getTickerKalman(ticker: string): Promise<KalmanData | null> {
+  const r = await fetchWithAuth(`/kalman/${ticker}`);
   if (!r.ok) return null;
   const data = await r.json();
   return data ?? null;

@@ -10,6 +10,7 @@ import { getRun, getReport, getRunOutcome, updateRun } from "@/lib/api";
 import { DownloadMenu } from "@/components/runs/DownloadMenu";
 import { OutcomeCard } from "@/components/runs/OutcomeCard";
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
+import { KalmanConfirmation } from "@/components/runs/KalmanConfirmation";
 import { WaveConfirmation } from "@/components/wave/WaveConfirmation";
 import { LanguageFlag } from "@/components/runs/RunContextIcons";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
@@ -261,6 +262,7 @@ export default function RunResultsPage() {
           metadata={run ? tickerMetadata[run.ticker.toUpperCase()] : undefined}
         />
         {run && <MarkovConfirmation ticker={run.ticker} verdict={run.verdict} />}
+        {run && <KalmanConfirmation ticker={run.ticker} verdict={run.verdict} />}
         {run && (
           <WaveConfirmation
             ticker={run.ticker}

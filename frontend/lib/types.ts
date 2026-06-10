@@ -408,6 +408,27 @@ export interface RegimeData {
   computed_at: string;
 }
 
+export interface KalmanData {
+  ticker: string;
+  start: string;
+  end: string | null;
+  interval: string;
+  latest_price: number;
+  kalman_price: number;
+  kalman_trend: number;
+  filtered_trend: number;
+  signal: number;
+  trend_direction: "up" | "down" | "flat";
+  observations: number;
+  chart: {
+    dates: string[];
+    price: number[];
+    kalman_price: number[];
+    kalman_trend: number[];
+  };
+  computed_at: string;
+}
+
 export interface NewsArticle {
   ticker: string;
   datetime: number;
