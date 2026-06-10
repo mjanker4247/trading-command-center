@@ -27,6 +27,7 @@ from app.services.portfolio_parser import parse_portfolio_csv
 from app.services.ticker_metadata_service import get_many_ticker_metadata
 from app.services.trim_signal_service import score_trim_signal
 from app.services.markov_service import get_regime_for_portfolio
+from app.services.settings_service import get_app_settings
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
 from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
@@ -1728,6 +1729,9 @@ async def get_portfolio_regime(
     """Return Markov regime analysis for all tickers in the portfolio's latest snapshot.
     Returns {} gracefully if no holdings or all tickers fail."""
     await _verify_portfolio_access(portfolio_id, user.id, db)
+    settings = await get_app_settings(db)
+    if not settings["enable_markov_regime"]:
+        return {}
 
     snap_result = await db.execute(
         select(PortfolioSnapshot)
@@ -1752,6 +1756,10 @@ async def get_portfolio_trim_signals(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    settings = await get_app_settings(db)
+    if not settings["enable_markov_regime"]:
+        return TrimSignalsResponse(entries=[], computed_at=datetime.utcnow().isoformat() + "Z")
+
     p_result = await db.execute(
         select(Portfolio).where(Portfolio.id == portfolio_id, Portfolio.user_id == user.id)
     )

@@ -12,8 +12,8 @@ import {
   downloadDbBackup,
   restoreDbBackup,
   getInvestorProfile,
-  getKalmanFilterSettings,
-  updateKalmanFilterSettings,
+  getAppSettings,
+  updateAppSettings,
 } from "@/lib/api";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ApiKeyRow } from "@/components/settings/ApiKeyRow";
@@ -21,12 +21,12 @@ import { InfoPopover } from "@/components/settings/InfoPopover";
 import { ServerUrlRow } from "@/components/settings/ServerUrlRow";
 import { TeamMemberRow } from "@/components/settings/TeamMemberRow";
 import {
-  KALMAN_SETTINGS_DEFAULTS,
-  KALMAN_SETTINGS_RANGES,
-  validateKalmanSettings,
+  APP_SETTINGS_DEFAULTS,
+  APP_SETTINGS_RANGES,
+  validateAppSettings,
   type KalmanProcessingMode,
-  type KalmanSettings,
-} from "@/lib/kalmanSettings";
+  type AppSettings,
+} from "@/lib/appSettings";
 
 const CLOUD_PROVIDERS: { provider: string; label: string; placeholder: string; docsUrl: string }[] = [
   { provider: "openai",    label: "OpenAI",    placeholder: "sk-…",     docsUrl: "https://platform.openai.com/api-keys" },
@@ -76,49 +76,88 @@ const KALMAN_TOOLTIPS = {
     "'Live Tracking' utilizes only data up to day T to eliminate look-ahead bias, making it mandatory for backtesting and trading signals. 'Historical View' uses the entire dataset to build a perfectly smoothed history, ideal for retroactive macro research but unusable for live execution.",
 };
 
-interface KalmanSettingsDraft {
+interface AppSettingsDraft {
   observationCovariance: string;
   transitionCovariance: string;
   mode: KalmanProcessingMode;
+  enableKalmanFilter: boolean;
+  enableElliottWave: boolean;
+  enableMarkovRegime: boolean;
 }
 
-function toDraft(settings: KalmanSettings): KalmanSettingsDraft {
+function toDraft(settings: AppSettings): AppSettingsDraft {
   return {
     observationCovariance: String(settings.observationCovariance),
     transitionCovariance: String(settings.transitionCovariance),
     mode: settings.mode,
+    enableKalmanFilter: settings.enableKalmanFilter,
+    enableElliottWave: settings.enableElliottWave,
+    enableMarkovRegime: settings.enableMarkovRegime,
   };
 }
 
-function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
+function ModuleToggle({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className={`flex items-center justify-between gap-4 rounded-md border border-input-border bg-input/40 px-3 py-2 ${disabled ? "opacity-60" : ""}`}>
+      <span className="text-xs text-fg-secondary">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-blue-600"
+      />
+    </label>
+  );
+}
+
+function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const queryClient = useQueryClient();
-  const { data: persistedSettings = KALMAN_SETTINGS_DEFAULTS, isLoading } = useQuery({
-    queryKey: ["kalman-settings"],
-    queryFn: getKalmanFilterSettings,
+  const { data: persistedSettings = APP_SETTINGS_DEFAULTS, isLoading } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: getAppSettings,
     retry: false,
   });
-  const [draft, setDraft] = useState<KalmanSettingsDraft | null>(null);
+  const [draft, setDraft] = useState<AppSettingsDraft | null>(null);
   const [openInfo, setOpenInfo] = useState<keyof typeof KALMAN_TOOLTIPS | null>(null);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [error, setError] = useState("");
   const values = draft ?? toDraft(persistedSettings);
 
-  function currentSettings(): KalmanSettings {
+  function currentSettings(): AppSettings {
     return {
       observationCovariance: Number(values.observationCovariance),
       transitionCovariance: Number(values.transitionCovariance),
       mode: values.mode,
+      enableKalmanFilter: values.enableKalmanFilter,
+      enableElliottWave: values.enableElliottWave,
+      enableMarkovRegime: values.enableMarkovRegime,
     };
   }
 
   const mutation = useMutation({
-    mutationFn: updateKalmanFilterSettings,
+    mutationFn: updateAppSettings,
     onSuccess: (settings) => {
       setDraft(toDraft(settings));
       setStatus("success");
       setError("");
-      queryClient.invalidateQueries({ queryKey: ["kalman-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
       queryClient.invalidateQueries({ queryKey: ["ticker-kalman"] });
+      queryClient.invalidateQueries({ queryKey: ["ticker-regime"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio-regime"] });
+      queryClient.invalidateQueries({ queryKey: ["ticker-wave"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio-wave"] });
+      queryClient.invalidateQueries({ queryKey: ["wave-analyze"] });
     },
     onError: (err: Error) => {
       setStatus("error");
@@ -128,7 +167,7 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
 
   function handleSave() {
     const settings = currentSettings();
-    const validationError = validateKalmanSettings(settings);
+    const validationError = validateAppSettings(settings);
     if (validationError) {
       setStatus("error");
       setError(validationError);
@@ -139,8 +178,8 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   }
 
   function resetDefaults() {
-    setDraft(toDraft(KALMAN_SETTINGS_DEFAULTS));
-    if (isAdmin) mutation.mutate(KALMAN_SETTINGS_DEFAULTS);
+    setDraft(toDraft(APP_SETTINGS_DEFAULTS));
+    if (isAdmin) mutation.mutate(APP_SETTINGS_DEFAULTS);
   }
 
   const inputClass = "bg-input border border-input-border rounded-sm px-3 py-1.5 text-sm text-fg w-full sm:max-w-xs focus:outline-hidden focus:border-blue-500";
@@ -148,8 +187,8 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <SectionCard
-      title="Kalman Filter"
-      description="Controls trend/noise separation for Kalman confirmation cards and strategy requests."
+      title="Strategy Configuration"
+      description="Controls analytical module visibility and Kalman trend/noise defaults."
     >
       <div className="px-4 py-4 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
@@ -162,8 +201,8 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex-1">
             <input
               type="number"
-              min={KALMAN_SETTINGS_RANGES.observationCovariance.min}
-              max={KALMAN_SETTINGS_RANGES.observationCovariance.max}
+              min={APP_SETTINGS_RANGES.observationCovariance.min}
+              max={APP_SETTINGS_RANGES.observationCovariance.max}
               step="0.0001"
               value={values.observationCovariance}
               onChange={(e) => {
@@ -189,8 +228,8 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex-1">
             <input
               type="number"
-              min={KALMAN_SETTINGS_RANGES.transitionCovariance.min}
-              max={KALMAN_SETTINGS_RANGES.transitionCovariance.max}
+              min={APP_SETTINGS_RANGES.transitionCovariance.min}
+              max={APP_SETTINGS_RANGES.transitionCovariance.max}
               step="0.0001"
               value={values.transitionCovariance}
               onChange={(e) => {
@@ -227,13 +266,53 @@ function KalmanSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           </select>
         </div>
 
+        <Divider />
+
+        <div className="space-y-2">
+          <div>
+            <p className="text-muted text-xs font-medium uppercase tracking-wide">Strategy Modules</p>
+            <p className="text-[10px] text-muted mt-0.5">
+              Disable a module to hide its charts, badges, and confirmation cards across the app.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <ModuleToggle
+              label="Enable Kalman Filter Module"
+              checked={values.enableKalmanFilter}
+              disabled={disabled}
+              onChange={(checked) => {
+                setDraft({ ...values, enableKalmanFilter: checked });
+                setStatus("idle");
+              }}
+            />
+            <ModuleToggle
+              label="Enable Elliott Wave Module"
+              checked={values.enableElliottWave}
+              disabled={disabled}
+              onChange={(checked) => {
+                setDraft({ ...values, enableElliottWave: checked });
+                setStatus("idle");
+              }}
+            />
+            <ModuleToggle
+              label="Enable Markov Regime Module"
+              checked={values.enableMarkovRegime}
+              disabled={disabled}
+              onChange={(checked) => {
+                setDraft({ ...values, enableMarkovRegime: checked });
+                setStatus("idle");
+              }}
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             onClick={handleSave}
             disabled={disabled}
             className="bg-blue-600 hover:bg-blue-700 text-fg rounded-sm px-4 py-1.5 text-xs disabled:opacity-50"
           >
-            {mutation.isPending ? "Saving..." : "Save Kalman Settings"}
+            {mutation.isPending ? "Saving..." : "Save Strategy Settings"}
           </button>
           <button
             onClick={resetDefaults}
@@ -499,7 +578,7 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
-        <KalmanSettingsPanel isAdmin={isAdmin} />
+        <StrategySettingsPanel isAdmin={isAdmin} />
 
         {/* LLM Providers */}
         {isAdmin && (

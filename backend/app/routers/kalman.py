@@ -20,9 +20,8 @@ from app.services.kalman_service import (
     KalmanDataError,
     get_kalman,
     get_kalman_for_portfolio,
-    get_kalman_settings,
-    update_kalman_settings,
 )
+from app.services.settings_service import SettingsDataError, get_app_settings, update_app_settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,6 +31,9 @@ class KalmanSettingsUpdate(BaseModel):
     observation_covariance: float = Field(ge=0.0001, le=10.0)
     transition_covariance: float = Field(ge=0.0001, le=1.0)
     processing_mode: Literal["causal", "historical"] = "causal"
+    enable_kalman_filter: bool = True
+    enable_elliott_wave: bool = True
+    enable_markov_regime: bool = True
 
 
 @router.get("/kalman/settings")
@@ -40,7 +42,7 @@ async def get_current_kalman_settings(
     user: User = Depends(get_current_user),
 ):
     """Return system-wide Kalman defaults for all authenticated users."""
-    return await get_kalman_settings(db)
+    return await get_app_settings(db)
 
 
 @router.put("/kalman/settings")
@@ -60,13 +62,16 @@ async def put_kalman_settings(
         raise HTTPException(status_code=403, detail="Admin required")
 
     try:
-        return await update_kalman_settings(
+        return await update_app_settings(
             db,
             observation_covariance=body.observation_covariance,
             transition_covariance=body.transition_covariance,
             processing_mode=body.processing_mode,
+            enable_kalman_filter=body.enable_kalman_filter,
+            enable_elliott_wave=body.enable_elliott_wave,
+            enable_markov_regime=body.enable_markov_regime,
         )
-    except KalmanDataError as exc:
+    except SettingsDataError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -88,7 +93,9 @@ async def get_ticker_kalman(
     Returns null if yfinance data is unavailable or computation fails.
     """
     try:
-        settings = await get_kalman_settings(db)
+        settings = await get_app_settings(db)
+        if not settings["enable_kalman_filter"]:
+            raise HTTPException(status_code=404, detail="Kalman filter module is disabled")
         default_real_time = settings["processing_mode"] == "causal"
         default_q = settings["transition_covariance"]
         default_r = settings["observation_covariance"]
@@ -132,7 +139,9 @@ async def get_portfolio_kalman(
 
     tickers = [h.ticker for h in snapshot.holdings]
     try:
-        settings = await get_kalman_settings(db)
+        settings = await get_app_settings(db)
+        if not settings["enable_kalman_filter"]:
+            return {}
         default_real_time = settings["processing_mode"] == "causal"
         default_q = settings["transition_covariance"]
         default_r = settings["observation_covariance"]

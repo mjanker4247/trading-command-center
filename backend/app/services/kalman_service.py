@@ -10,9 +10,6 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.kalman_settings import KalmanSettings
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +31,6 @@ _TRANSITION_COVARIANCE_MIN = 0.0001
 _TRANSITION_COVARIANCE_MAX = 1.0
 _OBSERVATION_COVARIANCE_MIN = 0.0001
 _OBSERVATION_COVARIANCE_MAX = 10.0
-_KALMAN_SETTINGS_ID = 1
-
-
-def _validate_processing_mode(value: str) -> str:
-    if value not in {"causal", "historical"}:
-        raise KalmanDataError("processing_mode must be 'causal' or 'historical'")
-    return value
 
 
 class KalmanDataError(ValueError):
@@ -78,65 +68,6 @@ def _as_bounded_float(value: float, name: str, minimum: float, maximum: float) -
     if not np.isfinite(numeric) or numeric < minimum or numeric > maximum:
         raise KalmanDataError(f"{name} must be between {minimum} and {maximum}")
     return numeric
-
-
-def _settings_to_dict(settings: KalmanSettings) -> dict:
-    return {
-        "observation_covariance": settings.observation_covariance,
-        "transition_covariance": settings.transition_covariance,
-        "processing_mode": settings.processing_mode,
-        "updated_at": settings.updated_at.isoformat() if settings.updated_at else None,
-    }
-
-
-async def get_kalman_settings(db: AsyncSession) -> dict:
-    """Return persisted system-wide Kalman defaults, creating them if absent."""
-    settings = await db.get(KalmanSettings, _KALMAN_SETTINGS_ID)
-    if settings is None:
-        settings = KalmanSettings(
-            id=_KALMAN_SETTINGS_ID,
-            observation_covariance=_DEFAULT_OBSERVATION_COVARIANCE_VALUE,
-            transition_covariance=_DEFAULT_TRANSITION_COVARIANCE_VALUE,
-            processing_mode="causal",
-        )
-        db.add(settings)
-        await db.commit()
-        await db.refresh(settings)
-    return _settings_to_dict(settings)
-
-
-async def update_kalman_settings(
-    db: AsyncSession,
-    observation_covariance: float,
-    transition_covariance: float,
-    processing_mode: str,
-) -> dict:
-    """Persist system-wide Kalman defaults after server-side validation."""
-    r_value = _as_bounded_float(
-        observation_covariance,
-        "observation_covariance",
-        _OBSERVATION_COVARIANCE_MIN,
-        _OBSERVATION_COVARIANCE_MAX,
-    )
-    q_value = _as_bounded_float(
-        transition_covariance,
-        "transition_covariance",
-        _TRANSITION_COVARIANCE_MIN,
-        _TRANSITION_COVARIANCE_MAX,
-    )
-    mode = _validate_processing_mode(processing_mode)
-
-    settings = await db.get(KalmanSettings, _KALMAN_SETTINGS_ID)
-    if settings is None:
-        settings = KalmanSettings(id=_KALMAN_SETTINGS_ID)
-        db.add(settings)
-
-    settings.observation_covariance = r_value
-    settings.transition_covariance = q_value
-    settings.processing_mode = mode
-    await db.commit()
-    await db.refresh(settings)
-    return _settings_to_dict(settings)
 
 
 def download_price_data(
