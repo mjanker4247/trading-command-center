@@ -1,6 +1,7 @@
 import uuid
 import pytest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from httpx import AsyncClient, ASGITransport
@@ -101,6 +102,53 @@ async def test_stock_price_falls_back_to_yfinance_when_finnhub_quote_fails(httpx
 
     assert price == pytest.approx(199.5)
     fallback.assert_awaited_once_with("AAPL")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_empty_candidates_clears_in_flight(monkeypatch):
+    """An empty discovery pool must not leave the portfolio permanently in-flight."""
+    from app.routers import market as market_router
+    from app.routers import portfolio as portfolio_router
+
+    class _KeyResult:
+        def scalar_one_or_none(self):
+            return SimpleNamespace(encrypted_key="encrypted")
+
+    class _HoldingsResult:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: [SimpleNamespace(ticker="AAPL")])
+
+    class _FakeDb:
+        def __init__(self):
+            self.calls = 0
+
+        async def execute(self, _statement):
+            self.calls += 1
+            return _KeyResult() if self.calls == 1 else _HoldingsResult()
+
+    portfolio_router._discover_cache.clear()
+    portfolio_router._discover_in_flight.clear()
+    market_router._quote_cache.clear()
+    monkeypatch.setattr(market_router, "_trending_cache", ([], 0.0))
+    monkeypatch.setattr(portfolio_router, "decrypt_key", lambda _encrypted: "test-openai-key")
+    monkeypatch.setattr(
+        portfolio_router,
+        "_get_latest_snapshot",
+        AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4())),
+    )
+    monkeypatch.setattr(portfolio_router, "get_sector_gaps", AsyncMock(return_value=[]))
+
+    portfolio_id = uuid.uuid4()
+    result = await portfolio_router.discover_stocks(
+        portfolio_id,
+        body={"llm_provider": "openai", "llm_model": "test-model"},
+        db=_FakeDb(),
+        user=SimpleNamespace(id=uuid.uuid4()),
+    )
+
+    assert result == {"recommendations": [], "cached": False}
+    assert str(portfolio_id) not in portfolio_router._discover_in_flight
 
 
 @pytest.mark.unit

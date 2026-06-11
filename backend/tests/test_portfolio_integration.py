@@ -1,14 +1,9 @@
 import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock
-from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 from main import app
-from app.database import AsyncSessionLocal
-from app.models.api_key import ApiKey
-from app.models.user import User
 from app.services.auth import create_invite_token
-from app.services.encryption import encrypt_key
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -23,14 +18,6 @@ async def _register_and_login(client: AsyncClient, email: str, password: str = "
 
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
-
-
-async def _seed_api_key(email: str, provider: str, key: str) -> None:
-    async with AsyncSessionLocal() as db:
-        user_result = await db.execute(select(User).where(User.email == email))
-        user = user_result.scalar_one()
-        db.add(ApiKey(provider=provider, encrypted_key=encrypt_key(key), is_valid=True, created_by=user.id))
-        await db.commit()
 
 
 async def _create_portfolio(client: AsyncClient, token: str, name: str = "Test Portfolio") -> str:
@@ -318,42 +305,6 @@ async def test_export_csv():
         lines = [line for line in r_exp.text.splitlines() if line.strip()]
         # lines[0] is header; remaining are data rows
         assert len(lines) == 1 + 3  # header + 3 holdings
-
-
-@pytest.mark.asyncio
-async def test_discover_empty_candidates_clears_in_flight(monkeypatch):
-    """An empty discovery pool must not leave the portfolio permanently in-flight."""
-    from app.routers import market as market_router
-    from app.routers import portfolio as portfolio_router
-
-    portfolio_router._discover_cache.clear()
-    portfolio_router._discover_in_flight.clear()
-    market_router._quote_cache.clear()
-    monkeypatch.setattr(market_router, "_trending_cache", ([], 0.0))
-
-    email = "discover-empty@example.com"
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        token = await _register_and_login(client, email)
-        await _seed_api_key(email, "openai", "test-openai-key")
-        portfolio_id = await _create_portfolio(client, token)
-
-        with open(FIXTURES_DIR / "generic_positions.csv", "rb") as f:
-            r = await client.post(
-                f"/portfolio/{portfolio_id}/upload",
-                files={"file": ("generic.csv", f, "text/csv")},
-                headers=_auth(token),
-            )
-        assert r.status_code == 200
-
-        r_disc = await client.post(
-            f"/portfolio/{portfolio_id}/discover",
-            json={"llm_provider": "openai", "llm_model": "test-model"},
-            headers=_auth(token),
-        )
-
-    assert r_disc.status_code == 200, r_disc.text
-    assert r_disc.json() == {"recommendations": [], "cached": False}
-    assert str(portfolio_id) not in portfolio_router._discover_in_flight
 
 
 @pytest.mark.asyncio
