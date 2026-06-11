@@ -175,7 +175,7 @@ async def get_regime(ticker: str) -> Optional[dict]:
 
     try:
         df = await fetch_history_period(ticker, period="10y", interval="1d", auto_adjust=True)
-    except ValueError:
+    except Exception:
         logger.exception("markov: computation failed for %s", ticker)
         result = None
         _regime_cache[ticker] = (result, now + 300)

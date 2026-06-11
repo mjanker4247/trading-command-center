@@ -112,6 +112,23 @@ async def test_cache_miss_on_expired():
     mock_compute.assert_called_once_with(fake_data, "TEST2")
 
 
+@pytest.mark.asyncio
+async def test_get_regime_returns_none_when_history_fetch_raises_runtime_error():
+    from app.services import markov_service
+
+    markov_service._regime_cache.pop("BROKEN", None)
+    with patch(
+        "app.services.markov_service.fetch_history_period",
+        new=AsyncMock(side_effect=RuntimeError("transient yahoo failure")),
+    ):
+        result = await markov_service.get_regime("BROKEN")
+
+    assert result is None
+    cached_result, expiry = markov_service._regime_cache["BROKEN"]
+    assert cached_result is None
+    assert expiry > time.time()
+
+
 def test_walk_forward_stats_returns_sharpe_and_drawdown():
     # 500 prices with upward trend -> enough Bull regime days for walk-forward to run
     prices = [100.0 * 1.0005 ** i for i in range(500)]

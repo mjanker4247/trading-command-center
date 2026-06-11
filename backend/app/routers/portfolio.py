@@ -1510,6 +1510,7 @@ async def discover_stocks(
     candidates = (gap_candidates + trending_candidates + mover_candidates)[:12]
 
     if not candidates:
+        _discover_in_flight.discard(cache_key)
         return {"recommendations": [], "cached": False}
 
     # Build prompt
