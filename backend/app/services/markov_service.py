@@ -175,7 +175,7 @@ async def get_regime(ticker: str) -> Optional[dict]:
 
     try:
         df = await fetch_history_period(ticker, period="10y", interval="1d", auto_adjust=True)
-    except ValueError:
+    except Exception:
         logger.exception("markov: computation failed for %s", ticker)
         result = None
         _regime_cache[ticker] = (result, now + 300)
@@ -190,5 +190,14 @@ async def get_regime(ticker: str) -> Optional[dict]:
 
 async def get_regime_for_portfolio(tickers: list[str]) -> dict[str, dict]:
     """Return regime analysis for all tickers concurrently, dropping failures."""
-    results = await asyncio.gather(*[get_regime(t) for t in tickers])
-    return {t: r for t, r in zip(tickers, results) if r is not None}
+    results = await asyncio.gather(*[get_regime(t) for t in tickers], return_exceptions=True)
+    portfolio_results = {}
+    for ticker, result in zip(tickers, results):
+        if isinstance(result, asyncio.CancelledError):
+            raise result
+        if isinstance(result, Exception):
+            logger.warning("markov: dropping failed portfolio ticker %s: %s", ticker, result)
+            continue
+        if result is not None:
+            portfolio_results[ticker] = result
+    return portfolio_results

@@ -10,6 +10,7 @@ from app.services.kalman_service import (
     _compute_signal,
     apply_kalman_filter,
     get_kalman,
+    get_kalman_for_portfolio,
     prepare_price_series,
 )
 
@@ -168,3 +169,20 @@ async def test_get_kalman_rejects_invalid_covariance():
 async def test_get_kalman_rejects_out_of_range_transition_covariance():
     with pytest.raises(KalmanDataError, match="transition_covariance_level"):
         await get_kalman("TEST4", transition_covariance_level=1.1)
+
+
+@pytest.mark.asyncio
+async def test_get_kalman_for_portfolio_skips_invalid_tickers():
+    fake_result = {"ticker": "AAPL", "signal": 0.25, "trend_direction": "up"}
+    with patch("app.services.kalman_service.get_kalman", return_value=fake_result) as mock_get:
+        result = await get_kalman_for_portfolio(["AAPL", "BAD SYMBOL"])
+
+    assert result == {"AAPL": fake_result}
+    mock_get.assert_awaited_once()
+    assert mock_get.call_args.args == ("AAPL",)
+
+
+@pytest.mark.asyncio
+async def test_get_kalman_for_portfolio_rejects_invalid_shared_covariance():
+    with pytest.raises(KalmanDataError, match="observation_covariance"):
+        await get_kalman_for_portfolio(["AAPL"], observation_covariance=0.0)

@@ -367,7 +367,16 @@ async def get_kalman_for_portfolio(
     observation_covariance: float = _DEFAULT_OBSERVATION_COVARIANCE_VALUE,
 ) -> dict[str, dict]:
     """Return Kalman trend analysis for all tickers concurrently, dropping failures."""
-    normalized = [_validate_ticker(t) for t in tickers]
+    normalized = []
+    for ticker in tickers:
+        try:
+            normalized.append(_validate_ticker(ticker))
+        except KalmanDataError:
+            logger.warning("kalman: skipping invalid portfolio ticker %r", ticker)
+
+    if not normalized:
+        return {}
+
     results = await asyncio.gather(
         *[
             get_kalman(

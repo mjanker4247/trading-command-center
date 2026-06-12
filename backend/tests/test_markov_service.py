@@ -112,6 +112,39 @@ async def test_cache_miss_on_expired():
     mock_compute.assert_called_once_with(fake_data, "TEST2")
 
 
+@pytest.mark.asyncio
+async def test_get_regime_returns_none_when_history_fetch_raises():
+    from app.services import markov_service
+
+    markov_service._regime_cache.pop("ERR", None)
+    with patch(
+        "app.services.markov_service.fetch_history_period",
+        new=AsyncMock(side_effect=ConnectionError("yahoo unavailable")),
+    ) as mock_fetch:
+        result = await markov_service.get_regime("ERR")
+
+    assert result is None
+    mock_fetch.assert_awaited_once_with("ERR", period="10y", interval="1d", auto_adjust=True)
+    cached_result, expiry = markov_service._regime_cache["ERR"]
+    assert cached_result is None
+    assert expiry > time.time()
+    markov_service._regime_cache.pop("ERR", None)
+
+
+@pytest.mark.asyncio
+async def test_portfolio_regime_drops_per_ticker_exceptions():
+    from app.services import markov_service
+
+    good_result = {"ticker": "GOOD", "signal": 0.5, "current_regime": "Bull"}
+    with patch(
+        "app.services.markov_service.get_regime",
+        new=AsyncMock(side_effect=[good_result, RuntimeError("provider failed"), None]),
+    ):
+        result = await markov_service.get_regime_for_portfolio(["GOOD", "BAD", "EMPTY"])
+
+    assert result == {"GOOD": good_result}
+
+
 def test_walk_forward_stats_returns_sharpe_and_drawdown():
     # 500 prices with upward trend -> enough Bull regime days for walk-forward to run
     prices = [100.0 * 1.0005 ** i for i in range(500)]
