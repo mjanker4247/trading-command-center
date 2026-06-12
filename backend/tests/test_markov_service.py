@@ -4,17 +4,15 @@ import pandas as pd
 import pytest
 from unittest.mock import AsyncMock, patch
 
-pytest.mark.unit
-pytestmark = pytest.mark.unit
-
 from app.services.markov_service import (
-    _label_regimes,
     _build_transition_matrix,
     _compute_signal,
     _compute_stationary,
+    _label_regimes,
     _walk_forward_stats,
-    _regime_cache,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def make_close(values: list[float]) -> pd.Series:
