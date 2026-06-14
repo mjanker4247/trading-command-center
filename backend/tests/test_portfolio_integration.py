@@ -1,4 +1,6 @@
 import pytest
+import csv
+import io
 from pathlib import Path
 from unittest.mock import AsyncMock
 from httpx import AsyncClient, ASGITransport
@@ -280,8 +282,18 @@ async def test_get_current_no_finnhub_key(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_export_csv():
-    """GET /export after upload returns text/csv with attachment disposition and matching row count."""
+async def test_export_csv_includes_yahoo_fallback_prices_without_finnhub_key(monkeypatch):
+    """CSV export should preserve the same delayed fallback prices shown by /current."""
+    from app.routers import portfolio as portfolio_router
+
+    portfolio_router._price_cache.clear()
+    fallback_prices = {"AAPL": 199.5, "NVDA": 410.0, "TSLA": 220.0}
+    monkeypatch.setattr(
+        portfolio_router._yf,
+        "fetch_price",
+        AsyncMock(side_effect=lambda ticker: fallback_prices.get(ticker)),
+    )
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         token = await _register_and_login(client, "export@example.com")
         portfolio_id = await _create_portfolio(client, token)
@@ -305,6 +317,12 @@ async def test_export_csv():
         lines = [line for line in r_exp.text.splitlines() if line.strip()]
         # lines[0] is header; remaining are data rows
         assert len(lines) == 1 + 3  # header + 3 holdings
+
+        rows = {row["Ticker"]: row for row in csv.DictReader(io.StringIO(r_exp.text))}
+        assert rows["AAPL"]["Current Price (USD)"] == "199.5"
+        assert rows["AAPL"]["Market Value (USD)"] == "9975.0"
+        assert rows["AAPL"]["Unrealized P&L (USD)"] == "1855.0"
+        assert rows["AAPL"]["Unrealized P&L (%)"] == "22.84"
 
 
 @pytest.mark.asyncio

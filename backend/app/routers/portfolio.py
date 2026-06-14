@@ -565,10 +565,11 @@ async def export_portfolio(
         f"Unrealized P&L ({c})", "Unrealized P&L (%)", "Last Analysis Verdict", "Last Analysis Date",
     ])
 
+    tickers = [h.ticker for h in snapshot.holdings]
+    price_map = await _fetch_prices_bulk(tickers, av_key)
+
     for h in snapshot.holdings:
-        price_usd: Optional[float] = None
-        if av_key or is_crypto(h.ticker):
-            price_usd = await _fetch_price(h.ticker, av_key)
+        price_usd = price_map.get(h.ticker)
         holding_rate = await fx.get_rate((h.currency or "USD").upper())
         avg_cost_usd = (h.avg_cost / holding_rate) if h.avg_cost is not None and holding_rate else h.avg_cost
         avg_cost_display = round(avg_cost_usd * pref_rate, 2) if avg_cost_usd is not None else ""
