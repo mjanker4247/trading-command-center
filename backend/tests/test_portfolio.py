@@ -1,3 +1,5 @@
+import csv
+import io
 import uuid
 import pytest
 from pathlib import Path
@@ -101,6 +103,64 @@ async def test_stock_price_falls_back_to_yfinance_when_finnhub_quote_fails(httpx
 
     assert price == pytest.approx(199.5)
     fallback.assert_awaited_once_with("AAPL")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_export_portfolio_uses_bulk_fallback_prices_without_finnhub_key(monkeypatch):
+    from app.routers import portfolio as portfolio_router
+
+    class FakeResult:
+        def __init__(self, value):
+            self.value = value
+
+        def scalar_one_or_none(self):
+            return self.value
+
+    class FakeDb:
+        def __init__(self, values):
+            self.values = list(values)
+
+        async def execute(self, *_args, **_kwargs):
+            return FakeResult(self.values.pop(0))
+
+    class FakeUser:
+        id = uuid.uuid4()
+        preferred_currency = "USD"
+
+    class FakePortfolio:
+        name = "Test Portfolio"
+
+    class FakeHolding:
+        id = uuid.uuid4()
+        ticker = "AAPL"
+        shares = 50.0
+        avg_cost = 162.4
+        currency = "USD"
+
+    class FakeSnapshot:
+        holdings = [FakeHolding()]
+
+    monkeypatch.setattr(portfolio_router, "_get_finnhub_key", AsyncMock(return_value=None))
+    fetch_prices = AsyncMock(return_value={"AAPL": 199.5})
+    monkeypatch.setattr(portfolio_router, "_fetch_prices_bulk", fetch_prices)
+    monkeypatch.setattr(portfolio_router.fx, "get_rate", AsyncMock(return_value=1.0))
+
+    response = await portfolio_router.export_portfolio(
+        portfolio_id=uuid.uuid4(),
+        db=FakeDb([FakePortfolio(), FakeSnapshot(), None]),
+        user=FakeUser(),
+    )
+
+    chunks: list[str] = []
+    async for chunk in response.body_iterator:
+        chunks.append(chunk.decode() if isinstance(chunk, bytes) else chunk)
+    rows = {row["Ticker"]: row for row in csv.DictReader(io.StringIO("".join(chunks)))}
+
+    fetch_prices.assert_awaited_once_with(["AAPL"], None)
+    assert rows["AAPL"]["Current Price (USD)"] == "199.5"
+    assert rows["AAPL"]["Market Value (USD)"] == "9975.0"
+    assert rows["AAPL"]["Unrealized P&L (USD)"] == "1855.0"
 
 
 @pytest.mark.unit
