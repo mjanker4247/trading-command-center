@@ -1500,82 +1500,80 @@ async def discover_stocks(
 
     _discover_in_flight.add(cache_key)
 
-    # Determine LLM provider/model
-    llm_provider = body.get("llm_provider")
-    llm_model = body.get("llm_model")
-    if not llm_provider:
-        for prov in ["openai", "anthropic", "google", "ionos"]:
-            row = (await db.execute(select(ApiKey).where(ApiKey.provider == prov))).scalar_one_or_none()
-            if row and row.is_valid:
-                llm_provider = prov
-                llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash", "ionos": "openai/gpt-oss-120b"}[prov]
-                break
-    if not llm_provider:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=422, detail="No LLM provider key configured. Add one in Settings.")
-
-    api_key_row = (await db.execute(select(ApiKey).where(ApiKey.provider == llm_provider))).scalar_one_or_none()
-    if not api_key_row:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=422, detail="LLM provider key not found.")
-    api_key = decrypt_key(api_key_row.encrypted_key)
-
-    # Get current portfolio tickers to exclude
     try:
-        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
-    except HTTPException:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
-    holdings = (await db.execute(
-        select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
-    )).scalars().all()
-    held_tickers = {h.ticker.upper() for h in holdings}
+        # Determine LLM provider/model
+        llm_provider = body.get("llm_provider")
+        llm_model = body.get("llm_model")
+        if not llm_provider:
+            for prov in ["openai", "anthropic", "google", "ionos"]:
+                row = (await db.execute(select(ApiKey).where(ApiKey.provider == prov))).scalar_one_or_none()
+                if row and row.is_valid:
+                    llm_provider = prov
+                    llm_model = {"openai": "gpt-4o-mini", "anthropic": "claude-haiku-4-5-20251001", "google": "gemini-2.5-flash", "ionos": "openai/gpt-oss-120b"}[prov]
+                    break
+        if not llm_provider:
+            raise HTTPException(status_code=422, detail="No LLM provider key configured. Add one in Settings.")
 
-    # Fetch sector gaps
-    gaps = await get_sector_gaps(portfolio_id, db, user)
+        api_key_row = (await db.execute(select(ApiKey).where(ApiKey.provider == llm_provider))).scalar_one_or_none()
+        if not api_key_row:
+            raise HTTPException(status_code=422, detail="LLM provider key not found.")
+        api_key = decrypt_key(api_key_row.encrypted_key)
 
-    # Read trending tickers from shared market cache
-    trending_tickers, _trending_expiry = _market_module._trending_cache
-    trending_candidates = [
-        {"ticker": t, "tag": "Trending", "sector": ""}
-        for t in trending_tickers if t.upper() not in held_tickers
-    ][:5]
+        # Get current portfolio tickers to exclude
+        try:
+            snap = await _get_latest_snapshot(portfolio_id, user.id, db)
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
+        holdings = (await db.execute(
+            select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
+        )).scalars().all()
+        held_tickers = {h.ticker.upper() for h in holdings}
 
-    # Read movers from shared quote cache — tickers with |change_pct| >= 3%
-    mover_candidates = []
-    for ticker in _market_module.MARKET_UNIVERSE:
-        if ticker in held_tickers:
-            continue
-        cached_quote = _market_module._quote_cache.get(ticker)
-        if cached_quote:
-            quote_data, q_expiry = cached_quote
-            if time.time() < q_expiry:
-                pct = quote_data.get("change_pct") or 0
-                if abs(pct) >= 3.0:
-                    mover_candidates.append({"ticker": ticker, "tag": "Mover", "sector": "", "_pct": pct})
-    mover_candidates.sort(key=lambda x: abs(x["_pct"]), reverse=True)
-    mover_candidates = [{"ticker": m["ticker"], "tag": m["tag"], "sector": m["sector"]} for m in mover_candidates[:4]]
+        # Fetch sector gaps
+        gaps = await get_sector_gaps(portfolio_id, db, user)
 
-    # Assemble gap fill candidates from underweight sectors
-    underweight = [g["sector"] for g in gaps if g["delta"] < -0.05]
-    gap_candidates = []
-    for sector in underweight:
-        for t in SECTOR_LEADERS.get(sector, []):
-            if t not in held_tickers:
-                gap_candidates.append({"ticker": t, "tag": "Gap Fill", "sector": sector})
+        # Read trending tickers from shared market cache
+        trending_tickers, _trending_expiry = _market_module._trending_cache
+        trending_candidates = [
+            {"ticker": t, "tag": "Trending", "sector": ""}
+            for t in trending_tickers if t.upper() not in held_tickers
+        ][:5]
 
-    candidates = (gap_candidates + trending_candidates + mover_candidates)[:12]
+        # Read movers from shared quote cache - tickers with |change_pct| >= 3%
+        mover_candidates = []
+        for ticker in _market_module.MARKET_UNIVERSE:
+            if ticker in held_tickers:
+                continue
+            cached_quote = _market_module._quote_cache.get(ticker)
+            if cached_quote:
+                quote_data, q_expiry = cached_quote
+                if time.time() < q_expiry:
+                    pct = quote_data.get("change_pct") or 0
+                    if abs(pct) >= 3.0:
+                        mover_candidates.append({"ticker": ticker, "tag": "Mover", "sector": "", "_pct": pct})
+        mover_candidates.sort(key=lambda x: abs(x["_pct"]), reverse=True)
+        mover_candidates = [{"ticker": m["ticker"], "tag": m["tag"], "sector": m["sector"]} for m in mover_candidates[:4]]
 
-    if not candidates:
-        return {"recommendations": [], "cached": False}
+        # Assemble gap fill candidates from underweight sectors
+        underweight = [g["sector"] for g in gaps if g["delta"] < -0.05]
+        gap_candidates = []
+        for sector in underweight:
+            for t in SECTOR_LEADERS.get(sector, []):
+                if t not in held_tickers:
+                    gap_candidates.append({"ticker": t, "tag": "Gap Fill", "sector": sector})
 
-    # Build prompt
-    held_summary = ", ".join(list(held_tickers)[:15])
-    underweight_summary = ", ".join(underweight[:5]) if underweight else "none"
-    candidate_lines = "\n".join(
-        f"- {c['ticker']} ({c['tag']}, {c['sector']})" for c in candidates
-    )
-    prompt = f"""You are a portfolio research assistant. The user holds: {held_summary}.
+        candidates = (gap_candidates + trending_candidates + mover_candidates)[:12]
+
+        if not candidates:
+            return {"recommendations": [], "cached": False}
+
+        # Build prompt
+        held_summary = ", ".join(list(held_tickers)[:15])
+        underweight_summary = ", ".join(underweight[:5]) if underweight else "none"
+        candidate_lines = "\n".join(
+            f"- {c['ticker']} ({c['tag']}, {c['sector']})" for c in candidates
+        )
+        prompt = f"""You are a portfolio research assistant. The user holds: {held_summary}.
 Their portfolio is underweight vs S&P 500 in these sectors: {underweight_summary}.
 
 Below are candidate stocks to consider. For each, write one concise sentence (max 20 words) explaining why it is relevant given the portfolio context.
@@ -1585,24 +1583,24 @@ Only include candidates you have a meaningful reason for. Return at most 8.
 Candidates:
 {candidate_lines}"""
 
-    try:
-        raw = await _call_llm(llm_provider, llm_model, api_key, prompt)
-        import json as _json
-        # Strip markdown fences if present
-        cleaned = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        recommendations = _json.loads(cleaned)
-        if not isinstance(recommendations, list):
-            recommendations = []
-    except Exception:
-        recommendations = [
-            {"ticker": c["ticker"], "tag": c["tag"], "sector": c["sector"], "reason": ""}
-            for c in candidates[:6]
-        ]
+        try:
+            raw = await _call_llm(llm_provider, llm_model, api_key, prompt)
+            import json as _json
+            # Strip markdown fences if present
+            cleaned = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+            recommendations = _json.loads(cleaned)
+            if not isinstance(recommendations, list):
+                recommendations = []
+        except Exception:
+            recommendations = [
+                {"ticker": c["ticker"], "tag": c["tag"], "sector": c["sector"], "reason": ""}
+                for c in candidates[:6]
+            ]
+
+        _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
+        return {"recommendations": recommendations, "cached": False}
     finally:
         _discover_in_flight.discard(cache_key)
-
-    _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
-    return {"recommendations": recommendations, "cached": False}
 
 
 @router.get("/portfolio/{portfolio_id}/behavioral-alerts")

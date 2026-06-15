@@ -1,6 +1,7 @@
 import uuid
 import pytest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from httpx import AsyncClient, ASGITransport
@@ -101,6 +102,67 @@ async def test_stock_price_falls_back_to_yfinance_when_finnhub_quote_fails(httpx
 
     assert price == pytest.approx(199.5)
     fallback.assert_awaited_once_with("AAPL")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_when_no_candidates(monkeypatch):
+    from app.routers import market as market_router
+    from app.routers import portfolio as portfolio_router
+
+    class FakeResult:
+        def __init__(self, *, scalar=None, rows=None):
+            self._scalar = scalar
+            self._rows = rows or []
+
+        def scalar_one_or_none(self):
+            return self._scalar
+
+        def scalars(self):
+            return self
+
+        def all(self):
+            return self._rows
+
+    class FakeDb:
+        def __init__(self):
+            self._results = [
+                FakeResult(scalar=SimpleNamespace(encrypted_key="encrypted")),
+                FakeResult(rows=[]),
+            ]
+
+        async def execute(self, _statement):
+            return self._results.pop(0)
+
+    portfolio_id = uuid.uuid4()
+    cache_key = str(portfolio_id)
+    portfolio_router._discover_cache.clear()
+    portfolio_router._discover_in_flight.clear()
+    market_router._quote_cache.clear()
+    monkeypatch.setattr(market_router, "_trending_cache", ([], 0.0))
+    monkeypatch.setattr(portfolio_router, "decrypt_key", lambda _encrypted: "api-key")
+    monkeypatch.setattr(
+        portfolio_router,
+        "_get_latest_snapshot",
+        AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4())),
+    )
+    monkeypatch.setattr(portfolio_router, "get_sector_gaps", AsyncMock(return_value=[]))
+    call_llm = AsyncMock()
+    monkeypatch.setattr(
+        "app.services.portfolio_insight_runner._call_llm",
+        call_llm,
+    )
+
+    response = await portfolio_router.discover_stocks(
+        portfolio_id,
+        {"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+        FakeDb(),
+        SimpleNamespace(id=uuid.uuid4()),
+    )
+
+    assert response == {"recommendations": [], "cached": False}
+    assert cache_key not in portfolio_router._discover_in_flight
+    call_llm.assert_not_awaited()
 
 
 @pytest.mark.unit
