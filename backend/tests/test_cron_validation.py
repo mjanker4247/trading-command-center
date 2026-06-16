@@ -1,6 +1,7 @@
 import pytest
 
 from app.utils.cron_validation import (
+    _normalize_cron_for_apscheduler,
     normalize_schedule_cron,
     parse_cron_trigger,
 )
@@ -18,6 +19,27 @@ def test_normalize_schedule_cron_strips_and_nulls_empty():
 def test_parse_cron_trigger_accepts_valid_expression():
     trigger = parse_cron_trigger("0 9 * * 1-5")
     assert trigger is not None
+
+
+@pytest.mark.unit
+def test_normalize_cron_translates_standard_weekday_numbers():
+    assert _normalize_cron_for_apscheduler("0 9 * * 1-5") == "0 9 * * mon,tue,wed,thu,fri"
+    assert _normalize_cron_for_apscheduler("0 9 * * 0") == "0 9 * * sun"
+    assert _normalize_cron_for_apscheduler("0 9 * * 7") == "0 9 * * sun"
+
+
+@pytest.mark.unit
+def test_parse_cron_trigger_uses_standard_cron_weekday_semantics():
+    trigger = parse_cron_trigger("0 9 * * 1-5")
+    fire_weekdays = [trigger.next().weekday() for _ in range(5)]
+    assert 5 not in fire_weekdays  # Saturday must not be included in Mon-Fri schedules.
+    assert all(day < 5 for day in fire_weekdays)
+
+
+@pytest.mark.unit
+def test_parse_cron_trigger_treats_zero_as_sunday():
+    trigger = parse_cron_trigger("0 9 * * 0")
+    assert trigger.next().weekday() == 6
 
 
 @pytest.mark.unit
