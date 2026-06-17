@@ -165,6 +165,12 @@ export interface AddWatchlistItemRequest {
   schedule_cron?: string | null;
 }
 
+export interface SchedulerJobsResponse {
+  running: boolean;
+  state?: string;
+  jobs: Array<{ id: string; next_fire_time: string | null }>;
+}
+
 export interface PerformanceStats {
   total: number;
   accuracy_7d: number | null;

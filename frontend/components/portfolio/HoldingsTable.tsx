@@ -7,7 +7,7 @@ import { addHolding, updateHolding, deleteHolding, getLatestRunsByTicker, type L
 import { fmtMoney, fmtPnl } from "@/lib/currency";
 import { WatchButton } from "@/components/portfolio/WatchButton";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
-import { TickerLabel } from "@/components/ui/TickerLabel";
+import { tickerDisplayName } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { WaveBadge } from "@/components/wave/WaveBadge";
 import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason } from "@/lib/types";
@@ -170,7 +170,7 @@ function PegBadge({ peg }: { peg: number | null | undefined }) {
     const { textColor, bgColor, label } = pegSignal(peg);
     return (
       <span
-        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ml-1.5 ${textColor} ${bgColor}`}
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${textColor} ${bgColor}`}
         title={`PEG ${peg.toFixed(2)} — ${label} relative to growth`}
       >
         PEG {peg.toFixed(2)}
@@ -179,7 +179,7 @@ function PegBadge({ peg }: { peg: number | null | undefined }) {
   }
   return (
     <span
-      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-muted bg-input"
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-muted bg-input"
       title="PEG unavailable — negative earnings or no 3-year growth data from Finnhub"
     >
       PEG N/A
@@ -213,7 +213,7 @@ function TrimBadge({ entry }: { entry?: TrimSignalEntry }) {
 
 function RegimeBadge({ data }: { data: RegimeData | undefined | null }) {
   if (!data) return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ml-1.5 text-muted bg-input">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-muted bg-input">
       ● —
     </span>
   );
@@ -221,7 +221,7 @@ function RegimeBadge({ data }: { data: RegimeData | undefined | null }) {
   const signStr = data.signal >= 0 ? `+${data.signal.toFixed(2)}` : data.signal.toFixed(2);
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ml-1.5 ${text} ${bg}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${text} ${bg}`}
       title={`Markov regime: ${data.current_regime} (${(data.persistence * 100).toFixed(0)}% persistence). Signal: ${signStr} (bull_prob − bear_prob). Powered by yfinance 10y daily data.`}
     >
       ● {data.current_regime} {signStr}
@@ -668,12 +668,14 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                   : rowEntry.verdict === "sell" ? "bg-red-900/20"
                   : ""
                   : "";
+                const tickerMeta = tickerMetadata[h.ticker.toUpperCase()];
+                const companyName = tickerDisplayName(h.ticker, tickerMeta);
 
                 return (
                   <React.Fragment key={h.id}>
                     <tr className={`border-t border-border hover:bg-input/30 ${rowTint}`}>
                       {/* Ticker + badges (stacked) + expand toggle */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 align-top">
                         {isEditing ? (
                           <EditInput
                             autoFocus
@@ -683,48 +685,47 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                             className="w-24 uppercase"
                           />
                         ) : (
-                          <div className="flex flex-col gap-1 min-w-[120px]">
-                            {/* Row 1: expand toggle + ticker name */}
-                            <div className="flex items-center gap-1.5">
-                              {(hasFundamentals || hasRegime) && (fundData || regime?.[h.ticker]) ? (
-                                <button
-                                  onClick={() => toggleExpand(h.id)}
-                                  className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-[11px] transition-colors ${isExpanded ? "text-blue-400 bg-blue-900/30" : "text-muted hover:text-fg hover:bg-muted-surface"}`}
-                                  title={isExpanded ? "Collapse details" : "Expand for fundamentals & regime analysis"}
-                                >
-                                  {isExpanded ? "▾" : "▸"}
-                                </button>
-                              ) : <span className="w-4 flex-shrink-0" />}
+                          <div className="flex min-w-[160px] items-start gap-1.5">
+                            {(hasFundamentals || hasRegime) && (fundData || regime?.[h.ticker]) ? (
+                              <button
+                                onClick={() => toggleExpand(h.id)}
+                                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-[11px] transition-colors ${isExpanded ? "text-blue-400 bg-blue-900/30" : "text-muted hover:text-fg hover:bg-muted-surface"}`}
+                                title={isExpanded ? "Collapse details" : "Expand for fundamentals & regime analysis"}
+                              >
+                                {isExpanded ? "▾" : "▸"}
+                              </button>
+                            ) : <span className="mt-0.5 h-4 w-4 shrink-0" />}
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <div className="flex min-w-0 flex-col items-start text-left">
+                                {companyName && companyName.toUpperCase() !== h.ticker.toUpperCase() && (
+                                  <span className="max-w-[14rem] truncate font-mono font-semibold text-sm text-purple-400">
+                                    {companyName}
+                                  </span>
+                                )}
                               {onTickerClick ? (
-                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
                                   <button
                                     onClick={() => onTickerClick(h)}
-                                    className="font-mono font-semibold text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
+                                    className="mt-0.5 max-w-[14rem] truncate text-left text-[11px] leading-tight text-muted hover:text-purple-300 hover:underline transition-colors"
                                   >
                                     {h.ticker}
                                   </button>
-                                </TickerLabel>
                               ) : h.last_run ? (
-                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
-                                  <Link href={`/runs/${h.last_run.run_id}`} className="font-mono font-semibold text-sm text-purple-400 hover:underline">
+                                  <Link href={`/runs/${h.last_run.run_id}`} className="mt-0.5 max-w-[14rem] truncate text-left text-[11px] leading-tight text-muted hover:text-purple-300 hover:underline">
                                     {h.ticker}
                                   </Link>
-                                </TickerLabel>
                               ) : (
-                                <TickerLabel ticker={h.ticker} metadata={tickerMetadata[h.ticker.toUpperCase()]}>
-                                  <span className="font-mono font-semibold text-sm text-purple-400">{h.ticker}</span>
-                                </TickerLabel>
+                                  <span className="mt-0.5 max-w-[14rem] truncate text-[11px] leading-tight text-muted">{h.ticker}</span>
                               )}
-                            </div>
-                            {/* Row 2: badges */}
-                            <div className="flex items-center flex-wrap gap-1 pl-5">
-                              {fundData && fundData.asset_type === "stock" && (
-                                <PegBadge peg={fundData.peg_ratio} />
-                              )}
-                              {regime?.[h.ticker] && <RegimeBadge data={regime[h.ticker]} />}
-                              {wave?.[h.ticker.toUpperCase()] && (
-                                <WaveBadge data={wave[h.ticker.toUpperCase()]} />
-                              )}
+                              </div>
+                              <div className="flex min-w-0 flex-wrap items-center gap-1">
+                                {fundData && fundData.asset_type === "stock" && (
+                                  <PegBadge peg={fundData.peg_ratio} />
+                                )}
+                                {regime?.[h.ticker] && <RegimeBadge data={regime[h.ticker]} />}
+                                {wave?.[h.ticker.toUpperCase()] && (
+                                  <WaveBadge data={wave[h.ticker.toUpperCase()]} />
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
