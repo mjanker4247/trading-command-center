@@ -697,7 +697,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                             ) : <span className="mt-0.5 h-4 w-4 shrink-0" />}
                             <div className="flex min-w-0 flex-col gap-1">
                               <div className="flex min-w-0 flex-col items-start text-left">
-                                {companyName && (
+                                {companyName && companyName.toUpperCase() !== h.ticker.toUpperCase() && (
                                   <span className="max-w-[14rem] truncate font-mono font-semibold text-sm text-purple-400">
                                     {companyName}
                                   </span>

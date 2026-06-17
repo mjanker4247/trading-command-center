@@ -140,7 +140,6 @@ export interface WatchlistItem {
   analysts: string[];
   response_language: ResponseLanguage;
   schedule_cron: string | null;
-  schedule_timezone: string;
   enabled: boolean;
   last_run_at: string | null;
   last_run_id: string | null;
@@ -164,7 +163,6 @@ export interface AddWatchlistItemRequest {
   analysts: string[];
   response_language?: ResponseLanguage;
   schedule_cron?: string | null;
-  schedule_timezone?: string;
 }
 
 export interface SchedulerJobsResponse {

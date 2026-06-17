@@ -242,7 +242,7 @@ export async function addWatchlistItem(req: AddWatchlistItemRequest): Promise<Wa
 
 export async function updateWatchlistItem(
   itemId: string,
-  req: Partial<Pick<WatchlistItem, "schedule_cron" | "schedule_timezone" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts" | "response_language">>
+  req: Partial<Pick<WatchlistItem, "schedule_cron" | "enabled" | "llm_provider" | "llm_model" | "depth" | "analysts" | "response_language">>
 ): Promise<WatchlistItem> {
   const r = await fetchWithAuth(`/watchlist/items/${itemId}`, { method: "PATCH", body: JSON.stringify(req) });
   if (!r.ok) {
