@@ -17,7 +17,15 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _watchlist_item_columns() -> set[str]:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    return {column["name"] for column in inspector.get_columns("watchlist_items")}
+
+
 def upgrade() -> None:
+    if "schedule_timezone" in _watchlist_item_columns():
+        return
     op.add_column(
         "watchlist_items",
         sa.Column("schedule_timezone", sa.String(length=64), server_default="UTC", nullable=False),
@@ -25,4 +33,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if "schedule_timezone" not in _watchlist_item_columns():
+        return
     op.drop_column("watchlist_items", "schedule_timezone")
