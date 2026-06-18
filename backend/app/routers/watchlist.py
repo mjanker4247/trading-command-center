@@ -107,6 +107,7 @@ async def _get_or_create_watchlist(user_id: UUID, db: AsyncSession) -> Watchlist
         db.add(wl)
         await db.commit()
         await db.refresh(wl)
+        wl.items = []
     return wl
 
 

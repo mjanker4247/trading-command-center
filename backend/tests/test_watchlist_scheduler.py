@@ -1,7 +1,11 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
+from sqlalchemy import inspect
+
+from app.routers.watchlist import _get_or_create_watchlist
 from main import app
 
 
@@ -16,6 +20,27 @@ async def _register_and_login(client: AsyncClient) -> str:
         "password": "password123",
     })
     return login.json()["access_token"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_or_create_watchlist_marks_new_items_loaded():
+    user_id = uuid4()
+
+    result = AsyncMock()
+    result.scalar_one_or_none = lambda: None
+
+    db = AsyncMock()
+    db.execute.return_value = result
+    db.add = MagicMock()
+    db.commit = AsyncMock()
+    db.refresh = AsyncMock()
+
+    watchlist = await _get_or_create_watchlist(user_id, db)
+
+    assert watchlist.created_by == user_id
+    assert watchlist.items == []
+    assert "items" not in inspect(watchlist).unloaded
 
 
 @pytest.mark.asyncio
