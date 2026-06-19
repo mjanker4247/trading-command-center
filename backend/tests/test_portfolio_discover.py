@@ -9,6 +9,7 @@ from main import app
 from app.database import AsyncSessionLocal
 from app.models.api_key import ApiKey
 from app.models.user import User
+from app.services.auth import create_invite_token
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
 
@@ -20,7 +21,10 @@ MOCK_RECOMMENDATIONS = json.dumps([
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "pass1234", "name": "Test"})
+    payload = {"email": email, "password": "pass1234", "name": "Test"}
+    if email != "discover-default@test.com":
+        payload["invite_token"] = create_invite_token(email)
+    r = await client.post("/auth/register", json=payload)
     return r.json()["access_token"]
 
 
@@ -101,3 +105,38 @@ async def test_discover_uses_request_llm_provider():
         assert r.status_code == 200
         assert captured
         assert captured[0] == ("groq", "llama-3.3-70b-versatile")
+
+
+@pytest.mark.asyncio
+async def test_discover_cache_requires_portfolio_owner():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        intruder_token = await _register_and_token(c, "discover-intruder@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            patch.object(market_module, "_trending_cache", (["XYZ"], time.time() + 3600)),
+        ):
+            owner_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+            assert owner_response.status_code == 200
+            assert owner_response.json()["cached"] is False
+
+            intruder_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {intruder_token}"},
+            )
+
+        assert intruder_response.status_code == 404

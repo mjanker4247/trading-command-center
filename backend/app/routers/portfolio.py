@@ -1565,10 +1565,14 @@ async def discover_stocks(
             raise HTTPException(status_code=422, detail="No LLM provider key configured. Add one in Settings.")
         llm_provider, llm_model = picked
 
-    provider_for_key = llm_provider if llm_provider != "vllm" else "openai"
-    api_key = await _get_api_key(provider_for_key, db)
+    api_key = None if llm_provider in LOCAL_LLM_PROVIDERS else await _get_api_key(llm_provider, db)
     if llm_provider not in LOCAL_LLM_PROVIDERS and not api_key:
         raise HTTPException(status_code=422, detail="LLM provider key not found.")
+
+    try:
+        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
 
     cache_key = f"{portfolio_id}:{llm_provider}:{llm_model}"
     now = time.time()
@@ -1587,11 +1591,6 @@ async def discover_stocks(
     _discover_in_flight.add(cache_key)
 
     # Get current portfolio tickers to exclude
-    try:
-        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
-    except HTTPException:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
     holdings = (await db.execute(
         select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
     )).scalars().all()

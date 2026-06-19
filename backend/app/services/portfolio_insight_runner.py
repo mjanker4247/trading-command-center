@@ -158,8 +158,6 @@ async def _call_llm(provider: str, model: str, api_key: Optional[str], prompt: s
         from app.config import settings as _s
         base_url = getattr(_s, "vllm_base_url", "http://localhost:8080")
         headers: dict[str, str] = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
         async with httpx.AsyncClient(timeout=180) as client:
             r = await client.post(
                 f"{base_url}/v1/chat/completions",
@@ -248,8 +246,6 @@ async def _call_llm_chat(
             base_url = getattr(_s, "vllm_base_url", "http://localhost:8080")
             url = f"{base_url}/v1/chat/completions"
             headers = {"Content-Type": "application/json"}
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
             timeout = 180
         else:  # ollama
             from app.config import settings as _s
@@ -507,8 +503,7 @@ async def generate_portfolio_insight(insight_id: str) -> None:
             # Fetch LLM key for the chosen provider
             llm_provider = insight.llm_provider
             llm_model = insight.llm_model
-            provider_for_key = llm_provider if llm_provider not in ("vllm",) else "openai"
-            llm_key = await _get_api_key(provider_for_key, db)
+            llm_key = None if llm_provider == "vllm" else await _get_api_key(llm_provider, db)
 
             # Fetch prices — crypto batched into one CoinGecko call, stocks via Finnhub.
             from app.routers.portfolio import _fetch_prices_bulk
