@@ -26,6 +26,7 @@ import {
 } from "@/lib/portfolioSelection";
 import { portfolioQueryKeys, PORTFOLIO_STALE_TIMES } from "@/lib/portfolioQueries";
 import { usePortfolioSync } from "@/lib/usePortfolioSync";
+import { usePortfolioFreshness } from "@/lib/usePortfolioFreshness";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { PortfolioSwitcher } from "@/components/portfolio/PortfolioSwitcher";
 import { PortfolioActions } from "@/components/portfolio/PortfolioActions";
@@ -269,7 +270,7 @@ export default function PortfolioPage() {
   const markovEnabled = strategySettings?.enableMarkovRegime !== false;
   const waveEnabled = strategySettings?.enableElliottWave !== false;
 
-  const { data: fundamentalsResult } = useQuery({
+  const { data: fundamentalsResult, isFetching: fetchingFundamentals } = useQuery({
     queryKey: portfolioQueryKeys.fundamentals(selectedId ?? ""),
     queryFn: () => getPortfolioFundamentals(selectedId!),
     enabled: selectedId != null,
@@ -278,21 +279,21 @@ export default function PortfolioPage() {
   const fundamentals = fundamentalsResult?.data;
   const fundamentalsUnavailableReason = fundamentalsResult?.fundamentals_unavailable_reason ?? null;
 
-  const { data: regime = {} } = useQuery<Record<string, RegimeData>>({
+  const { data: regime = {}, isFetching: fetchingRegime } = useQuery<Record<string, RegimeData>>({
     queryKey: portfolioQueryKeys.regime(selectedId ?? ""),
     queryFn: () => getPortfolioRegime(selectedId!),
     enabled: selectedId != null && markovEnabled,
     staleTime: PORTFOLIO_STALE_TIMES.regime,
   });
 
-  const { data: wave = {} } = useQuery<Record<string, WaveSummary>>({
+  const { data: wave = {}, isFetching: fetchingWave } = useQuery<Record<string, WaveSummary>>({
     queryKey: portfolioQueryKeys.wave(selectedId ?? ""),
     queryFn: () => getPortfolioWave(selectedId!),
     enabled: selectedId != null && waveEnabled,
     staleTime: PORTFOLIO_STALE_TIMES.wave,
   });
 
-  const { data: trimSignals } = useQuery<TrimSignalsResponse>({
+  const { data: trimSignals, isFetching: fetchingTrimSignals } = useQuery<TrimSignalsResponse>({
     queryKey: portfolioQueryKeys.trimSignals(selectedId ?? ""),
     queryFn: () => getPortfolioTrimSignals(selectedId!),
     enabled: selectedId != null && markovEnabled,
@@ -304,7 +305,7 @@ export default function PortfolioPage() {
     [trimSignals]
   );
 
-  const { data: behavioralAlerts } = useQuery<BehavioralAlertsResponse>({
+  const { data: behavioralAlerts, isFetching: fetchingBehavioralAlerts } = useQuery<BehavioralAlertsResponse>({
     queryKey: portfolioQueryKeys.behavioralAlerts(selectedId ?? ""),
     queryFn: () => getBehavioralAlerts(selectedId!),
     enabled: selectedId != null,
@@ -312,7 +313,7 @@ export default function PortfolioPage() {
   });
   const alertCount = (behavioralAlerts?.critical_count ?? 0) + (behavioralAlerts?.warning_count ?? 0);
 
-  const { data: tickerMetadata = {} } = useTickerMetadata(tickers, {
+  const { data: tickerMetadata = {}, isFetching: fetchingTickerMetadata } = useTickerMetadata(tickers, {
     enabled: tickers.length > 0,
     forceRefresh: metadataForceToken > 0,
   });
@@ -327,6 +328,23 @@ export default function PortfolioPage() {
     markovEnabled,
     waveEnabled,
     onMetadataForceRefresh: handleMetadataForceRefresh,
+  });
+
+  const isFetchingPortfolioData =
+    fetchingCurrent ||
+    isSyncing ||
+    fetchingFundamentals ||
+    fetchingRegime ||
+    fetchingWave ||
+    fetchingTrimSignals ||
+    fetchingBehavioralAlerts ||
+    fetchingTickerMetadata;
+
+  const freshnessLabel = usePortfolioFreshness({
+    portfolioId: selectedId,
+    markovEnabled,
+    waveEnabled,
+    isFetching: isFetchingPortfolioData,
   });
 
   function handleSelectPortfolio(id: string) {
@@ -419,6 +437,7 @@ export default function PortfolioPage() {
             <>
               <div className="hidden sm:block h-6 w-px shrink-0 bg-border" aria-hidden="true" />
               <PortfolioActions
+                freshnessLabel={freshnessLabel}
                 hasMissingPrices={hasMissingPrices}
                 isRefreshing={fetchingCurrent}
                 isSyncing={isSyncing}

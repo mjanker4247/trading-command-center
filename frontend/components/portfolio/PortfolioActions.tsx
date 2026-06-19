@@ -4,6 +4,7 @@ import { Bell, RefreshCw, RotateCw } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 
 interface PortfolioActionsProps {
+  freshnessLabel?: string | null;
   hasMissingPrices?: boolean;
   isRefreshing?: boolean;
   isSyncing?: boolean;
@@ -43,6 +44,7 @@ function TextActionButton({
 }
 
 export function PortfolioActions({
+  freshnessLabel,
   hasMissingPrices,
   isRefreshing,
   isSyncing,
@@ -56,8 +58,16 @@ export function PortfolioActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2 sm:gap-1.5">
-      {(onRefreshClick || onSyncAllClick) && (
+      {(freshnessLabel || onRefreshClick || onSyncAllClick) && (
         <>
+          {freshnessLabel && (
+            <span
+              className="text-muted text-xs whitespace-nowrap"
+              title="Time since portfolio prices and enrichment data were last refreshed"
+            >
+              {freshnessLabel}
+            </span>
+          )}
           <div className="flex items-center gap-1">
             {onRefreshClick && (
               <IconButton
