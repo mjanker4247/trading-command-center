@@ -1,16 +1,16 @@
 "use client";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, LoaderCircle, Pencil, Play, Plus, Trash2, X } from "lucide-react";
-import { addHolding, updateHolding, deleteHolding, getLatestRunsByTicker, type LatestRunEntry } from "@/lib/api";
+import { addHolding, updateHolding, deleteHolding } from "@/lib/api";
 import { fmtMoney, fmtPnl } from "@/lib/currency";
+import { analysisFromLastRun } from "@/lib/holdingLastRun";
 import { WatchButton } from "@/components/portfolio/WatchButton";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
 import { TickerLabel } from "@/components/ui/TickerLabel";
-import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { WaveBadge } from "@/components/wave/WaveBadge";
-import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason } from "@/lib/types";
+import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason, TickerMetadata } from "@/lib/types";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 
 interface HoldingsTableProps {
@@ -23,6 +23,7 @@ interface HoldingsTableProps {
   regime?: Record<string, RegimeData>;
   wave?: Record<string, WaveSummary>;
   trimSignals?: Record<string, TrimSignalEntry>;
+  tickerMetadata?: Record<string, TickerMetadata>;
   onTickerClick?: (holding: PortfolioHolding) => void;
 }
 
@@ -342,7 +343,7 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
   );
 }
 
-export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, fundamentalsUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, onTickerClick }: HoldingsTableProps) {
+export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, fundamentalsUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, tickerMetadata = {}, onTickerClick }: HoldingsTableProps) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
@@ -376,15 +377,6 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
     }
   }
 
-  const tickers = holdings.map((h) => h.ticker);
-  const { data: tickerMetadata = {} } = useTickerMetadata(tickers);
-  const { data: latestRuns = {} } = useQuery({
-    queryKey: ["latest-runs-by-ticker", tickers],
-    queryFn: () => getLatestRunsByTicker(tickers),
-    enabled: tickers.length > 0,
-    staleTime: 60_000,
-  });
-
   const isFiltered = filterTicker !== "" || filterSignal !== "" || filterPeg !== "" || filterRegime !== "" || trimOnly;
 
   const filteredHoldings = useMemo(() => {
@@ -394,9 +386,11 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
       result = result.filter((h) => h.ticker.toUpperCase().includes(q));
     }
     if (filterSignal === "none") {
-      result = result.filter((h) => !latestRuns[h.ticker]);
+      result = result.filter((h) => !analysisFromLastRun(h.last_run));
     } else if (filterSignal) {
-      result = result.filter((h) => latestRuns[h.ticker]?.verdict?.toLowerCase() === filterSignal);
+      result = result.filter(
+        (h) => analysisFromLastRun(h.last_run)?.verdict === filterSignal
+      );
     }
     if (filterPeg === "undervalued") {
       result = result.filter((h) => { const p = fundamentals?.[h.ticker]?.peg_ratio; return p != null && p < 1; });
@@ -419,7 +413,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
       });
     }
     return result;
-  }, [holdings, filterTicker, filterSignal, filterPeg, filterRegime, trimOnly, latestRuns, fundamentals, regime, trimSignals]);
+  }, [holdings, filterTicker, filterSignal, filterPeg, filterRegime, trimOnly, fundamentals, regime, trimSignals]);
 
   const sortedHoldings = useMemo(() => {
     if (!sortKey) return filteredHoldings;
@@ -662,7 +656,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                 const fundData = fundamentals?.[h.ticker] ?? null;
                 const pnl = h.unrealized_pnl;
                 const pnlColor = pnl == null ? "text-muted" : pnl >= 0 ? "text-green-400" : "text-red-400";
-                const rowEntry = latestRuns[h.ticker] ?? null;
+                const rowEntry = analysisFromLastRun(h.last_run);
                 const rowTint = rowEntry != null && daysAgo(rowEntry.completed_at) <= 14
                   ? rowEntry.verdict === "buy" ? "bg-emerald-900/20"
                   : rowEntry.verdict === "sell" ? "bg-red-900/20"
@@ -762,7 +756,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                       {/* Last Analysis */}
                       <td className="px-3 py-2 text-right">
                         {(() => {
-                          const entry: LatestRunEntry | null | undefined = latestRuns[h.ticker];
+                          const entry = analysisFromLastRun(h.last_run);
                           if (!entry) {
                             return <span className="text-xs text-subtle italic">Never analyzed</span>;
                           }

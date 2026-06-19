@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listPortfolios,
@@ -19,7 +19,16 @@ import {
 } from "@/lib/api";
 import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, WaveSummary, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
 import { isCrypto } from "@/lib/asset";
+import {
+  getLastPortfolioId,
+  resolvePortfolioId,
+  setLastPortfolioId,
+} from "@/lib/portfolioSelection";
+import { portfolioQueryKeys, PORTFOLIO_STALE_TIMES } from "@/lib/portfolioQueries";
+import { usePortfolioSync } from "@/lib/usePortfolioSync";
+import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { PortfolioSwitcher } from "@/components/portfolio/PortfolioSwitcher";
+import { PortfolioActions } from "@/components/portfolio/PortfolioActions";
 import { PortfolioHeader } from "@/components/portfolio/PortfolioHeader";
 import { UploadDrawer } from "@/components/portfolio/UploadDrawer";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
@@ -220,26 +229,37 @@ function BatchAnalyzeModal({
 
 export default function PortfolioPage() {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [preferredId, setPreferredId] = useState<string | null>(() => getLastPortfolioId());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("holdings");
   const [batchOpen, setBatchOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [drawerHolding, setDrawerHolding] = useState<PortfolioHolding | null>(null);
+  const [metadataForceToken, setMetadataForceToken] = useState(0);
 
   const { data: portfolios = [], isLoading: loadingPortfolios } = useQuery({
-    queryKey: ["portfolios"],
+    queryKey: portfolioQueryKeys.list,
     queryFn: listPortfolios,
   });
 
+  const selectedId = useMemo(
+    () => resolvePortfolioId(portfolios, preferredId),
+    [portfolios, preferredId]
+  );
+
   const { data: current, isLoading: loadingCurrent, isFetching: fetchingCurrent, refetch: refetchCurrent } = useQuery({
-    queryKey: ["portfolio-current", selectedId],
+    queryKey: portfolioQueryKeys.current(selectedId ?? ""),
     queryFn: () => getPortfolioCurrent(selectedId!),
     enabled: selectedId != null,
+    staleTime: PORTFOLIO_STALE_TIMES.current,
   });
 
   const hasHoldings = (current?.holdings?.length ?? 0) > 0;
   const allCrypto = hasHoldings && (current?.holdings ?? []).every((h) => isCrypto(h.ticker));
+  const tickers = useMemo(
+    () => (current?.holdings ?? []).map((h) => h.ticker),
+    [current?.holdings]
+  );
 
   const { data: strategySettings } = useQuery({
     queryKey: ["app-settings"],
@@ -249,36 +269,34 @@ export default function PortfolioPage() {
   const markovEnabled = strategySettings?.enableMarkovRegime !== false;
   const waveEnabled = strategySettings?.enableElliottWave !== false;
 
-  // Fetch fundamentals when holdings tab is active.
-  // Crypto uses CoinGecko (no key needed); stocks need a Finnhub key.
   const { data: fundamentalsResult } = useQuery({
-    queryKey: ["portfolio-fundamentals", selectedId],
+    queryKey: portfolioQueryKeys.fundamentals(selectedId ?? ""),
     queryFn: () => getPortfolioFundamentals(selectedId!),
-    enabled: selectedId != null && tab === "holdings" && (allCrypto || current?.price_unavailable_reason !== "no_finnhub_key"),
-    staleTime: 1000 * 60 * 30,
+    enabled: selectedId != null,
+    staleTime: PORTFOLIO_STALE_TIMES.fundamentals,
   });
   const fundamentals = fundamentalsResult?.data;
   const fundamentalsUnavailableReason = fundamentalsResult?.fundamentals_unavailable_reason ?? null;
 
   const { data: regime = {} } = useQuery<Record<string, RegimeData>>({
-    queryKey: ["portfolio-regime", selectedId],
+    queryKey: portfolioQueryKeys.regime(selectedId ?? ""),
     queryFn: () => getPortfolioRegime(selectedId!),
-    enabled: selectedId != null && tab === "holdings" && markovEnabled,
-    staleTime: 1000 * 60 * 60 * 4,  // 4h — matches backend cache TTL
+    enabled: selectedId != null && markovEnabled,
+    staleTime: PORTFOLIO_STALE_TIMES.regime,
   });
 
   const { data: wave = {} } = useQuery<Record<string, WaveSummary>>({
-    queryKey: ["portfolio-wave", selectedId],
+    queryKey: portfolioQueryKeys.wave(selectedId ?? ""),
     queryFn: () => getPortfolioWave(selectedId!),
-    enabled: selectedId != null && tab === "holdings" && waveEnabled,
-    staleTime: 1000 * 60 * 60 * 4,
+    enabled: selectedId != null && waveEnabled,
+    staleTime: PORTFOLIO_STALE_TIMES.wave,
   });
 
   const { data: trimSignals } = useQuery<TrimSignalsResponse>({
-    queryKey: ["portfolio-trim-signals", selectedId],
+    queryKey: portfolioQueryKeys.trimSignals(selectedId ?? ""),
     queryFn: () => getPortfolioTrimSignals(selectedId!),
-    enabled: selectedId != null && tab === "holdings" && markovEnabled,
-    staleTime: 1000 * 60 * 30,
+    enabled: selectedId != null && markovEnabled,
+    staleTime: PORTFOLIO_STALE_TIMES.trimSignals,
   });
 
   const trimByHoldingId = useMemo<Record<string, TrimSignalEntry>>(
@@ -287,19 +305,41 @@ export default function PortfolioPage() {
   );
 
   const { data: behavioralAlerts } = useQuery<BehavioralAlertsResponse>({
-    queryKey: ["behavioralAlerts", selectedId],
+    queryKey: portfolioQueryKeys.behavioralAlerts(selectedId ?? ""),
     queryFn: () => getBehavioralAlerts(selectedId!),
-    enabled: selectedId != null && tab === "insights",
-    staleTime: 1000 * 60 * 5,
+    enabled: selectedId != null,
+    staleTime: PORTFOLIO_STALE_TIMES.behavioralAlerts,
   });
   const alertCount = (behavioralAlerts?.critical_count ?? 0) + (behavioralAlerts?.warning_count ?? 0);
 
-  // Auto-select first portfolio on load
+  const { data: tickerMetadata = {} } = useTickerMetadata(tickers, {
+    enabled: tickers.length > 0,
+    forceRefresh: metadataForceToken > 0,
+  });
+
+  const handleMetadataForceRefresh = useCallback(() => {
+    setMetadataForceToken((token) => token + 1);
+  }, []);
+
+  const { syncAll, isSyncing } = usePortfolioSync({
+    portfolioId: selectedId,
+    activeTab: tab,
+    markovEnabled,
+    waveEnabled,
+    onMetadataForceRefresh: handleMetadataForceRefresh,
+  });
+
+  function handleSelectPortfolio(id: string) {
+    setPreferredId(id);
+    setLastPortfolioId(id);
+    setTab("holdings");
+  }
+
   useEffect(() => {
-    if (selectedId === null && portfolios.length > 0) {
-      setSelectedId(portfolios[0].id);
+    if (selectedId) {
+      setLastPortfolioId(selectedId);
     }
-  }, [portfolios, selectedId]);
+  }, [selectedId]);
 
   // Open upload drawer when selected portfolio has no snapshot yet
   useEffect(() => {
@@ -311,23 +351,26 @@ export default function PortfolioPage() {
   const createMutation = useMutation({
     mutationFn: (name: string) => createPortfolio(name),
     onSuccess: (p: Portfolio) => {
-      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
-      setSelectedId(p.id);
+      queryClient.invalidateQueries({ queryKey: portfolioQueryKeys.list });
+      setPreferredId(p.id);
+      setLastPortfolioId(p.id);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deletePortfolio(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
-      setSelectedId(null);
+    onSuccess: (_data, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: portfolioQueryKeys.list });
+      if (preferredId === deletedId) {
+        setPreferredId(null);
+      }
     },
   });
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadPortfolioSnapshot(selectedId!, file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["portfolio-current", selectedId] });
+      queryClient.invalidateQueries({ queryKey: portfolioQueryKeys.current(selectedId!) });
       setUploadOpen(false);
     },
   });
@@ -364,14 +407,29 @@ export default function PortfolioPage() {
     <PageShell width="full" gap="4">
         <PageTitle>Portfolio</PageTitle>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <PortfolioSwitcher
             portfolios={portfolios}
             selectedId={selectedId}
-            onSelect={(id) => { setSelectedId(id); setTab("holdings"); }}
+            onSelect={handleSelectPortfolio}
             onCreate={(name) => createMutation.mutate(name)}
             onDelete={(id) => deleteMutation.mutate(id)}
           />
+          {selectedPortfolio && (
+            <>
+              <div className="hidden sm:block h-6 w-px shrink-0 bg-border" aria-hidden="true" />
+              <PortfolioActions
+                hasMissingPrices={hasMissingPrices}
+                isRefreshing={fetchingCurrent}
+                isSyncing={isSyncing}
+                onRefreshClick={() => refetchCurrent()}
+                onSyncAllClick={() => syncAll()}
+                onUploadClick={() => setUploadOpen(true)}
+                onExportClick={handleExport}
+                onDeliveryClick={() => setDeliveryOpen(true)}
+              />
+            </>
+          )}
         </div>
 
         {selectedPortfolio && (
@@ -381,12 +439,6 @@ export default function PortfolioPage() {
             displayCurrency={current?.display_currency ?? "USD"}
             snapshotDate={current?.snapshot?.uploaded_at ?? null}
             broker={current?.snapshot?.broker ?? null}
-            hasMissingPrices={hasMissingPrices}
-            isRefreshing={fetchingCurrent}
-            onUploadClick={() => setUploadOpen(true)}
-            onExportClick={handleExport}
-            onDeliveryClick={() => setDeliveryOpen(true)}
-            onRefreshClick={() => refetchCurrent()}
           />
         )}
 
@@ -499,6 +551,7 @@ export default function PortfolioPage() {
                   regime={markovEnabled ? regime : undefined}
                   wave={waveEnabled ? wave : undefined}
                   trimSignals={markovEnabled ? trimByHoldingId : undefined}
+                  tickerMetadata={tickerMetadata}
                   onTickerClick={setDrawerHolding}
                 />
               </div>
