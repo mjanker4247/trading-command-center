@@ -87,6 +87,7 @@ def test_empty_file_raises_400():
 @pytest.mark.asyncio
 async def test_stock_price_falls_back_to_yfinance_when_finnhub_quote_fails(httpx_mock, monkeypatch):
     from app.routers import portfolio as portfolio_router
+    from app.schemas.money import PriceQuote
 
     portfolio_router._price_cache.clear()
     httpx_mock.add_response(
@@ -94,12 +95,14 @@ async def test_stock_price_falls_back_to_yfinance_when_finnhub_quote_fails(httpx
         status_code=403,
         json={"error": "You don't have access to this resource."},
     )
-    fallback = AsyncMock(return_value=199.5)
-    monkeypatch.setattr(portfolio_router._yf, "fetch_price", fallback)
+    fallback = AsyncMock(return_value=PriceQuote(amount=199.5, currency="USD"))
+    monkeypatch.setattr(portfolio_router._yf, "fetch_price_quote", fallback)
 
-    price = await portfolio_router._fetch_price("AAPL", "blocked-finnhub")
+    quote = await portfolio_router._fetch_price("AAPL", "blocked-finnhub")
 
-    assert price == pytest.approx(199.5)
+    assert quote is not None
+    assert quote.amount == pytest.approx(199.5)
+    assert quote.currency == "USD"
     fallback.assert_awaited_once_with("AAPL")
 
 

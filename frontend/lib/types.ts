@@ -306,11 +306,15 @@ export interface PortfolioHolding {
   ticker: string;
   shares: number;
   avg_cost: number | null;
+  cost_basis_currency: string;
+  quote_currency: string | null;
+  /** @deprecated use cost_basis_currency */
   currency: string;
   current_price: number | null;
   market_value: number | null;
   unrealized_pnl: number | null;
   unrealized_pnl_pct: number | null;
+  pnl_unavailable_reason: string | null;
   last_run: PortfolioHoldingLastRun | null;
 }
 
@@ -324,6 +328,8 @@ export interface PortfolioCurrentResponse {
   snapshot: PortfolioSnapshot | null;
   price_unavailable_reason: string | null;
   display_currency: string;
+  portfolio_currencies: string[];
+  totals_currency: string | null;
   totals: PortfolioTotals;
   holdings: PortfolioHolding[];
 }

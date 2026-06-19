@@ -296,6 +296,12 @@ async def _call_llm_chat(
     raise ValueError(f"Unsupported LLM provider: {provider}")
 
 
+def _fmt_money(amount: Optional[float], currency: str) -> str:
+    if amount is None:
+        return "N/A"
+    return f"{amount:.2f} {currency}"
+
+
 def _build_prompt(
     portfolio_name: str,
     analysis_date: str,
@@ -309,23 +315,30 @@ def _build_prompt(
     rows = []
     for h in holdings:
         pnl_str = f"{h['unrealized_pnl_pct']:+.1f}%" if h["unrealized_pnl_pct"] is not None else "N/A"
-        price_str = f"${h['current_price']:.2f}" if h["current_price"] else "N/A"
-        value_str = f"${h['market_value']:.2f}" if h["market_value"] else "N/A"
+        cost_ccy = h.get("cost_basis_currency") or "USD"
+        quote_ccy = h.get("quote_currency") or cost_ccy
+        price_str = _fmt_money(h.get("current_price"), quote_ccy)
+        value_str = _fmt_money(h.get("market_value"), quote_ccy)
         weight_str = f"{h['weight_pct']:.1f}%" if h["weight_pct"] is not None else "N/A"
         verdict = h.get("last_verdict") or "none"
         days = h.get("days_since_analysis")
         analysis_str = f"{verdict} ({days}d ago)" if days is not None else "no analysis"
         rows.append(
             f"  - {h['ticker']} | sector: {h['sector']} | shares: {h['shares']} | "
-            f"avg_cost: ${h['avg_cost'] or 'N/A'} | price: {price_str} | "
+            f"avg_cost: {_fmt_money(h.get('avg_cost'), cost_ccy)} | price: {price_str} | "
             f"value: {value_str} | weight: {weight_str} | P&L: {pnl_str} | analysis: {analysis_str}"
         )
 
     holdings_text = "\n".join(rows) if rows else "  (no holdings)"
-    value_str = f"${total_value:,.2f}" if total_value else "N/A (prices unavailable)"
+    totals_ccy = holdings[0].get("totals_currency") if holdings else None
+    value_str = (
+        _fmt_money(total_value, totals_ccy)
+        if total_value is not None and totals_ccy
+        else "N/A (prices unavailable or mixed currencies)"
+    )
     pnl_str = (
-        f"${total_pnl:+,.2f} ({total_pnl_pct:+.1f}%)"
-        if total_pnl is not None and total_pnl_pct is not None
+        f"{_fmt_money(total_pnl, totals_ccy)} ({total_pnl_pct:+.1f}%)"
+        if total_pnl is not None and total_pnl_pct is not None and totals_ccy
         else "N/A"
     )
 
@@ -511,8 +524,16 @@ async def generate_portfolio_insight(insight_id: str) -> None:
             llm_key = await _get_api_key(provider_for_key, db)
 
             # Fetch prices — crypto batched into one CoinGecko call, stocks via Finnhub.
+            from app.models.user import User
             from app.routers.portfolio import _fetch_prices_bulk
-            price_map: dict[str, Optional[float]] = await _fetch_prices_bulk(tickers, finnhub_key)
+            from app.schemas.money import PriceQuote
+
+            user = await db.get(User, portfolio.user_id)
+            pref_currency = (user.preferred_currency if user else "USD").upper()
+
+            price_map: dict[str, Optional[PriceQuote]] = await _fetch_prices_bulk(
+                tickers, finnhub_key, db
+            )
 
             # Fetch sector info concurrently — crypto uses CoinGecko, stocks use Finnhub.
             sectors = await asyncio.gather(*[_fetch_sector(t, finnhub_key) for t in tickers])
@@ -552,11 +573,27 @@ async def generate_portfolio_insight(insight_id: str) -> None:
             enriched: list[dict] = []
 
             for h in holdings:
-                price = price_map[h.ticker]
-                market_value = h.shares * price if price is not None else None
-                pnl_pct = ((price / h.avg_cost - 1) * 100) if price is not None and h.avg_cost is not None and h.avg_cost != 0 else None
+                quote = price_map.get(h.ticker)
+                cost_ccy = (h.currency or "USD").upper()
+                quote_ccy = quote.currency_code if quote else None
+                current_price = quote.amount if quote else None
+                market_value = h.shares * current_price if current_price is not None else None
+                pnl_pct = None
+                if (
+                    current_price is not None
+                    and h.avg_cost is not None
+                    and h.avg_cost != 0
+                    and quote
+                    and cost_ccy == quote.currency_code
+                ):
+                    pnl_pct = (current_price / h.avg_cost - 1) * 100
 
-                if market_value is not None:
+                include_in_totals = (
+                    quote is not None
+                    and quote.currency_code == pref_currency
+                    and cost_ccy == quote.currency_code
+                )
+                if include_in_totals and market_value is not None:
                     total_market_value += market_value
                     has_price = True
                     if h.avg_cost is not None:
@@ -568,18 +605,27 @@ async def generate_portfolio_insight(insight_id: str) -> None:
                     "sector": sector_map[h.ticker],
                     "shares": h.shares,
                     "avg_cost": round(h.avg_cost, 2) if h.avg_cost else None,
-                    "current_price": round(price, 2) if price else None,
+                    "cost_basis_currency": cost_ccy,
+                    "current_price": round(current_price, 2) if current_price else None,
+                    "quote_currency": quote_ccy,
                     "market_value": round(market_value, 2) if market_value else None,
                     "weight_pct": None,  # filled below
                     "unrealized_pnl_pct": round(pnl_pct, 2) if pnl_pct is not None else None,
                     "last_verdict": verdict_info[0] if verdict_info else None,
                     "days_since_analysis": verdict_info[1] if verdict_info else None,
+                    "totals_currency": pref_currency if has_price else None,
                 })
 
-            # Fill in weights
+            # Fill in weights (preferred-currency holdings only)
+            pref_total = sum(
+                e["market_value"] or 0
+                for e in enriched
+                if e.get("quote_currency") == pref_currency and e.get("market_value")
+            )
             for e in enriched:
-                if e["market_value"] and total_market_value > 0:
-                    e["weight_pct"] = round(e["market_value"] / total_market_value * 100, 1)
+                if e["market_value"] and pref_total > 0 and e.get("quote_currency") == pref_currency:
+                    e["weight_pct"] = round(e["market_value"] / pref_total * 100, 1)
+                e["totals_currency"] = pref_currency if has_price else None
 
             total_pnl = (total_market_value - total_cost) if has_price and total_cost else None
             total_pnl_pct = ((total_market_value / total_cost - 1) * 100) if has_price and total_cost else None
