@@ -8,12 +8,72 @@ import {
   getPortfolioTrimSignals,
   getBehavioralAlerts,
   getAppSettings,
+  getPortfolioNews,
+  getPortfolioEarnings,
+  getMarketTrending,
+  getMarketMovers,
+  getMarketSectors,
 } from "@/lib/api";
-import { portfolioQueryKeys, PORTFOLIO_STALE_TIMES } from "@/lib/portfolioQueries";
+import {
+  portfolioQueryKeys,
+  marketQueryKeys,
+  PORTFOLIO_STALE_TIMES,
+  MARKET_STALE_TIMES,
+  PORTFOLIO_NEWS_DAYS,
+  PORTFOLIO_EARNINGS_DAYS_AHEAD,
+} from "@/lib/portfolioQueries";
 import { getLastPortfolioId, resolvePortfolioId } from "@/lib/portfolioSelection";
 import type { Portfolio } from "@/lib/types";
 
 let prefetchInFlight: Promise<void> | null = null;
+
+export async function prefetchMarketData(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: marketQueryKeys.trending,
+      queryFn: getMarketTrending,
+      staleTime: MARKET_STALE_TIMES.trending,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: marketQueryKeys.movers,
+      queryFn: getMarketMovers,
+      staleTime: MARKET_STALE_TIMES.movers,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: marketQueryKeys.sectors,
+      queryFn: getMarketSectors,
+      staleTime: MARKET_STALE_TIMES.sectors,
+    }),
+  ]);
+}
+
+export async function prefetchPortfolioTabData(
+  queryClient: QueryClient,
+  portfolioId: string,
+  options: { includeEarnings?: boolean } = {}
+): Promise<void> {
+  const includeEarnings = options.includeEarnings !== false;
+  const prefetches: Array<Promise<void>> = [
+    queryClient.prefetchQuery({
+      queryKey: portfolioQueryKeys.news(portfolioId),
+      queryFn: () => getPortfolioNews(portfolioId, PORTFOLIO_NEWS_DAYS),
+      staleTime: PORTFOLIO_STALE_TIMES.news,
+    }),
+    prefetchMarketData(queryClient),
+  ];
+
+  if (includeEarnings) {
+    prefetches.push(
+      queryClient.prefetchQuery({
+        queryKey: portfolioQueryKeys.earnings(portfolioId),
+        queryFn: () => getPortfolioEarnings(portfolioId, PORTFOLIO_EARNINGS_DAYS_AHEAD),
+        staleTime: PORTFOLIO_STALE_TIMES.earnings,
+      })
+    );
+  }
+
+  await Promise.all(prefetches);
+}
 
 export async function prefetchPortfolioData(queryClient: QueryClient): Promise<void> {
   if (prefetchInFlight) return prefetchInFlight;
@@ -32,7 +92,10 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
 
   const portfolios = queryClient.getQueryData<Portfolio[]>(portfolioQueryKeys.list) ?? [];
   const portfolioId = resolvePortfolioId(portfolios, getLastPortfolioId());
-  if (!portfolioId) return;
+  if (!portfolioId) {
+    await prefetchMarketData(queryClient);
+    return;
+  }
 
   let markovEnabled = true;
   let waveEnabled = true;
@@ -64,6 +127,7 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
       queryFn: () => getBehavioralAlerts(portfolioId),
       staleTime: PORTFOLIO_STALE_TIMES.behavioralAlerts,
     }),
+    prefetchPortfolioTabData(queryClient, portfolioId),
   ];
 
   if (markovEnabled) {

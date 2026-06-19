@@ -1,3 +1,6 @@
+export const PORTFOLIO_NEWS_DAYS = 7;
+export const PORTFOLIO_EARNINGS_DAYS_AHEAD = 60;
+
 export const portfolioQueryKeys = {
   list: ["portfolios"] as const,
   current: (id: string) => ["portfolio-current", id] as const,
@@ -12,6 +15,12 @@ export const portfolioQueryKeys = {
   insightsList: (id: string) => ["insights-list", id] as const,
 };
 
+export const marketQueryKeys = {
+  trending: ["market-trending"] as const,
+  movers: ["market-movers"] as const,
+  sectors: ["market-sectors"] as const,
+};
+
 export const PORTFOLIO_STALE_TIMES = {
   current: 60_000,
   fundamentals: 30 * 60_000,
@@ -22,6 +31,28 @@ export const PORTFOLIO_STALE_TIMES = {
   news: 15 * 60_000,
   behavioralAlerts: 5 * 60_000,
 } as const;
+
+export const MARKET_STALE_TIMES = {
+  trending: 30 * 60_000,
+  movers: 30 * 60_000,
+  sectors: 30 * 60_000,
+} as const;
+
+export function allMarketQueryKeys(): readonly (readonly string[])[] {
+  return [marketQueryKeys.trending, marketQueryKeys.movers, marketQueryKeys.sectors];
+}
+
+function appendPortfolioTabCacheKeys(
+  keys: (readonly string[])[],
+  portfolioId: string,
+  options: PortfolioPrefetchOptions = {}
+): void {
+  keys.push(portfolioQueryKeys.news(portfolioId));
+  if (options.includeEarnings !== false) {
+    keys.push(portfolioQueryKeys.earnings(portfolioId));
+  }
+  keys.push(...allMarketQueryKeys());
+}
 
 export type PortfolioTab =
   | "holdings"
@@ -58,12 +89,7 @@ export function buildPortfolioSyncQueryKeys(
   if (waveEnabled) {
     keys.push(portfolioQueryKeys.wave(portfolioId));
   }
-  if (activeTab === "earnings") {
-    keys.push(portfolioQueryKeys.earnings(portfolioId));
-  }
-  if (activeTab === "news") {
-    keys.push(portfolioQueryKeys.news(portfolioId));
-  }
+  appendPortfolioTabCacheKeys(keys, portfolioId);
   if (activeTab === "insights") {
     keys.push(portfolioQueryKeys.insightLatest(portfolioId));
     keys.push(portfolioQueryKeys.insightsList(portfolioId));
@@ -75,6 +101,7 @@ export function buildPortfolioSyncQueryKeys(
 export interface PortfolioPrefetchOptions {
   markovEnabled?: boolean;
   waveEnabled?: boolean;
+  includeEarnings?: boolean;
 }
 
 /** Query keys warmed on nav-intent prefetch (excludes app-settings). */
@@ -97,6 +124,8 @@ export function buildPortfolioPrefetchQueryKeys(
   if (waveEnabled) {
     keys.push(portfolioQueryKeys.wave(portfolioId));
   }
+
+  appendPortfolioTabCacheKeys(keys, portfolioId, options);
 
   return keys;
 }

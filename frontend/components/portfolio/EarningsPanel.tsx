@@ -1,6 +1,11 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { getPortfolioEarnings } from "@/lib/api";
+import {
+  portfolioQueryKeys,
+  PORTFOLIO_STALE_TIMES,
+  PORTFOLIO_EARNINGS_DAYS_AHEAD,
+} from "@/lib/portfolioQueries";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
@@ -45,9 +50,9 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
   const noKey = priceUnavailableReason === "no_finnhub_key";
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["portfolio-earnings", portfolioId],
-    queryFn: () => getPortfolioEarnings(portfolioId, 60),
-    staleTime: 1000 * 60 * 30,
+    queryKey: portfolioQueryKeys.earnings(portfolioId),
+    queryFn: () => getPortfolioEarnings(portfolioId, PORTFOLIO_EARNINGS_DAYS_AHEAD),
+    staleTime: PORTFOLIO_STALE_TIMES.earnings,
     enabled: !noKey,
   });
 

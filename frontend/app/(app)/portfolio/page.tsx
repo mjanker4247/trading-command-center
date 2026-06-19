@@ -16,6 +16,11 @@ import {
   getProviderModels,
   getBehavioralAlerts,
   getAppSettings,
+  getPortfolioNews,
+  getPortfolioEarnings,
+  getMarketTrending,
+  getMarketMovers,
+  getMarketSectors,
 } from "@/lib/api";
 import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, WaveSummary, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
 import { isCrypto } from "@/lib/asset";
@@ -24,7 +29,14 @@ import {
   resolvePortfolioId,
   setLastPortfolioId,
 } from "@/lib/portfolioSelection";
-import { portfolioQueryKeys, PORTFOLIO_STALE_TIMES } from "@/lib/portfolioQueries";
+import {
+  portfolioQueryKeys,
+  marketQueryKeys,
+  PORTFOLIO_STALE_TIMES,
+  MARKET_STALE_TIMES,
+  PORTFOLIO_NEWS_DAYS,
+  PORTFOLIO_EARNINGS_DAYS_AHEAD,
+} from "@/lib/portfolioQueries";
 import { usePortfolioSync } from "@/lib/usePortfolioSync";
 import { usePortfolioFreshness } from "@/lib/usePortfolioFreshness";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
@@ -313,6 +325,43 @@ export default function PortfolioPage() {
   });
   const alertCount = (behavioralAlerts?.critical_count ?? 0) + (behavioralAlerts?.warning_count ?? 0);
 
+  const noFinnhubKey = current?.price_unavailable_reason === "no_finnhub_key";
+
+  const { isFetching: fetchingNews } = useQuery({
+    queryKey: portfolioQueryKeys.news(selectedId ?? ""),
+    queryFn: () => getPortfolioNews(selectedId!, PORTFOLIO_NEWS_DAYS),
+    enabled: selectedId != null && !noFinnhubKey,
+    staleTime: PORTFOLIO_STALE_TIMES.news,
+  });
+
+  const { isFetching: fetchingEarnings } = useQuery({
+    queryKey: portfolioQueryKeys.earnings(selectedId ?? ""),
+    queryFn: () => getPortfolioEarnings(selectedId!, PORTFOLIO_EARNINGS_DAYS_AHEAD),
+    enabled: selectedId != null && !allCrypto && !noFinnhubKey,
+    staleTime: PORTFOLIO_STALE_TIMES.earnings,
+  });
+
+  const { isFetching: fetchingMarketTrending } = useQuery({
+    queryKey: marketQueryKeys.trending,
+    queryFn: getMarketTrending,
+    staleTime: MARKET_STALE_TIMES.trending,
+    retry: 1,
+  });
+
+  const { isFetching: fetchingMarketMovers } = useQuery({
+    queryKey: marketQueryKeys.movers,
+    queryFn: getMarketMovers,
+    staleTime: MARKET_STALE_TIMES.movers,
+    retry: 1,
+  });
+
+  const { isFetching: fetchingMarketSectors } = useQuery({
+    queryKey: marketQueryKeys.sectors,
+    queryFn: getMarketSectors,
+    staleTime: MARKET_STALE_TIMES.sectors,
+    retry: 1,
+  });
+
   const { data: tickerMetadata = {}, isFetching: fetchingTickerMetadata } = useTickerMetadata(tickers, {
     enabled: tickers.length > 0,
     forceRefresh: metadataForceToken > 0,
@@ -338,7 +387,12 @@ export default function PortfolioPage() {
     fetchingWave ||
     fetchingTrimSignals ||
     fetchingBehavioralAlerts ||
-    fetchingTickerMetadata;
+    fetchingTickerMetadata ||
+    fetchingNews ||
+    fetchingEarnings ||
+    fetchingMarketTrending ||
+    fetchingMarketMovers ||
+    fetchingMarketSectors;
 
   const freshnessLabel = usePortfolioFreshness({
     portfolioId: selectedId,
