@@ -38,7 +38,10 @@ from app.services.markov_service import get_regime_for_portfolio
 from app.services.settings_service import get_app_settings
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
+from app.utils.quote_currency import quote_currency_from_ticker
 from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
+from app.schemas.money import PriceQuote
+from app.services.fx_service import SUPPORTED_CURRENCIES
 from app.utils.llm_providers import (
     DEFAULT_LLM_DEPTH,
     LOCAL_LLM_PROVIDERS,
@@ -47,13 +50,12 @@ from app.utils.llm_providers import (
     resolve_llm_model,
 )
 import app.services.crypto_data_service as _crypto
-import app.services.fx_service as fx
 import app.services.yfinance_service as _yf
 
 router = APIRouter()
 
-# In-process price cache: ticker → (price, expiry_unix_ts)
-_price_cache: dict[str, tuple[Optional[float], float]] = {}
+# In-process price cache: ticker → (PriceQuote, expiry_unix_ts)
+_price_cache: dict[str, tuple[Optional[PriceQuote], float]] = {}
 _CACHE_TTL = 3600  # 1 hour
 # Lazily initialized per event loop to avoid loop-mismatch errors in multi-loop
 # environments (e.g. pytest-asyncio with function-scoped loops).
@@ -125,11 +127,14 @@ class HoldingResponse(BaseModel):
     ticker: str
     shares: float
     avg_cost: Optional[float]
-    currency: str
+    cost_basis_currency: str
+    quote_currency: Optional[str] = None
+    currency: str  # deprecated alias for cost_basis_currency
     current_price: Optional[float]
     market_value: Optional[float]
     unrealized_pnl: Optional[float]
     unrealized_pnl_pct: Optional[float]
+    pnl_unavailable_reason: Optional[str] = None
     last_run: Optional[LastRun]
 
 
@@ -139,12 +144,30 @@ class HoldingPatch(BaseModel):
     avg_cost: Optional[float] = None
     currency: Optional[str] = None
 
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        code = v.upper()
+        if code not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Unsupported currency: {code}")
+        return code
+
 
 class HoldingCreate(BaseModel):
     ticker: str
     shares: float
     avg_cost: Optional[float] = None
     currency: str = "USD"
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        code = v.upper()
+        if code not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Unsupported currency: {code}")
+        return code
 
 
 class Totals(BaseModel):
@@ -157,6 +180,8 @@ class CurrentResponse(BaseModel):
     snapshot: Optional[PortfolioSnapshotResponse]
     price_unavailable_reason: Optional[str]
     display_currency: str = "USD"
+    portfolio_currencies: list[str] = []
+    totals_currency: Optional[str] = None
     totals: Totals
     holdings: list[HoldingResponse]
 
@@ -167,24 +192,37 @@ async def _get_finnhub_key(db: AsyncSession) -> Optional[str]:
     return await get_finnhub_key(db)
 
 
-async def _fetch_price(ticker: str, api_key: Optional[str]) -> Optional[float]:
-    """Single-ticker price fetch, used by insight runner and individual holding edit.
-    For bulk portfolio pricing use _fetch_prices_bulk."""
+def _resolve_stock_currency(
+    ticker: str,
+    yf_currency: Optional[str],
+    metadata_currency: Optional[str],
+) -> str:
+    if yf_currency:
+        return yf_currency.upper()
+    if metadata_currency:
+        return metadata_currency.upper()
+    return "USD"
+
+
+async def _fetch_price(
+    ticker: str,
+    api_key: Optional[str],
+    metadata_currency: Optional[str] = None,
+) -> Optional[PriceQuote]:
+    """Single-ticker price fetch in source listing currency."""
     now = time.time()
     if ticker in _price_cache:
-        price, expiry = _price_cache[ticker]
+        quote, expiry = _price_cache[ticker]
         if now < expiry:
-            return price
+            return quote
+
+    quote: Optional[PriceQuote] = None
 
     if is_crypto(ticker):
-        price = await _crypto.fetch_price(ticker, finnhub_key=api_key)
+        quote = await _crypto.fetch_price_quote(ticker, finnhub_key=api_key)
     else:
-        if not api_key:
-            # No Finnhub key — fall back to Yahoo Finance (15-min delayed, no key required).
-            # price_unavailable_reason is still set on the response so the UI warns the user
-            # to configure a Finnhub key for real-time data.
-            price = await _yf.fetch_price(ticker)
-        else:
+        yf_quote = await _yf.fetch_price_quote(ticker)
+        if api_key:
             data: dict = {}
             try:
                 async with _get_finnhub_semaphore():
@@ -196,70 +234,81 @@ async def _fetch_price(ticker: str, api_key: Optional[str]) -> Optional[float]:
                     )
                     if _error is None:
                         data = raw if isinstance(raw, dict) else {}
-                # c == 0 means market is closed / data unavailable; fall back to
-                # previous close (pc) so prices still show on weekends/after-hours.
                 c = data.get("c")
                 pc = data.get("pc")
+                amount: Optional[float] = None
                 if c is not None and c != 0:
-                    price = float(c)
+                    amount = float(c)
                 elif pc is not None and pc != 0:
-                    price = float(pc)
-                else:
-                    price = None
+                    amount = float(pc)
+                if amount is not None:
+                    currency = _resolve_stock_currency(
+                        ticker,
+                        yf_quote.currency_code if yf_quote else None,
+                        metadata_currency,
+                    )
+                    quote = PriceQuote(amount=amount, currency=currency)
             except Exception:
-                price = None
-            if price is None:
-                price = await _yf.fetch_price(ticker)
+                quote = None
+        if quote is None:
+            quote = yf_quote
 
-    # Don't cache None for the full hour — retry after 2 minutes so a transient
-    # failure or a market-close race doesn't lock out prices for the whole TTL.
-    ttl = _CACHE_TTL if price is not None else 120
-    _price_cache[ticker] = (price, now + ttl)
-    return price
+    ttl = _CACHE_TTL if quote is not None else 120
+    _price_cache[ticker] = (quote, now + ttl)
+    return quote
 
 
 async def _fetch_prices_bulk(
     tickers: list[str],
     api_key: Optional[str],
-) -> dict[str, Optional[float]]:
-    """Fetch prices for many tickers efficiently.
-    Crypto tickers are batched into a single CoinGecko call to avoid rate limits.
-    Stock tickers are fetched concurrently via Finnhub.
-    Portfolio-level 1h cache is checked/updated for all tickers.
-    """
+    db: Optional[AsyncSession] = None,
+) -> dict[str, Optional[PriceQuote]]:
+    """Fetch prices for many tickers in each instrument's source currency."""
     now = time.time()
-    result: dict[str, Optional[float]] = {}
+    result: dict[str, Optional[PriceQuote]] = {}
     uncached_crypto: list[str] = []
     uncached_stock: list[str] = []
 
     for ticker in tickers:
         if ticker in _price_cache:
-            price, expiry = _price_cache[ticker]
+            quote, expiry = _price_cache[ticker]
             if now < expiry:
-                result[ticker] = price
+                result[ticker] = quote
                 continue
         if is_crypto(ticker):
             uncached_crypto.append(ticker)
         else:
             uncached_stock.append(ticker)
 
-    # Batch all crypto in a single CoinGecko /simple/price call
-    if uncached_crypto:
-        crypto_prices = await _crypto.fetch_prices_batch(uncached_crypto, finnhub_key=api_key)
-        for ticker, price in crypto_prices.items():
-            result[ticker] = price
-            _price_cache[ticker] = (price, now + _CACHE_TTL)
+    metadata_currencies: dict[str, Optional[str]] = {}
+    if uncached_stock and db is not None:
+        meta_rows = await get_many_ticker_metadata(uncached_stock, db, api_key)
+        metadata_currencies = {
+            t: row.currency for t, row in meta_rows.items()
+        }
 
-    # Stocks use Finnhub when a key is configured; otherwise fall back to Yahoo
-    # Finance (15-min delayed). price_unavailable_reason still signals non-real-time.
+    if uncached_crypto:
+        crypto_quotes = await _crypto.fetch_prices_batch(uncached_crypto, finnhub_key=api_key)
+        for ticker, quote in crypto_quotes.items():
+            result[ticker] = quote
+            if quote is not None:
+                _price_cache[ticker] = (quote, now + _CACHE_TTL)
+
     if uncached_stock:
-        stock_prices = await asyncio.gather(
-            *[_fetch_price(t, api_key) for t in uncached_stock]
+        stock_quotes = await asyncio.gather(
+            *[
+                _fetch_price(
+                    t,
+                    api_key,
+                    metadata_currencies.get(t.upper()) or metadata_currencies.get(t),
+                )
+                for t in uncached_stock
+            ]
         )
-        for ticker, price in zip(uncached_stock, stock_prices):
-            result[ticker] = price
-            ttl = _CACHE_TTL if price is not None else 120
-            _price_cache[ticker] = (price, now + ttl)
+        for ticker, quote in zip(uncached_stock, stock_quotes):
+            result[ticker] = quote
+            ttl = _CACHE_TTL if quote is not None else 120
+            _price_cache[ticker] = (quote, now + ttl)
 
     return result
 
@@ -457,73 +506,75 @@ async def get_current_holdings(
     # Fetch last run verdict per ticker (most recent completed run for this user)
     last_runs = await _get_last_runs_for_holdings(tickers, user.id, db)
 
-    # Fetch all prices — crypto batched into one CoinGecko call, stocks via Finnhub
-    price_map = await _fetch_prices_bulk(tickers, av_key)
+    # Fetch all prices in each instrument's source currency
+    price_map = await _fetch_prices_bulk(tickers, av_key, db)
 
     pref_currency = user.preferred_currency.upper()
-
-    # Gather rates needed: user's display currency + any non-USD holding cost-basis currencies
-    unique_holding_currencies = {
-        (h.currency or "USD").upper()
-        for h in snapshot.holdings
-        if (h.currency or "USD").upper() != "USD"
-    }
-    currencies_to_fetch = list((unique_holding_currencies | {pref_currency}) - {"USD"})
-    if currencies_to_fetch:
-        rate_values = await asyncio.gather(*[fx.get_rate(c) for c in currencies_to_fetch])
-        rates: dict[str, float] = dict(zip(currencies_to_fetch, rate_values))
-    else:
-        rates = {}
-    rates["USD"] = 1.0
-    pref_rate = rates.get(pref_currency, 1.0)
+    portfolio_currencies: set[str] = set()
 
     enriched: list[HoldingResponse] = []
-    total_market_value_usd: float = 0.0
-    total_cost_usd: float = 0.0
-    has_price = False
+    total_market_value: float = 0.0
+    total_cost: float = 0.0
+    has_totals = False
 
     for h in snapshot.holdings:
-        price_usd = price_map[h.ticker]
-        holding_currency = (h.currency or "USD").upper()
-        holding_rate = rates.get(holding_currency, 1.0)
+        quote = price_map.get(h.ticker)
+        cost_ccy = (h.currency or "USD").upper()
+        quote_ccy = quote.currency_code if quote else quote_currency_from_ticker(h.ticker)
 
-        # Convert avg_cost from holding's cost-basis currency to USD
-        avg_cost_usd: Optional[float] = None
-        if h.avg_cost is not None:
-            avg_cost_usd = h.avg_cost / holding_rate if holding_rate else h.avg_cost
+        if quote:
+            portfolio_currencies.add(quote.currency_code)
 
-        # Compute P&L in USD
-        market_value_usd: Optional[float] = h.shares * price_usd if price_usd is not None else None
-        pnl_usd: Optional[float] = None
+        current_price = quote.amount if quote else None
+        market_value = h.shares * current_price if current_price is not None else None
+
+        pnl: Optional[float] = None
         pnl_pct: Optional[float] = None
-        if price_usd is not None and avg_cost_usd is not None and avg_cost_usd != 0:
-            pnl_usd = (price_usd - avg_cost_usd) * h.shares
-            pnl_pct = (price_usd / avg_cost_usd - 1) * 100
+        pnl_reason: Optional[str] = None
+        if current_price is not None and h.avg_cost is not None and h.avg_cost != 0:
+            if quote and cost_ccy == quote.currency_code:
+                pnl = (current_price - h.avg_cost) * h.shares
+                pnl_pct = (current_price / h.avg_cost - 1) * 100
+            else:
+                pnl_reason = "currency_mismatch"
 
-        if market_value_usd is not None:
-            total_market_value_usd += market_value_usd
-            has_price = True
-            if avg_cost_usd is not None:
-                total_cost_usd += avg_cost_usd * h.shares
+        include_in_totals = (
+            quote is not None
+            and quote.currency_code == pref_currency
+            and cost_ccy == quote.currency_code
+        )
+        if include_in_totals and market_value is not None:
+            total_market_value += market_value
+            has_totals = True
+            if h.avg_cost is not None:
+                total_cost += h.avg_cost * h.shares
 
         enriched.append(HoldingResponse(
             id=h.id,
             ticker=h.ticker,
             shares=h.shares,
-            avg_cost=fx.apply(avg_cost_usd, pref_rate),
-            currency=pref_currency,
-            current_price=fx.apply(price_usd, pref_rate),
-            market_value=fx.apply(market_value_usd, pref_rate),
-            unrealized_pnl=fx.apply(pnl_usd, pref_rate),
+            avg_cost=h.avg_cost,
+            cost_basis_currency=cost_ccy,
+            quote_currency=quote_ccy,
+            currency=cost_ccy,
+            current_price=current_price,
+            market_value=market_value,
+            unrealized_pnl=pnl,
             unrealized_pnl_pct=pnl_pct,
+            pnl_unavailable_reason=pnl_reason,
             last_run=last_runs.get(h.ticker),
         ))
 
-    totals_pnl_usd = (total_market_value_usd - total_cost_usd) if has_price and total_cost_usd else None
-    totals_pct = ((total_market_value_usd / total_cost_usd - 1) * 100) if has_price and total_cost_usd else None
+    totals_pnl = (total_market_value - total_cost) if has_totals and total_cost else None
+    totals_pct = (
+        ((total_market_value / total_cost - 1) * 100)
+        if has_totals and total_cost
+        else None
+    )
+    totals_currency = pref_currency if has_totals else None
     totals = Totals(
-        market_value=(total_market_value_usd * pref_rate) if has_price else None,
-        unrealized_pnl=fx.apply(totals_pnl_usd, pref_rate),
+        market_value=total_market_value if has_totals else None,
+        unrealized_pnl=totals_pnl,
         unrealized_pnl_pct=totals_pct,
     )
 
@@ -531,6 +582,8 @@ async def get_current_holdings(
         snapshot=snapshot,
         price_unavailable_reason=price_unavailable_reason,
         display_currency=pref_currency,
+        portfolio_currencies=sorted(portfolio_currencies),
+        totals_currency=totals_currency,
         totals=totals,
         holdings=enriched,
     )
@@ -561,29 +614,41 @@ async def export_portfolio(
         raise HTTPException(status_code=404, detail="No snapshots found for this portfolio")
 
     av_key = await _get_finnhub_key(db)
-    pref_currency = user.preferred_currency.upper()
-    pref_rate = await fx.get_rate(pref_currency)
-    c = pref_currency
+    tickers = [h.ticker for h in snapshot.holdings]
+    price_map = await _fetch_prices_bulk(tickers, av_key, db)
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Ticker", "Shares", f"Avg Cost ({c})", f"Current Price ({c})", f"Market Value ({c})",
-        f"Unrealized P&L ({c})", "Unrealized P&L (%)", "Last Analysis Verdict", "Last Analysis Date",
+        "Ticker",
+        "Shares",
+        "Avg Cost",
+        "Cost Currency",
+        "Current Price",
+        "Quote Currency",
+        "Market Value",
+        "Market Value Currency",
+        "Unrealized P&L",
+        "P&L Currency",
+        "Unrealized P&L (%)",
+        "Last Analysis Verdict",
+        "Last Analysis Date",
     ])
 
     for h in snapshot.holdings:
-        price_usd: Optional[float] = None
-        if av_key or is_crypto(h.ticker):
-            price_usd = await _fetch_price(h.ticker, av_key)
-        holding_rate = await fx.get_rate((h.currency or "USD").upper())
-        avg_cost_usd = (h.avg_cost / holding_rate) if h.avg_cost is not None and holding_rate else h.avg_cost
-        avg_cost_display = round(avg_cost_usd * pref_rate, 2) if avg_cost_usd is not None else ""
-        price = round(price_usd * pref_rate, 2) if price_usd is not None else None
-        market_value = round(h.shares * price_usd * pref_rate, 2) if price_usd is not None else ""
-        pnl_usd = ((price_usd - avg_cost_usd) * h.shares) if price_usd is not None and avg_cost_usd is not None else None
-        pnl = round(pnl_usd * pref_rate, 2) if pnl_usd is not None else ""
-        pnl_pct = round((price_usd / avg_cost_usd - 1) * 100, 2) if price_usd is not None and avg_cost_usd is not None and avg_cost_usd != 0 else ""
+        quote = price_map.get(h.ticker)
+        cost_ccy = (h.currency or "USD").upper()
+        current_price = quote.amount if quote else None
+        quote_ccy = quote.currency_code if quote else ""
+        market_value = h.shares * current_price if current_price is not None else None
+
+        pnl: Optional[float] = None
+        pnl_pct: Optional[float] = None
+        pnl_ccy = ""
+        if current_price is not None and h.avg_cost is not None and quote and cost_ccy == quote.currency_code:
+            pnl = (current_price - h.avg_cost) * h.shares
+            pnl_pct = (current_price / h.avg_cost - 1) * 100 if h.avg_cost != 0 else None
+            pnl_ccy = quote.currency_code
 
         run_result = await db.execute(
             select(Run)
@@ -596,11 +661,15 @@ async def export_portfolio(
         writer.writerow([
             h.ticker,
             h.shares,
-            avg_cost_display,
-            round(price, 2) if price is not None else "",
-            market_value,
-            pnl,
-            pnl_pct,
+            round(h.avg_cost, 2) if h.avg_cost is not None else "",
+            cost_ccy,
+            round(current_price, 2) if current_price is not None else "",
+            quote_ccy,
+            round(market_value, 2) if market_value is not None else "",
+            quote_ccy,
+            round(pnl, 2) if pnl is not None else "",
+            pnl_ccy,
+            round(pnl_pct, 2) if pnl_pct is not None else "",
             run.verdict.value if run else "",
             str(run.analysis_date) if run else "",
         ])
@@ -699,7 +768,7 @@ async def add_holding(
         ticker=body.ticker.upper().strip(),
         shares=body.shares,
         avg_cost=body.avg_cost,
-        currency=body.currency,
+        currency=body.currency.upper(),
     )
     db.add(h)
     snap.row_count += 1
@@ -724,7 +793,7 @@ async def update_holding(
     if body.avg_cost is not None:
         h.avg_cost = body.avg_cost
     if body.currency is not None:
-        h.currency = body.currency
+        h.currency = body.currency.upper()
     await db.commit()
 
 
@@ -1485,17 +1554,17 @@ async def get_sector_gaps(
     if not sector_by_ticker:
         return []
 
-    prices_map = await _fetch_prices_bulk(list(sector_by_ticker.keys()), finnhub_key)
+    prices_map = await _fetch_prices_bulk(list(sector_by_ticker.keys()), finnhub_key, db)
+    pref_currency = user.preferred_currency.upper()
 
     sector_values: dict[str, float] = {}
     total_value = 0.0
     for holding in holdings:
-        ticker = holding.ticker.upper()
-        price = prices_map.get(ticker)
-        if price is None:
+        quote = prices_map.get(holding.ticker)
+        if quote is None or quote.currency_code != pref_currency:
             continue
-        market_value = price * holding.shares
-        sector = sector_by_ticker.get(ticker)
+        market_value = quote.amount * holding.shares
+        sector = sector_by_ticker.get(holding.ticker.upper())
         if not sector:
             continue
         sector_values[sector] = sector_values.get(sector, 0.0) + market_value
@@ -1910,10 +1979,11 @@ async def get_portfolio_trim_signals(
     tickers = [h.ticker for h in snapshot.holdings]
 
     av_key = await _get_finnhub_key(db)
+    pref_currency = user.preferred_currency.upper()
     last_runs, regime_map, price_map = await asyncio.gather(
         _get_last_runs_for_holdings(tickers, user.id, db),
         get_regime_for_portfolio(tickers),
-        _fetch_prices_bulk(tickers, av_key),
+        _fetch_prices_bulk(tickers, av_key, db),
     )
 
     fundamentals_map: dict[str, dict] = {}
@@ -1923,26 +1993,32 @@ async def get_portfolio_trim_signals(
         )
         fundamentals_map = dict(zip(tickers, fundamentals_list))
 
-    total_value_usd = 0.0
+    total_value = 0.0
     holding_values: dict[str, float] = {}
     for h in snapshot.holdings:
-        price = price_map.get(h.ticker)
-        if price is not None:
-            v = h.shares * price
+        quote = price_map.get(h.ticker)
+        if quote is not None and quote.currency_code == pref_currency:
+            v = h.shares * quote.amount
             holding_values[str(h.id)] = v
-            total_value_usd += v
+            total_value += v
 
     entries: list[TrimSignalEntry] = []
     for h in snapshot.holdings:
-        price = price_map.get(h.ticker)
+        quote = price_map.get(h.ticker)
+        cost_ccy = (h.currency or "USD").upper()
         pnl_pct: Optional[float] = None
-        if price is not None and h.avg_cost is not None and h.avg_cost != 0:
-            pnl_pct = (price / h.avg_cost - 1) * 100
+        if (
+            quote is not None
+            and h.avg_cost is not None
+            and h.avg_cost != 0
+            and cost_ccy == quote.currency_code
+        ):
+            pnl_pct = (quote.amount / h.avg_cost - 1) * 100
 
         weight_pct: Optional[float] = None
         v = holding_values.get(str(h.id))
-        if v is not None and total_value_usd > 0:
-            weight_pct = v / total_value_usd * 100
+        if v is not None and total_value > 0:
+            weight_pct = v / total_value * 100
 
         last_run = last_runs.get(h.ticker)
         # Backend stores verdict in lowercase ("buy"/"sell"/"hold"); the scoring

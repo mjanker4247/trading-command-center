@@ -121,7 +121,7 @@ async def run_thesis_crossref(
                 return await _fetch_sector(t, finnhub_key)
 
         price_map, sectors = await asyncio.gather(
-            _fetch_prices_bulk(tickers, finnhub_key),
+            _fetch_prices_bulk(tickers, finnhub_key, db),
             asyncio.gather(*[_bounded_sector(t) for t in tickers]),
         )
         sector_map: dict[str, str] = dict(zip(tickers, sectors))
@@ -133,8 +133,10 @@ async def run_thesis_crossref(
     enriched: list[dict] = []
 
     for h in holdings:
-        price = price_map.get(h.ticker)
-        market_value = h.shares * price if price is not None else None
+        quote = price_map.get(h.ticker)
+        current_price = quote.amount if quote else None
+        quote_ccy = quote.currency_code if quote else None
+        market_value = h.shares * current_price if current_price is not None else None
         if market_value is not None:
             total_market_value += market_value
 
@@ -143,7 +145,8 @@ async def run_thesis_crossref(
             "sector": sector_map.get(h.ticker, "Unknown"),
             "shares": h.shares,
             "avg_cost": round(h.avg_cost, 2) if h.avg_cost else None,
-            "current_price": round(price, 2) if price else None,
+            "current_price": round(current_price, 2) if current_price else None,
+            "quote_currency": quote_ccy,
             "market_value": round(market_value, 2) if market_value else None,
             "weight_pct": None,
         })

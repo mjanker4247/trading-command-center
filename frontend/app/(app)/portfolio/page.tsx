@@ -466,7 +466,9 @@ export default function PortfolioPage() {
           <PortfolioHeader
             portfolio={selectedPortfolio}
             totals={current?.totals ?? null}
-            displayCurrency={current?.display_currency ?? "USD"}
+            totalsCurrency={current?.totals_currency ?? null}
+            preferredCurrency={current?.display_currency ?? "USD"}
+            portfolioCurrencies={current?.portfolio_currencies ?? []}
             snapshotDate={current?.snapshot?.uploaded_at ?? null}
             broker={current?.snapshot?.broker ?? null}
           />

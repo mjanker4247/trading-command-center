@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, LoaderCircle, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 import { addHolding, updateHolding, deleteHolding } from "@/lib/api";
-import { fmtMoney, fmtPnl } from "@/lib/currency";
+import { fmtMoney, fmtPnl, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { analysisFromLastRun } from "@/lib/holdingLastRun";
 import { WatchButton } from "@/components/portfolio/WatchButton";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
@@ -31,6 +31,7 @@ interface DraftRow {
   ticker: string;
   shares: string;
   avg_cost: string;
+  currency: string;
 }
 
 type SortKey = "ticker" | "shares" | "avg_cost" | "current_price" | "market_value" | "unrealized_pnl";
@@ -346,9 +347,9 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
 export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, fundamentalsUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, tickerMetadata = {}, onTickerClick }: HoldingsTableProps) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
+  const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency });
   const [addingNew, setAddingNew] = useState(false);
-  const [newDraft, setNewDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "" });
+  const [newDraft, setNewDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -456,6 +457,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
         ticker: draft.ticker.trim().toUpperCase(),
         shares: parseFloat(draft.shares),
         avg_cost: draft.avg_cost.trim() ? parseFloat(draft.avg_cost) : null,
+        currency: draft.currency,
       }),
     onSuccess: () => { setEditingId(null); refresh(); },
   });
@@ -471,13 +473,19 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
         ticker: draft.ticker.trim().toUpperCase(),
         shares: parseFloat(draft.shares),
         avg_cost: draft.avg_cost.trim() ? parseFloat(draft.avg_cost) : null,
+        currency: draft.currency,
       }),
-    onSuccess: () => { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); refresh(); },
+    onSuccess: () => { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency }); refresh(); },
   });
 
   function startEdit(h: PortfolioHolding) {
     setEditingId(h.id);
-    setEditDraft({ ticker: h.ticker, shares: String(h.shares), avg_cost: h.avg_cost != null ? String(h.avg_cost) : "" });
+    setEditDraft({
+      ticker: h.ticker,
+      shares: String(h.shares),
+      avg_cost: h.avg_cost != null ? String(h.avg_cost) : "",
+      currency: h.cost_basis_currency ?? h.currency ?? displayCurrency,
+    });
   }
 
   function cancelEdit() {
@@ -502,7 +510,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
 
   function handleNewKey(e: React.KeyboardEvent) {
     if (e.key === "Enter") saveNew();
-    if (e.key === "Escape") { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); }
+    if (e.key === "Escape") { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency }); }
   }
 
   const hasFundamentals = fundamentals && Object.keys(fundamentals).length > 0;
@@ -733,24 +741,48 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                               placeholder="avg cost"
                               className="w-24 text-right"
                             />
+                            <select
+                              value={editDraft.currency}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, currency: e.target.value }))}
+                              className="bg-input border border-input-border rounded-sm px-1 py-0.5 text-[10px] text-fg w-16"
+                              aria-label="Cost basis currency"
+                            >
+                              {SUPPORTED_CURRENCIES.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
                           </div>
                         ) : (
                           <div className="flex flex-col gap-0.5">
                             <span className="text-fg-secondary font-mono text-xs">{h.shares.toLocaleString("en-US")} sh</span>
-                            <span className="text-muted font-mono text-[10px]">@ {fmtMoney(h.avg_cost, displayCurrency)}</span>
+                            <span className="text-muted font-mono text-[10px]">
+                              @ {fmtMoney(h.avg_cost, h.cost_basis_currency ?? h.currency ?? displayCurrency)}
+                            </span>
                           </div>
                         )}
                       </td>
 
                       {/* Current Price (read-only) */}
-                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">{fmtMoney(h.current_price, displayCurrency)}</td>
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">
+                        {fmtMoney(h.current_price, h.quote_currency ?? displayCurrency)}
+                      </td>
 
                       {/* Market Value (read-only) */}
-                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">{fmtMoney(h.market_value, displayCurrency)}</td>
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">
+                        {fmtMoney(h.market_value, h.quote_currency ?? displayCurrency)}
+                      </td>
 
                       {/* Unrealized P&L (read-only) */}
                       <td className={`px-3 py-2 text-right tabular-nums ${pnlColor}`}>
-                        <div className="font-semibold font-mono text-xs">{fmtPnl(pnl, h.unrealized_pnl_pct, displayCurrency)}</div>
+                        {h.pnl_unavailable_reason === "currency_mismatch" ? (
+                          <div className="font-mono text-[10px] text-amber-400" title="Cost basis and quote currencies differ">
+                            —
+                          </div>
+                        ) : (
+                          <div className="font-semibold font-mono text-xs">
+                            {fmtPnl(pnl, h.unrealized_pnl_pct, h.quote_currency ?? displayCurrency)}
+                          </div>
+                        )}
                       </td>
 
                       {/* Last Analysis */}
@@ -936,6 +968,16 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                       placeholder="avg cost"
                       className="w-24 text-right"
                     />
+                    <select
+                      value={newDraft.currency}
+                      onChange={(e) => setNewDraft((d) => ({ ...d, currency: e.target.value }))}
+                      className="bg-input border border-input-border rounded-sm px-1 py-0.5 text-[10px] text-fg w-16"
+                      aria-label="Cost basis currency"
+                    >
+                      {SUPPORTED_CURRENCIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </div>
                 </td>
                 <td colSpan={colSpan - 3} />
@@ -955,7 +997,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                       label="Cancel adding holding"
                       title="Cancel"
                       tone="default"
-                      onClick={() => { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "" }); }}
+                      onClick={() => { setAddingNew(false); setNewDraft({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency }); }}
                     />
                   </div>
                 </td>
