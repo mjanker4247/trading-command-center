@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.portfolio import Portfolio, PortfolioSnapshot
 from app.models.portfolio_thesis_crossref import PortfolioThesisCrossRef
+from app.models.user import User
 from app.services.portfolio_insight_runner import (
     _call_llm,
     _fetch_sector,
@@ -56,11 +57,18 @@ Rules:
 - Tailor alignment score and recommendations to the investor's stated risk tolerance, time horizon, and investment style when provided"""
 
 
+def _format_money(amount: float | None, currency: str | None) -> str:
+    if amount is None:
+        return "N/A"
+    code = (currency or "USD").upper()
+    return f"{code} {amount:,.2f}"
+
+
 def _format_holdings_for_thesis(enriched: list[dict]) -> str:
     rows = []
     for h in enriched:
-        price_str = f"${h['current_price']:.2f}" if h["current_price"] else "N/A"
-        value_str = f"${h['market_value']:.2f}" if h["market_value"] else "N/A"
+        price_str = _format_money(h["current_price"], h.get("quote_currency"))
+        value_str = _format_money(h["market_value"], h.get("quote_currency"))
         weight_str = f"{h['weight_pct']:.1f}%" if h["weight_pct"] is not None else "N/A"
         rows.append(
             f"  - {h['ticker']} | sector: {h['sector']} | "
@@ -72,7 +80,7 @@ def _format_holdings_for_thesis(enriched: list[dict]) -> str:
 def _format_sectors_for_thesis(enriched: list[dict], total_market_value: float) -> str:
     sector_totals: dict[str, float] = {}
     for h in enriched:
-        if h["market_value"] and total_market_value > 0:
+        if h.get("include_in_totals") and h["market_value"] and total_market_value > 0:
             sector_totals[h["sector"]] = sector_totals.get(h["sector"], 0.0) + h["market_value"]
     lines = []
     for sector, val in sorted(sector_totals.items(), key=lambda x: x[1], reverse=True):
@@ -92,6 +100,9 @@ async def run_thesis_crossref(
     portfolio = await db.get(Portfolio, portfolio_id)
     if not portfolio:
         raise ValueError("Portfolio not found")
+
+    owner = await db.get(User, portfolio.user_id)
+    pref_currency = (owner.preferred_currency if owner else "USD").upper()
 
     snap_result = await db.execute(
         select(PortfolioSnapshot)
@@ -137,7 +148,13 @@ async def run_thesis_crossref(
         current_price = quote.amount if quote else None
         quote_ccy = quote.currency_code if quote else None
         market_value = h.shares * current_price if current_price is not None else None
-        if market_value is not None:
+        cost_ccy = (h.currency or "USD").upper()
+        include_in_totals = (
+            quote is not None
+            and quote.currency_code == pref_currency
+            and cost_ccy == quote.currency_code
+        )
+        if include_in_totals and market_value is not None:
             total_market_value += market_value
 
         enriched.append({
@@ -149,13 +166,18 @@ async def run_thesis_crossref(
             "quote_currency": quote_ccy,
             "market_value": round(market_value, 2) if market_value else None,
             "weight_pct": None,
+            "include_in_totals": include_in_totals,
         })
 
     for e in enriched:
-        if e["market_value"] and total_market_value > 0:
+        if e.get("include_in_totals") and e["market_value"] and total_market_value > 0:
             e["weight_pct"] = round(e["market_value"] / total_market_value * 100, 1)
 
-    total_value_str = f"${total_market_value:,.2f}" if total_market_value > 0 else "N/A"
+    total_value_str = (
+        _format_money(total_market_value, pref_currency)
+        if total_market_value > 0
+        else f"N/A (no holdings priced in {pref_currency})"
+    )
 
     profile_block = ""
     if investor_profile:

@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.models.portfolio import Portfolio, PortfolioSnapshot, PortfolioHolding
 from app.models.portfolio_insight import PortfolioInsight, InsightStatus
 from app.models.run import Run, RunStatus
+from app.models.user import User
 from app.services.portfolio_insight_runner import (
     _call_llm_chat,
     _fetch_sector,
@@ -48,19 +49,27 @@ Rules:
 _MAX_HISTORY_TURNS = 10
 
 
+def _format_money(amount: Optional[float], currency: Optional[str]) -> str:
+    if amount is None:
+        return "N/A"
+    code = (currency or "USD").upper()
+    return f"{code} {amount:,.2f}"
+
+
 def _format_holdings(enriched: list[dict]) -> str:
     rows = []
     for h in enriched:
         pnl_str = f"{h['unrealized_pnl_pct']:+.1f}%" if h["unrealized_pnl_pct"] is not None else "N/A"
-        price_str = f"${h['current_price']:.2f}" if h["current_price"] else "N/A"
-        value_str = f"${h['market_value']:.2f}" if h["market_value"] else "N/A"
+        price_str = _format_money(h["current_price"], h.get("quote_currency"))
+        value_str = _format_money(h["market_value"], h.get("quote_currency"))
+        avg_cost_str = _format_money(h["avg_cost"], h.get("cost_basis_currency"))
         weight_str = f"{h['weight_pct']:.1f}%" if h["weight_pct"] is not None else "N/A"
         verdict = h.get("last_verdict") or "none"
         days = h.get("days_since_analysis")
         analysis_str = f"{verdict} ({days}d ago)" if days is not None else "no analysis"
         rows.append(
             f"  - {h['ticker']} | sector: {h['sector']} | shares: {h['shares']} | "
-            f"avg_cost: ${h['avg_cost'] or 'N/A'} | price: {price_str} | "
+            f"avg_cost: {avg_cost_str} | price: {price_str} | "
             f"value: {value_str} | weight: {weight_str} | P&L: {pnl_str} | analysis: {analysis_str}"
         )
     return "\n".join(rows) if rows else "  (no holdings)"
@@ -69,7 +78,7 @@ def _format_holdings(enriched: list[dict]) -> str:
 def _format_sectors(enriched: list[dict], total_market_value: float) -> str:
     sector_totals: dict[str, float] = {}
     for h in enriched:
-        if h["market_value"] and total_market_value > 0:
+        if h.get("include_in_totals") and h["market_value"] and total_market_value > 0:
             sector_totals[h["sector"]] = sector_totals.get(h["sector"], 0.0) + h["market_value"]
     lines = []
     for sector, val in sorted(sector_totals.items(), key=lambda x: x[1], reverse=True):
@@ -112,6 +121,9 @@ async def generate_chat_response(
     portfolio = await db.get(Portfolio, portfolio_id)
     if not portfolio:
         raise ValueError("Portfolio not found")
+
+    owner = await db.get(User, portfolio.user_id)
+    pref_currency = (owner.preferred_currency if owner else "USD").upper()
 
     snap_result = await db.execute(
         select(PortfolioSnapshot)
@@ -198,10 +210,15 @@ async def generate_chat_response(
         ):
             pnl_pct = (current_price / h.avg_cost - 1) * 100
 
-        if market_value is not None:
+        include_in_totals = (
+            quote is not None
+            and quote.currency_code == pref_currency
+            and cost_ccy == quote.currency_code
+        )
+        if include_in_totals and market_value is not None:
             total_market_value += market_value
             has_price = True
-            if h.avg_cost is not None and quote and cost_ccy == quote.currency_code:
+            if h.avg_cost is not None:
                 total_cost += h.avg_cost * h.shares
 
         verdict_info = last_verdicts.get(h.ticker)
@@ -216,17 +233,26 @@ async def generate_chat_response(
             "market_value": round(market_value, 2) if market_value else None,
             "weight_pct": None,
             "unrealized_pnl_pct": round(pnl_pct, 2) if pnl_pct is not None else None,
+            "include_in_totals": include_in_totals,
             "last_verdict": verdict_info[0] if verdict_info else None,
             "days_since_analysis": verdict_info[1] if verdict_info else None,
         })
 
     for e in enriched:
-        if e["market_value"] and total_market_value > 0:
+        if e.get("include_in_totals") and e["market_value"] and total_market_value > 0:
             e["weight_pct"] = round(e["market_value"] / total_market_value * 100, 1)
 
     total_pnl = (total_market_value - total_cost) if has_price and total_cost else None
-    total_value_str = f"${total_market_value:,.2f}" if has_price else "N/A (prices unavailable)"
-    total_pnl_str = f"${total_pnl:+,.2f}" if total_pnl is not None else "N/A"
+    total_value_str = (
+        _format_money(total_market_value, pref_currency)
+        if has_price
+        else f"N/A (no holdings priced in {pref_currency})"
+    )
+    total_pnl_str = (
+        f"{pref_currency} {total_pnl:+,.2f}"
+        if total_pnl is not None
+        else "N/A"
+    )
 
     profile_block = ""
     if investor_profile:

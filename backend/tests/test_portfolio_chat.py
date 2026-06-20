@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient, ASGITransport
 from main import app
+from app.schemas.money import PriceQuote
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -115,3 +116,68 @@ async def test_chat_passes_conversation_history():
         assert any("Where am I most overexposed?" in c for c in contents)
         assert any("You are overexposed to tech." in c for c in contents)
         assert any("What about my tech exposure?" in c for c in contents)
+
+
+@pytest.mark.asyncio
+async def test_chat_prompt_totals_exclude_non_preferred_currency_holdings():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "chatcurrency@example.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        headers = {"Authorization": f"Bearer {token}"}
+        add_response = await c.post(
+            f"/portfolio/{portfolio_id}/holdings",
+            json={"ticker": "SAP.DE", "shares": 10, "avg_cost": 100, "currency": "EUR"},
+            headers=headers,
+        )
+        assert add_response.status_code == 201
+
+        price_map = {
+            "AAPL": PriceQuote(amount=200.0, currency="USD"),
+            "NVDA": PriceQuote(amount=400.0, currency="USD"),
+            "TSLA": PriceQuote(amount=220.0, currency="USD"),
+            "SAP.DE": PriceQuote(amount=100.0, currency="EUR"),
+        }
+        sectors = {
+            "AAPL": "Technology",
+            "NVDA": "Semiconductors",
+            "TSLA": "Automotive",
+            "SAP.DE": "Software",
+        }
+        captured_system: list[str] = []
+
+        async def _capture(provider, model, api_key, system, messages):
+            captured_system.append(system)
+            return "The EUR holding is shown separately from USD totals."
+
+        with (
+            patch("app.routers.portfolio._fetch_prices_bulk", new=AsyncMock(return_value=price_map)),
+            patch(
+                "app.services.portfolio_chat_service._fetch_sector",
+                new=AsyncMock(side_effect=lambda ticker, key: sectors[ticker]),
+            ),
+            patch(
+                "app.services.portfolio_chat_service._call_llm_chat",
+                new=AsyncMock(side_effect=_capture),
+            ),
+        ):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/chat",
+                json={
+                    "message": "How concentrated am I?",
+                    "conversation_history": [],
+                    "llm_provider": "openai",
+                    "llm_model": "gpt-4o-mini",
+                },
+                headers=headers,
+            )
+
+    assert r.status_code == 200
+    assert len(captured_system) == 1
+    system = captured_system[0]
+    assert "Total market value: USD 21,300.00" in system
+    assert "Total unrealized P&L: USD +1,680.00" in system
+    assert (
+        "SAP.DE | sector: Software | shares: 10.0 | avg_cost: EUR 100.00 | "
+        "price: EUR 100.00 | value: EUR 1,000.00 | weight: N/A"
+    ) in system
+    assert "\n  - Software:" not in system

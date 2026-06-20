@@ -237,7 +237,12 @@ async def fetch_prices_batch(
             pass
 
     # ── Finnhub fallback for anything still missing (USD/USDT pairs) ─────────
-    missing = [t for t in uncached if t not in result]
+    # Finnhub only fetches BINANCE:{base}USDT here. Do not label that USDT
+    # amount as another suffix currency such as EUR.
+    missing = [
+        t for t in uncached
+        if t not in result and _quote_currency_for_ticker(t).upper() in {"USD", "USDT"}
+    ]
     if missing and finnhub_key:
         fallback_tasks = [
             _finnhub_price(extract_symbol(t), finnhub_key, now) for t in missing
@@ -245,7 +250,7 @@ async def fetch_prices_batch(
         fallback_prices = await asyncio.gather(*fallback_tasks)
         for ticker, price in zip(missing, fallback_prices):
             if price is not None:
-                quote = PriceQuote(amount=price, currency=_quote_currency_for_ticker(ticker))
+                quote = PriceQuote(amount=price, currency="USD")
                 result[ticker] = quote
                 _price_cache[ticker] = (quote, now + _PRICE_TTL)
 
