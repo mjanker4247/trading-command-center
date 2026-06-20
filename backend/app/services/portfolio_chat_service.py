@@ -8,7 +8,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.portfolio import Portfolio, PortfolioSnapshot, PortfolioHolding
+from app.models.portfolio import Portfolio, PortfolioSnapshot
 from app.models.portfolio_insight import PortfolioInsight, InsightStatus
 from app.models.run import Run, RunStatus
 from app.models.user import User

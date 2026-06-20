@@ -5,6 +5,8 @@ Fallback: Finnhub crypto candle endpoint (requires stored Finnhub key).
 """
 
 import asyncio
+import html as _html
+import re as _re
 import time
 from datetime import date, datetime, timezone as tz, timedelta
 from typing import Optional
@@ -348,7 +350,6 @@ async def fetch_metrics(ticker: str) -> dict:
             raw = r.json()
         md = raw.get("market_data", {})
         raw_desc = (raw.get("description") or {}).get("en", "") or ""
-        import re as _re, html as _html
         clean_desc = _html.unescape(_re.sub(r"<[^>]+>", " ", raw_desc)).strip()
         data = {
             "name": raw.get("name"),
