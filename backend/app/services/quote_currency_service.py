@@ -25,7 +25,7 @@ async def resolve_quote_currency(
 
     if db is not None:
         meta = await get_ticker_metadata(normalized, db, finnhub_key)
-        if meta.currency:
+        if meta and meta.currency:
             return meta.currency.upper()
 
     quote = await _yf.fetch_price_quote(normalized)
