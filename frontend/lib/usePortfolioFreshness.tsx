@@ -8,19 +8,19 @@ import {
   portfolioQueryKeys,
 } from "@/lib/portfolioQueries";
 
-interface UsePortfolioFreshnessOptions {
+export interface PortfolioFreshnessOptions {
   portfolioId: string | null;
   markovEnabled: boolean;
   waveEnabled: boolean;
   isFetching: boolean;
 }
 
-export function usePortfolioFreshness({
+function usePortfolioFreshnessLabel({
   portfolioId,
   markovEnabled,
   waveEnabled,
   isFetching,
-}: UsePortfolioFreshnessOptions): string | null {
+}: PortfolioFreshnessOptions): string | null {
   const queryClient = useQueryClient();
   const [now, setNow] = useState(0);
 
@@ -53,4 +53,18 @@ export function usePortfolioFreshness({
     const secondsAgo = Math.floor((now - latestUpdatedAt) / 1000);
     return `Updated ${formatRelativeSeconds(secondsAgo)}`;
   }, [portfolioId, markovEnabled, waveEnabled, isFetching, queryClient, now]);
+}
+
+export function PortfolioFreshnessLabel(props: PortfolioFreshnessOptions) {
+  const label = usePortfolioFreshnessLabel(props);
+  if (!label) return null;
+
+  return (
+    <span
+      className="text-muted text-xs whitespace-nowrap"
+      title="Time since portfolio prices and enrichment data were last refreshed"
+    >
+      {label}
+    </span>
+  );
 }

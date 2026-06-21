@@ -332,10 +332,7 @@ async def get_kalman(
         result, expiry = _kalman_cache[cache_key]
         if now < expiry:
             if result is not None and "currency" not in result:
-                result = {
-                    **result,
-                    "currency": await resolve_quote_currency(symbol),
-                }
+                result["currency"] = await resolve_quote_currency(symbol)
             return result
 
     try:
