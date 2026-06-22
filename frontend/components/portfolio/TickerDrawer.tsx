@@ -19,7 +19,7 @@ interface TickerDrawerProps {
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
-function Sparkline({ chart, days }: { chart: TickerChart; days: number }) {
+function Sparkline({ chart, days, currency }: { chart: TickerChart; days: number; currency: string }) {
   const uid = useId();
   const closes = getClosesForDays(chart, days);
   if (closes.length < 2) {
@@ -51,9 +51,9 @@ function Sparkline({ chart, days }: { chart: TickerChart; days: number }) {
           strokeLinejoin="round" strokeLinecap="round" />
       </svg>
       <div className="flex justify-between text-[10px] text-muted font-mono">
-        <span>${minV.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span className="text-subtle">USD · {days}D</span>
-        <span>${maxV.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span>{fmtMoney(minV, currency)}</span>
+        <span className="text-subtle">{currency} · {days}D</span>
+        <span>{fmtMoney(maxV, currency)}</span>
       </div>
     </div>
   );
@@ -121,6 +121,8 @@ function DrawerContent({
     staleTime: 1000 * 60 * 5,
   });
 
+  const chartCurrency = holding.quote_currency ?? metadata?.currency ?? displayCurrency;
+
   const verdictColors: Record<string, string> = {
     buy:  "bg-green-500/20 text-green-300 border border-green-500/30",
     sell: "bg-red-500/20 text-red-300 border border-red-500/30",
@@ -175,13 +177,21 @@ function DrawerContent({
           <Section title="Your Position">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <StatCell label="Shares" value={holding.shares.toLocaleString("en-US")} />
-              <StatCell label={`Avg Cost (${displayCurrency})`} value={holding.avg_cost != null ? fmtMoney(holding.avg_cost, displayCurrency) : null} />
-              <StatCell label={`Market Value (${displayCurrency})`} value={holding.market_value != null ? fmtMoney(holding.market_value, displayCurrency) : null} />
               <StatCell
-                label={`Unrealized P&L (${displayCurrency})`}
+                label={`Avg Cost (${holding.cost_basis_currency ?? holding.currency ?? displayCurrency})`}
+                value={holding.avg_cost != null ? fmtMoney(holding.avg_cost, holding.cost_basis_currency ?? holding.currency ?? displayCurrency) : null}
+              />
+              <StatCell
+                label={`Market Value (${holding.quote_currency ?? displayCurrency})`}
+                value={holding.market_value != null ? fmtMoney(holding.market_value, holding.quote_currency ?? displayCurrency) : null}
+              />
+              <StatCell
+                label={`Unrealized P&L (${holding.quote_currency ?? displayCurrency})`}
                 value={
-                  holding.unrealized_pnl != null
-                    ? `${holding.unrealized_pnl >= 0 ? "+" : ""}${fmtMoney(holding.unrealized_pnl, displayCurrency)}${holding.unrealized_pnl_pct != null ? ` (${holding.unrealized_pnl >= 0 ? "+" : ""}${holding.unrealized_pnl_pct.toFixed(2)}%)` : ""}`
+                  holding.pnl_unavailable_reason === "currency_mismatch"
+                    ? "— (currency mismatch)"
+                    : holding.unrealized_pnl != null
+                    ? `${holding.unrealized_pnl >= 0 ? "+" : ""}${fmtMoney(holding.unrealized_pnl, holding.quote_currency ?? displayCurrency)}${holding.unrealized_pnl_pct != null ? ` (${holding.unrealized_pnl >= 0 ? "+" : ""}${holding.unrealized_pnl_pct.toFixed(2)}%)` : ""}`
                     : null
                 }
               />
@@ -212,7 +222,7 @@ function DrawerContent({
                 </button>
               ))}
             </div>
-            <Sparkline chart={snap!.chart} days={chartDays} />
+            <Sparkline chart={snap!.chart} days={chartDays} currency={chartCurrency} />
           </>
         )}
         {!isLoading && !hasChart && !isError && (

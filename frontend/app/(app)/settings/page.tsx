@@ -538,7 +538,12 @@ export default function SettingsPage() {
             </div>
             <Divider />
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <label className="text-muted text-xs sm:w-32 shrink-0">Display Currency</label>
+              <div className="sm:w-32 shrink-0">
+                <label className="text-muted text-xs">Preferred Currency</label>
+                <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
+                  Selects which currency to use when multiple are available. Values are never converted.
+                </p>
+              </div>
               <select
                 value={preferredCurrency}
                 onChange={(e) => { setPreferredCurrency(e.target.value); setProfileStatus("idle"); }}

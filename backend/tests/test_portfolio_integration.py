@@ -250,12 +250,17 @@ async def test_snapshot_delete_rolls_back_to_previous():
 async def test_get_current_no_finnhub_key(monkeypatch):
     """Without Finnhub key, stock prices fall back to Yahoo Finance and the response still signals delayed data."""
     from app.routers import portfolio as portfolio_router
+    from app.schemas.money import PriceQuote
 
     portfolio_router._price_cache.clear()
-    fallback_prices = {"AAPL": 199.5, "NVDA": 410.0, "TSLA": 220.0}
+    fallback_prices = {
+        "AAPL": PriceQuote(amount=199.5, currency="USD"),
+        "NVDA": PriceQuote(amount=410.0, currency="USD"),
+        "TSLA": PriceQuote(amount=220.0, currency="USD"),
+    }
     monkeypatch.setattr(
         portfolio_router._yf,
-        "fetch_price",
+        "fetch_price_quote",
         AsyncMock(side_effect=lambda ticker: fallback_prices.get(ticker)),
     )
 
@@ -276,7 +281,9 @@ async def test_get_current_no_finnhub_key(monkeypatch):
         body = r_curr.json()
         assert body["price_unavailable_reason"] == "no_finnhub_key"
         prices_by_ticker = {h["ticker"]: h["current_price"] for h in body["holdings"]}
-        assert prices_by_ticker == fallback_prices
+        assert prices_by_ticker == {t: q.amount for t, q in fallback_prices.items()}
+        assert all(h["quote_currency"] == "USD" for h in body["holdings"])
+        assert body["holdings"][0]["cost_basis_currency"] == "USD"
 
 
 @pytest.mark.asyncio

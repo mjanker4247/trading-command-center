@@ -32,6 +32,7 @@ export interface Run {
   suggested_entry: string | null;
   suggested_stop: string | null;
   suggested_target: string | null;
+  price_currency: string | null;
 }
 
 export interface AgentEventPayload {
@@ -52,6 +53,7 @@ export interface Report {
   suggested_entry: string | null;
   suggested_stop: string | null;
   suggested_target: string | null;
+  price_currency: string | null;
   risk_assessment: string;
   raw_report: Record<string, unknown>;
 }
@@ -129,6 +131,7 @@ export interface RunOutcome {
   price_14d: number | null;
   price_30d: number | null;
   price_90d: number | null;
+  price_currency: string;
   created_at: string;
   updated_at: string;
 }
@@ -306,11 +309,15 @@ export interface PortfolioHolding {
   ticker: string;
   shares: number;
   avg_cost: number | null;
+  cost_basis_currency: string;
+  quote_currency: string | null;
+  /** @deprecated use cost_basis_currency */
   currency: string;
   current_price: number | null;
   market_value: number | null;
   unrealized_pnl: number | null;
   unrealized_pnl_pct: number | null;
+  pnl_unavailable_reason: string | null;
   last_run: PortfolioHoldingLastRun | null;
 }
 
@@ -324,6 +331,8 @@ export interface PortfolioCurrentResponse {
   snapshot: PortfolioSnapshot | null;
   price_unavailable_reason: string | null;
   display_currency: string;
+  portfolio_currencies: string[];
+  totals_currency: string | null;
   totals: PortfolioTotals;
   holdings: PortfolioHolding[];
 }
@@ -428,6 +437,7 @@ export interface WaveSummary {
   confidence: number | null;
   zone_low: number | null;
   zone_high: number | null;
+  currency: string | null;
   warnings: string[];
   computed_at: string;
 }
@@ -483,6 +493,7 @@ export interface KalmanData {
     kalman_trend: number[];
   };
   computed_at: string;
+  currency: string;
 }
 
 export interface NewsArticle {

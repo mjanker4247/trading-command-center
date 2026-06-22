@@ -152,7 +152,7 @@ async def generate_chat_response(
                 return await _fetch_sector(t, finnhub_key)
 
         price_map, sectors = await asyncio.gather(
-            _fetch_prices_bulk(tickers, finnhub_key),
+            _fetch_prices_bulk(tickers, finnhub_key, db),
             asyncio.gather(*[_bounded_sector(t) for t in tickers]),
         )
         sector_map: dict[str, str] = dict(zip(tickers, sectors))
@@ -184,14 +184,24 @@ async def generate_chat_response(
     enriched: list[dict] = []
 
     for h in holdings:
-        price = price_map.get(h.ticker)
-        market_value = h.shares * price if price is not None else None
-        pnl_pct = ((price / h.avg_cost - 1) * 100) if price is not None and h.avg_cost else None
+        quote = price_map.get(h.ticker)
+        cost_ccy = (h.currency or "USD").upper()
+        current_price = quote.amount if quote else None
+        quote_ccy = quote.currency_code if quote else None
+        market_value = h.shares * current_price if current_price is not None else None
+        pnl_pct = None
+        if (
+            current_price is not None
+            and h.avg_cost
+            and quote
+            and cost_ccy == quote.currency_code
+        ):
+            pnl_pct = (current_price / h.avg_cost - 1) * 100
 
         if market_value is not None:
             total_market_value += market_value
             has_price = True
-            if h.avg_cost is not None:
+            if h.avg_cost is not None and quote and cost_ccy == quote.currency_code:
                 total_cost += h.avg_cost * h.shares
 
         verdict_info = last_verdicts.get(h.ticker)
@@ -200,7 +210,9 @@ async def generate_chat_response(
             "sector": sector_map.get(h.ticker, "Unknown"),
             "shares": h.shares,
             "avg_cost": round(h.avg_cost, 2) if h.avg_cost else None,
-            "current_price": round(price, 2) if price else None,
+            "cost_basis_currency": cost_ccy,
+            "current_price": round(current_price, 2) if current_price else None,
+            "quote_currency": quote_ccy,
             "market_value": round(market_value, 2) if market_value else None,
             "weight_pct": None,
             "unrealized_pnl_pct": round(pnl_pct, 2) if pnl_pct is not None else None,

@@ -33,11 +33,14 @@ function makeFakeHolding(ticker: string): PortfolioHolding {
     ticker,
     shares: 0,
     avg_cost: null,
+    cost_basis_currency: "USD",
+    quote_currency: "USD",
     currency: "USD",
     current_price: null,
     market_value: null,
     unrealized_pnl: null,
     unrealized_pnl_pct: null,
+    pnl_unavailable_reason: null,
     last_run: null,
   };
 }

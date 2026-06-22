@@ -268,7 +268,14 @@ export default function RunResultsPage() {
           metadata={run ? tickerMetadata[run.ticker.toUpperCase()] : undefined}
         />
         {run && strategySettings?.enableMarkovRegime !== false && <MarkovConfirmation ticker={run.ticker} verdict={run.verdict} />}
-        {run && strategySettings?.enableKalmanFilter !== false && <KalmanConfirmation ticker={run.ticker} verdict={run.verdict} />}
+        {run && strategySettings?.enableKalmanFilter !== false && (
+          <KalmanConfirmation
+            ticker={run.ticker}
+            verdict={run.verdict}
+            priceCurrency={report?.price_currency ?? run.price_currency}
+            metadataCurrency={run ? tickerMetadata[run.ticker.toUpperCase()]?.currency : undefined}
+          />
+        )}
         {run && strategySettings?.enableElliottWave !== false && (
           <WaveConfirmation
             ticker={run.ticker}
@@ -276,6 +283,7 @@ export default function RunResultsPage() {
             suggestedEntry={report?.suggested_entry}
             suggestedStop={report?.suggested_stop}
             suggestedTarget={report?.suggested_target}
+            priceCurrency={report?.price_currency ?? run.price_currency}
           />
         )}
         {run && (

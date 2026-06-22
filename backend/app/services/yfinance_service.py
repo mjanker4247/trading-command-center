@@ -18,6 +18,8 @@ from typing import Optional
 import pandas as pd
 import yfinance as yf
 
+from app.schemas.money import PriceQuote
+
 logger = logging.getLogger(__name__)
 
 _HISTORY_CACHE_TTL = 14400  # 4 hours
@@ -49,27 +51,42 @@ def _fast_info_value(info, key: str):
     return value
 
 
-def _sync_fetch_price(ticker: str) -> Optional[float]:
-    """Synchronous price fetch via yfinance fast_info.
-    Returns current/last traded price, falling back to previous close."""
+def _sync_fetch_price_quote(ticker: str) -> Optional[PriceQuote]:
+    """Synchronous price fetch via yfinance fast_info in listing currency."""
     try:
         info = yf.Ticker(ticker).fast_info
         last = _fast_info_value(info, "last_price")
         prev = _fast_info_value(info, "previous_close")
+        amount: Optional[float] = None
         if last is not None and last != 0:
-            return float(last)
-        if prev is not None and prev != 0:
-            return float(prev)
-        return None
+            amount = float(last)
+        elif prev is not None and prev != 0:
+            amount = float(prev)
+        if amount is None:
+            return None
+        raw_currency = _fast_info_value(info, "currency")
+        currency = str(raw_currency).upper() if raw_currency else "USD"
+        return PriceQuote(amount=amount, currency=currency)
     except Exception:
         logger.debug("yfinance price fetch failed for %s", ticker)
         return None
 
 
+def _sync_fetch_price(ticker: str) -> Optional[float]:
+    quote = _sync_fetch_price_quote(ticker)
+    return quote.amount if quote else None
+
+
+async def fetch_price_quote(ticker: str) -> Optional[PriceQuote]:
+    """Async wrapper: fetches stock price + listing currency via Yahoo Finance."""
+    async with _get_yf_semaphore():
+        return await asyncio.to_thread(_sync_fetch_price_quote, ticker)
+
+
 async def fetch_price(ticker: str) -> Optional[float]:
     """Async wrapper: fetches stock price via Yahoo Finance with concurrency throttling."""
-    async with _get_yf_semaphore():
-        return await asyncio.to_thread(_sync_fetch_price, ticker)
+    quote = await fetch_price_quote(ticker)
+    return quote.amount if quote else None
 
 
 def _sync_fetch_quote(ticker: str) -> Optional[dict]:

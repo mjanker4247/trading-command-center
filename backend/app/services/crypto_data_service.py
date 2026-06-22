@@ -11,6 +11,8 @@ from typing import Optional
 
 import httpx
 
+from app.schemas.money import PriceQuote
+from app.utils.quote_currency import quote_currency_from_ticker
 from app.services.finnhub_client import (
     FinnhubCapability,
     fetch_json,
@@ -70,9 +72,13 @@ _ID_MAP: dict[str, str] = {
 # Cache: symbol → (coingecko_id, expiry_ts)
 _id_cache: dict[str, tuple[str, float]] = {}
 _id_lock: asyncio.Lock | None = None
-# Cache: ticker → (price, expiry_ts)
-_price_cache: dict[str, tuple[float, float]] = {}
+# Cache: ticker → (PriceQuote, expiry_ts)
+_price_cache: dict[str, tuple[PriceQuote, float]] = {}
 _PRICE_TTL = 300  # 5 min — crypto moves fast
+
+
+def _quote_currency_for_ticker(ticker: str) -> str:
+    return quote_currency_from_ticker(ticker) or "USD"
 
 
 def _get_id_lock() -> asyncio.Lock:
@@ -147,14 +153,18 @@ async def _finnhub_price(symbol: str, finnhub_key: str, now: float) -> Optional[
 
 async def fetch_price(ticker: str, finnhub_key: Optional[str] = None) -> Optional[float]:
     """
-    Current price for a single crypto ticker.
+    Current price for a single crypto ticker (amount only).
     Prefer fetch_prices_batch when pricing multiple tickers to avoid rate limits.
     """
-    now = time.time()
-    cached = _price_cache.get(ticker)
-    if cached and now < cached[1]:
-        return cached[0]
+    quote = await fetch_price_quote(ticker, finnhub_key=finnhub_key)
+    return quote.amount if quote else None
 
+
+async def fetch_price_quote(
+    ticker: str,
+    finnhub_key: Optional[str] = None,
+) -> Optional[PriceQuote]:
+    """Current price + quote currency for a single crypto ticker."""
     result = await fetch_prices_batch([ticker], finnhub_key=finnhub_key)
     return result.get(ticker)
 
@@ -162,17 +172,17 @@ async def fetch_price(ticker: str, finnhub_key: Optional[str] = None) -> Optiona
 async def fetch_prices_batch(
     tickers: list[str],
     finnhub_key: Optional[str] = None,
-) -> dict[str, Optional[float]]:
+) -> dict[str, Optional[PriceQuote]]:
     """
-    Fetch current prices for multiple crypto tickers using a single CoinGecko
-    /simple/price call (batched) — avoids per-ticker rate limit hits.
+    Fetch current prices for multiple crypto tickers using batched CoinGecko
+    /simple/price calls grouped by quote currency.
     Falls back to Finnhub individually for any ticker CoinGecko doesn't return.
     """
     if not tickers:
         return {}
 
     now = time.time()
-    result: dict[str, Optional[float]] = {}
+    result: dict[str, Optional[PriceQuote]] = {}
     uncached: list[str] = []
 
     for ticker in tickers:
@@ -189,51 +199,62 @@ async def fetch_prices_batch(
     symbols = [extract_symbol(t) for t in uncached]
     cg_ids = await asyncio.gather(*[_coingecko_id(s) for s in symbols])
 
-    # Group tickers by CoinGecko ID (multiple tickers can share one ID, e.g. BTC-USD and BTC-USDT)
+    # Group tickers by CoinGecko ID and track desired vs currency per ticker
     id_to_tickers: dict[str, list[str]] = {}
-    no_id: list[tuple[str, str]] = []  # (ticker, symbol) where CoinGecko ID not found
+    ticker_vs: dict[str, str] = {}
     for ticker, cg_id, symbol in zip(uncached, cg_ids, symbols):
+        ticker_vs[ticker] = _quote_currency_for_ticker(ticker).lower()
         if cg_id:
             id_to_tickers.setdefault(cg_id, []).append(ticker)
-        else:
-            no_id.append((ticker, symbol))
 
-    # ── Single batched CoinGecko call ─────────────────────────────────────────
-    if id_to_tickers:
+    # Batch CoinGecko calls per vs_currency
+    vs_groups: dict[str, set[str]] = {}
+    for cg_id, group_tickers in id_to_tickers.items():
+        for ticker in group_tickers:
+            vs = ticker_vs[ticker]
+            vs_groups.setdefault(vs, set()).add(cg_id)
+
+    for vs, cg_id_set in vs_groups.items():
         try:
             async with httpx.AsyncClient(timeout=8) as client:
                 r = await client.get(
                     f"{_CG_BASE}/simple/price",
-                    params={"ids": ",".join(id_to_tickers.keys()), "vs_currencies": "usd"},
+                    params={"ids": ",".join(cg_id_set), "vs_currencies": vs},
                 )
                 r.raise_for_status()
                 data = r.json()
             for cg_id, price_data in data.items():
-                usd = price_data.get("usd")
-                if usd is not None:
-                    price = float(usd)
-                    for ticker in id_to_tickers[cg_id]:
-                        result[ticker] = price
-                        _price_cache[ticker] = (price, now + _PRICE_TTL)
+                amount = price_data.get(vs)
+                if amount is None:
+                    continue
+                quote = PriceQuote(amount=float(amount), currency=vs.upper())
+                for ticker in id_to_tickers.get(cg_id, []):
+                    if ticker_vs[ticker] != vs:
+                        continue
+                    result[ticker] = quote
+                    _price_cache[ticker] = (quote, now + _PRICE_TTL)
         except Exception:
             pass
 
-    # ── Finnhub fallback for anything still missing ────────────────────────────
-    missing = [t for t in uncached if t not in result]
+    # ── Finnhub fallback for anything still missing (USD/USDT pairs) ─────────
+    missing = [
+        t
+        for t in uncached
+        if t not in result and _quote_currency_for_ticker(t) in ("USD", "USDT")
+    ]
     if missing and finnhub_key:
         fallback_tasks = [
             _finnhub_price(extract_symbol(t), finnhub_key, now) for t in missing
         ]
         fallback_prices = await asyncio.gather(*fallback_tasks)
         for ticker, price in zip(missing, fallback_prices):
-            result[ticker] = price
             if price is not None:
-                _price_cache[ticker] = (price, now + _PRICE_TTL)
-        missing = [t for t in missing if result.get(t) is None]
+                quote = PriceQuote(amount=price, currency=_quote_currency_for_ticker(ticker))
+                result[ticker] = quote
+                _price_cache[ticker] = (quote, now + _PRICE_TTL)
 
-    # Tickers with no price from any source
-    for ticker in missing:
-        result[ticker] = None
+    for ticker in uncached:
+        result.setdefault(ticker, None)
 
     return result
 
