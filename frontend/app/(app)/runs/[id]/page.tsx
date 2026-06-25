@@ -11,6 +11,7 @@ import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { Run } from "@/lib/types";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Breadcrumbs, HISTORY_BREADCRUMB, RESEARCH_BREADCRUMB } from "@/components/layout/Breadcrumbs";
 
 function rerunUrl(run: Run): string {
   const p = new URLSearchParams({
@@ -153,8 +154,15 @@ export default function RunResultsPage() {
 
   return (
     <PageShell gap="6">
+      <Breadcrumbs
+        className="mb-1"
+        items={[
+          RESEARCH_BREADCRUMB,
+          HISTORY_BREADCRUMB,
+          { label: `${run.ticker} Run` },
+        ]}
+      />
       <PageHeader
-        back={{ href: "/runs", label: "← Back to History" }}
         title={
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
             <span className="text-lg font-semibold text-fg font-mono">{run.ticker}</span>

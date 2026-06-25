@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useMenuFocusTrap } from "@/lib/useMenuFocusTrap";
 
 const MENU_MIN_WIDTH = 160;
 const VIEWPORT_PADDING = 12;
@@ -138,6 +139,8 @@ export function TabBar({
       window.removeEventListener("mousedown", onPointerDown);
     };
   }, [menuOpen]);
+
+  useMenuFocusTrap(menuOpen, menuRef);
 
   if (primaryTabs.length === 0 && overflowTabs.length === 0) {
     return null;

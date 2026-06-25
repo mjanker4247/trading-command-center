@@ -8,6 +8,7 @@ import { compareRuns, getRuns } from "@/lib/api";
 import type { Run, TickerMetadata } from "@/lib/types";
 import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 import { PageShell } from "@/components/layout/PageShell";
+import { Breadcrumbs, HISTORY_BREADCRUMB, RESEARCH_BREADCRUMB } from "@/components/layout/Breadcrumbs";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 
@@ -140,8 +141,11 @@ function CompareContent() {
 export default function ComparePage() {
   return (
     <PageShell gap="6">
+        <Breadcrumbs
+          className="mb-1"
+          items={[RESEARCH_BREADCRUMB, HISTORY_BREADCRUMB, { label: "Compare" }]}
+        />
         <PageHeader
-          back={{ href: "/runs", label: "← Back to History" }}
           title={<PageTitle>Run Comparison</PageTitle>}
         />
         <Suspense fallback={<div className="text-muted text-sm">Loading…</div>}>

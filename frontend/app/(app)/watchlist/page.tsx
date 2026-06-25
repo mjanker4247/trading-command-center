@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pause, Play, Trash2, CalendarClock } from "lucide-react";
+import { Pause, Play, Trash2, CalendarClock, ListPlus } from "lucide-react";
 import {
   getWatchlist,
   addWatchlistItem,
@@ -25,6 +25,8 @@ import {
   WatchlistScheduleBuilder,
 } from "@/components/watchlist/WatchlistScheduleBuilder";
 import { CronLabel } from "@/components/watchlist/CronLabel";
+import { WatchlistItemCard } from "@/components/watchlist/WatchlistItemCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 import { PageShell } from "@/components/layout/PageShell";
 
@@ -146,7 +148,7 @@ function ItemRow({ item, onRemove, onToggle, onRunNow, onSaveSchedule, metadata 
 
   return (
     <>
-    <tr className="border-t border-border hover:bg-muted-surface/40">
+    <tr className="border-t border-border hover:bg-muted-surface/40 hidden md:table-row">
       <td className="px-4 py-3">
         <TickerLabel ticker={item.ticker} metadata={metadata} />
       </td>
@@ -215,7 +217,7 @@ function ItemRow({ item, onRemove, onToggle, onRunNow, onSaveSchedule, metadata 
       </td>
     </tr>
     {editingSchedule && (
-      <tr className="border-t border-border bg-page/40">
+      <tr className="border-t border-border bg-page/40 hidden md:table-row">
         <td colSpan={9} className="px-4 py-4">
           <div className="flex flex-col gap-3 max-w-4xl">
             <p className="text-xs text-muted uppercase tracking-wide font-semibold">Edit schedule for {item.ticker}</p>
@@ -335,9 +337,31 @@ export default function WatchlistPage() {
         {watchlist && (
           <div className="bg-elevated border border-input-border rounded-xl overflow-hidden">
             {watchlist.items.length === 0 ? (
-              <p className="text-muted text-sm text-center py-10">No tickers yet. Add one above to start tracking.</p>
+              <EmptyState
+                icon={ListPlus}
+                title="No tickers on your watchlist"
+                description="Add a ticker above to schedule recurring AI analyses."
+                action={{ label: "Add ticker", onClick: () => setShowAddTicker(true) }}
+              />
             ) : (
-              <div className="overflow-x-auto"><table className="w-full text-sm lg:min-w-[720px]">
+              <>
+                <div className="space-y-3 p-3 md:hidden">
+                  {watchlist.items.map((item) => (
+                    <WatchlistItemCard
+                      key={item.id}
+                      item={item}
+                      metadata={tickerMetadata[item.ticker.toUpperCase()]}
+                      onRemove={() => removeMutation.mutate(item.id)}
+                      onToggle={() => toggleMutation.mutate({ id: item.id, enabled: !item.enabled })}
+                      onRunNow={() => runNowMutation.mutate(item.id)}
+                      onSaveSchedule={(schedule_cron) =>
+                        scheduleMutation.mutate({ id: item.id, schedule_cron })
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm lg:min-w-[720px]">
                 <thead className="bg-page">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Ticker</th>
@@ -366,7 +390,9 @@ export default function WatchlistPage() {
                     />
                   ))}
                 </tbody>
-              </table></div>
+              </table>
+                </div>
+              </>
             )}
           </div>
         )}

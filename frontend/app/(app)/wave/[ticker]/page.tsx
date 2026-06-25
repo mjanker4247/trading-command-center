@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { analyzeWave, getAppSettings } from "@/lib/api";
 import { AnalysisChart } from "@/components/wave/AnalysisChart";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { APP_PAGE_PADDING_X_CLASS, TOP_NAV_HEIGHT_REM } from "@/components/layout/constants";
+import { Breadcrumbs, RESEARCH_BREADCRUMB } from "@/components/layout/Breadcrumbs";
 import { fmtMoney } from "@/lib/currency";
 import type {
   AnalyzeResponse,
@@ -58,12 +58,13 @@ export default function WaveChartPage() {
       style={{ height: `calc(100vh - ${TOP_NAV_HEIGHT_REM})` }}
     >
       <header className={`shrink-0 border-b border-border bg-elevated py-3 ${APP_PAGE_PADDING_X_CLASS}`}>
+        <Breadcrumbs
+          className="mb-2"
+          items={[RESEARCH_BREADCRUMB, { label: "Wave", href: "/portfolio" }, { label: symbol }]}
+        />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <Link href="/portfolio" className="text-xs text-link hover:text-link-hover">
-              ← Portfolio
-            </Link>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h1 className="font-mono text-2xl font-semibold text-fg">{symbol}</h1>
               <p className="truncate text-sm text-muted">{companyName}</p>
             </div>

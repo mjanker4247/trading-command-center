@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, LoaderCircle, Pencil, Play, Plus, Trash2, X } from "lucide-react";
+import { Check, LoaderCircle, Pencil, Play, Plus, Trash2, X, Briefcase } from "lucide-react";
 import { addHolding, updateHolding, deleteHolding } from "@/lib/api";
 import { fmtMoney, fmtPnl, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { analysisFromLastRun } from "@/lib/holdingLastRun";
@@ -12,6 +12,8 @@ import { TickerLabel } from "@/components/ui/TickerLabel";
 import { WaveBadge } from "@/components/wave/WaveBadge";
 import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason, TickerMetadata } from "@/lib/types";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { HoldingsMobileCards } from "@/components/portfolio/HoldingsMobileCards";
 
 interface HoldingsTableProps {
   portfolioId: string;
@@ -631,7 +633,101 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border">
+      {sortedHoldings.length === 0 && !addingNew ? (
+        <EmptyState
+          icon={Briefcase}
+          title={isFiltered ? "No holdings match filters" : "No holdings yet"}
+          description={
+            isFiltered
+              ? "Try clearing filters or broadening your search."
+              : "Add a row manually or upload a CSV snapshot to get started."
+          }
+          action={
+            isFiltered
+              ? undefined
+              : { label: "Add holding", onClick: () => setAddingNew(true) }
+          }
+        />
+      ) : (
+        <>
+          {addingNew && (
+            <div className="md:hidden rounded-lg border border-dashed border-input-border bg-input/20 p-4 space-y-3">
+              <p className="text-xs font-medium text-muted uppercase tracking-wide">New holding</p>
+              <div className="grid grid-cols-2 gap-2">
+                <EditInput
+                  autoFocus
+                  value={newDraft.ticker}
+                  onChange={(v) => setNewDraft((d) => ({ ...d, ticker: v }))}
+                  onKeyDown={handleNewKey}
+                  placeholder="AAPL"
+                  className="col-span-2 uppercase"
+                />
+                <EditInput
+                  value={newDraft.shares}
+                  onChange={(v) => {
+                    if (v === "" || /^\d*\.?\d*$/.test(v)) setNewDraft((d) => ({ ...d, shares: v }));
+                  }}
+                  onKeyDown={handleNewKey}
+                  placeholder="Shares"
+                  className="text-right"
+                />
+                <EditInput
+                  value={newDraft.avg_cost}
+                  onChange={(v) => {
+                    if (v === "" || /^\d*\.?\d*$/.test(v)) setNewDraft((d) => ({ ...d, avg_cost: v }));
+                  }}
+                  onKeyDown={handleNewKey}
+                  placeholder="Avg cost"
+                  className="text-right"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                <IconButton
+                  icon={addMutation.isPending ? LoaderCircle : Check}
+                  label="Add holding"
+                  title="Add"
+                  tone="success"
+                  onClick={saveNew}
+                  disabled={addMutation.isPending}
+                  iconClassName={addMutation.isPending ? "animate-spin" : undefined}
+                />
+                <IconButton
+                  icon={X}
+                  label="Cancel adding holding"
+                  title="Cancel"
+                  tone="default"
+                  onClick={() => {
+                    setAddingNew(false);
+                    setNewDraft({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency });
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <HoldingsMobileCards
+            holdings={sortedHoldings}
+            displayCurrency={displayCurrency}
+            fundamentals={fundamentals}
+            regime={regime}
+            wave={wave}
+            trimSignals={trimSignals}
+            tickerMetadata={tickerMetadata}
+            onTickerClick={onTickerClick}
+            editingId={editingId}
+            editDraft={editDraft}
+            setEditDraft={setEditDraft}
+            onStartEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onSaveEdit={saveEdit}
+            editSaving={updateMutation.isPending}
+            onDelete={(id) => deleteMutation.mutate(id)}
+            deletePending={deleteMutation.isPending}
+            expandedIds={expandedIds}
+            onToggleExpand={toggleExpand}
+          />
+
+      <div className="hidden md:block overflow-x-auto rounded-sm border border-border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface text-muted text-xs uppercase tracking-wider">
             <tr>
@@ -651,13 +747,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
             </tr>
           </thead>
           <tbody>
-            {sortedHoldings.length === 0 && !addingNew ? (
-              <tr>
-                <td colSpan={colSpan} className="text-center text-muted px-4 py-8">
-                  {isFiltered ? "No holdings match the current filters." : "No holdings. Add a row below or upload a CSV."}
-                </td>
-              </tr>
-            ) : (
+            {sortedHoldings.length === 0 && !addingNew ? null : (
               sortedHoldings.map((h) => {
                 const isEditing = editingId === h.id;
                 const isExpanded = expandedIds.has(h.id);
@@ -1006,8 +1096,10 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
-      {!addingNew && (
+      {!addingNew && sortedHoldings.length > 0 && (
         <button
           onClick={() => setAddingNew(true)}
           className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg-secondary border border-dashed border-input-border hover:border-border-strong rounded-sm px-3 py-1.5 transition-colors"

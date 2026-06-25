@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useMenuFocusTrap } from "@/lib/useMenuFocusTrap";
 
 const MENU_MIN_WIDTH = 168;
 const VIEWPORT_PADDING = 12;
@@ -95,6 +96,8 @@ export function NavDropdown({ label, items, active = false, onNavigate }: NavDro
       window.removeEventListener("mousedown", onPointerDown);
     };
   }, [open]);
+
+  useMenuFocusTrap(open, menuRef);
 
   return (
     <>
