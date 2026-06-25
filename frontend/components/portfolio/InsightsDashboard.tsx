@@ -91,7 +91,7 @@ function HealthScoreRing({ score }: { score: number }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-2xl font-bold tabular-nums ${healthColor(score)}`}>{score}</span>
+          <span className={`text-2xl font-bold font-data ${healthColor(score)}`}>{score}</span>
           <span className="text-muted text-xs leading-none">/ 10</span>
         </div>
       </div>
@@ -168,7 +168,7 @@ function SectorChart({ data }: { data: Record<string, number> }) {
               }}
             />
           </div>
-          <div className="w-10 text-muted text-xs tabular-nums text-right shrink-0">
+          <div className="w-10 text-muted text-xs font-data text-right shrink-0">
             {typeof pct === "number" ? pct.toFixed(1) : pct}%
           </div>
         </div>

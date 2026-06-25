@@ -25,7 +25,7 @@ export function AnalystReports({ report, analysts, embedded = false }: Props) {
     if (embedded) return loading;
     return (
       <div className="bg-surface border border-border rounded-lg p-6">
-        <h2 className="text-fg text-lg font-semibold mb-4">Analyst Reports</h2>
+        <h2 className="text-fg text-sm font-medium mb-4">Analyst Reports</h2>
         {loading}
       </div>
     );
@@ -66,7 +66,7 @@ export function AnalystReports({ report, analysts, embedded = false }: Props) {
 
   return (
     <div className="bg-surface border border-border rounded-lg p-6">
-      <h2 className="text-fg text-lg font-semibold mb-4">Analyst Reports</h2>
+      <h2 className="text-fg text-sm font-medium mb-4">Analyst Reports</h2>
       {content}
     </div>
   );

@@ -41,7 +41,7 @@ function RunPickerRow({
           <span className="text-subtle">—</span>
         )}
       </td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-mono">{run.llm_model}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{run.llm_model}</td>
       <td className="hidden lg:table-cell px-4 py-3 text-xs text-muted">
         {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
       </td>

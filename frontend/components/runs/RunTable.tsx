@@ -68,7 +68,7 @@ function PriceSummary({ run, metadata }: { run: Run; metadata?: TickerMetadata }
   const fmt = (v: string | null) => fmtPriceString(v, currency);
   return (
     <span
-      className="font-mono text-xs text-fg-secondary"
+      className="font-data text-xs text-fg-secondary"
       title="Entry · Stop · Target"
     >
       {fmt(entry)} · {fmt(stop)} · {fmt(target)}
@@ -144,11 +144,11 @@ function RunRow({
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">
         <RunContextIcons analysts={run.analysts} responseLanguage={run.response_language} />
       </td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-mono">{run.llm_model}</td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{run.llm_model}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">
         {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
       </td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs">{formatDuration(run.started_at, run.completed_at)}</td>
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{formatDuration(run.started_at, run.completed_at)}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
           <IconLink

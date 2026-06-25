@@ -12,7 +12,7 @@ export function SectionCard({ id, title, description, children }: SectionCardPro
   return (
     <section id={id} className={id ? SETTINGS_SECTION_SCROLL_MARGIN : undefined}>
       <div className="mb-3">
-        <h2 className="text-fg text-base font-semibold">{title}</h2>
+        <h2 className="text-fg text-sm font-medium">{title}</h2>
         {description && <p className="text-muted text-xs mt-0.5">{description}</p>}
       </div>
       <div className="bg-surface border border-border rounded-lg overflow-hidden">

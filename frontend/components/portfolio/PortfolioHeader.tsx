@@ -69,13 +69,13 @@ export function PortfolioHeader({
       {hasTotals ? (
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 shrink-0">
           <div className="text-right">
-            <div className="text-fg text-sm font-semibold tabular-nums">
+            <div className="text-fg text-sm font-semibold font-data">
               {fmtMoney(totals!.market_value, totalsCurrency!)}
             </div>
             <div className="text-xs text-muted">Market Value ({totalsCurrency})</div>
           </div>
           <div className={`text-right ${pnlColor}`}>
-            <div className="text-sm font-semibold tabular-nums">
+            <div className="text-sm font-semibold font-data">
               {pnl != null && pnl >= 0 ? "+" : ""}{fmtMoney(pnl, totalsCurrency!)}
               {" "}
               <span className="text-xs font-normal">({fmtPct(pnlPct)})</span>

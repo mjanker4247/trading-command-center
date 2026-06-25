@@ -145,6 +145,17 @@
   --color-navy-900: var(--af-page);
 
   --font-mono: var(--font-geist-mono, ui-monospace, monospace);
+  --font-sans: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+@utility font-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/** Readable line length for AI report / markdown bodies. */
+@utility prose-report {
+  max-width: 65ch;
 }
 
 @layer utilities {
@@ -168,6 +179,7 @@
 
   body {
     overflow-x: clip;
+    font-family: var(--font-sans);
   }
 
   *,

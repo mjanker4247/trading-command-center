@@ -94,10 +94,10 @@ function TickerCard({
 
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-base font-semibold text-fg font-mono tabular-nums">
+            <p className="text-base font-semibold text-fg font-data">
               ${fmtPrice(item.price)}
             </p>
-            <p className={`text-xs tabular-nums ${up ? "text-green-400" : "text-red-400"}`}>
+            <p className={`text-xs font-data ${up ? "text-green-400" : "text-red-400"}`}>
               {item.change != null ? `${item.change >= 0 ? "+" : ""}${item.change.toFixed(2)}` : ""}
             </p>
           </div>
@@ -178,10 +178,10 @@ function MoverRow({
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-semibold text-fg font-mono tabular-nums">
+          <p className="text-sm font-semibold text-fg font-data">
             ${fmtPrice(item.price)}
           </p>
-          <p className={`text-xs font-semibold tabular-nums ${up ? "text-green-400" : "text-red-400"}`}>
+          <p className={`text-xs font-semibold font-data ${up ? "text-green-400" : "text-red-400"}`}>
             {fmtPct(item.change_pct)}
           </p>
         </div>

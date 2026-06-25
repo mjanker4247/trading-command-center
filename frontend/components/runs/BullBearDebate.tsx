@@ -55,7 +55,7 @@ export function BullBearDebate({ report, embedded = false }: Props) {
 
   return (
     <div className="bg-surface border border-border rounded-lg p-6 flex flex-col gap-6">
-      <h2 className="text-fg text-lg font-semibold">Bull / Bear Debate</h2>
+      <h2 className="text-fg text-sm font-medium">Bull / Bear Debate</h2>
       {content}
     </div>
   );

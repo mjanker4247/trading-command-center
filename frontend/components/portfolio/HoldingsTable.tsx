@@ -722,7 +722,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                       </td>
 
                       {/* Position: shares + avg cost stacked */}
-                      <td className="px-3 py-2 text-right tabular-nums">
+                      <td className="px-3 py-2 text-right font-data">
                         {isEditing ? (
                           <div className="flex flex-col gap-1 items-end">
                             <EditInput
@@ -754,8 +754,8 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                           </div>
                         ) : (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-fg-secondary font-mono text-xs">{h.shares.toLocaleString("en-US")} sh</span>
-                            <span className="text-muted font-mono text-[10px]">
+                            <span className="text-fg-secondary font-data text-xs">{h.shares.toLocaleString("en-US")} sh</span>
+                            <span className="text-muted font-data text-[10px]">
                               @ {fmtMoney(h.avg_cost, h.cost_basis_currency ?? h.currency ?? displayCurrency)}
                             </span>
                           </div>
@@ -763,23 +763,23 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                       </td>
 
                       {/* Current Price (read-only) */}
-                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary font-data text-xs">
                         {fmtMoney(h.current_price, h.quote_currency ?? displayCurrency)}
                       </td>
 
                       {/* Market Value (read-only) */}
-                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary tabular-nums font-mono text-xs">
+                      <td className="hidden lg:table-cell px-3 py-2 text-right text-fg-secondary font-data text-xs">
                         {fmtMoney(h.market_value, h.quote_currency ?? displayCurrency)}
                       </td>
 
                       {/* Unrealized P&L (read-only) */}
-                      <td className={`px-3 py-2 text-right tabular-nums ${pnlColor}`}>
+                      <td className={`px-3 py-2 text-right font-data ${pnlColor}`}>
                         {h.pnl_unavailable_reason === "currency_mismatch" ? (
-                          <div className="font-mono text-[10px] text-amber-400" title="Cost basis and quote currencies differ">
+                          <div className="font-data text-[10px] text-amber-400" title="Cost basis and quote currencies differ">
                             —
                           </div>
                         ) : (
-                          <div className="font-semibold font-mono text-xs">
+                          <div className="font-semibold font-data text-xs">
                             {fmtPnl(pnl, h.unrealized_pnl_pct, h.quote_currency ?? displayCurrency)}
                           </div>
                         )}

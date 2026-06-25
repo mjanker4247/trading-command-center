@@ -57,6 +57,6 @@ export function PageHeader({
 
 export function PageTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h1 className={className ?? "text-lg font-semibold text-fg"}>{children}</h1>
+    <h1 className={className ?? "text-base font-semibold text-fg"}>{children}</h1>
   );
 }
