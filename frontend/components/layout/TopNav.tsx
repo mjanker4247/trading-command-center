@@ -6,7 +6,7 @@ import { useEffect, useState, type FocusEvent, type MouseEvent } from "react";
 import { Logo } from "./Logo";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { ThemeToggle } from "./ThemeToggle";
-import { TOP_NAV_OFFSET_PX, APP_CONTENT_CONTAINER_CLASS } from "./constants";
+import { TOP_NAV_OFFSET_PX, APP_CONTENT_CONTAINER_CLASS, APP_PAGE_PADDING_X_CLASS } from "./constants";
 import { usePortfolioPrefetch } from "@/lib/usePortfolioPrefetch";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/runs", label: "History" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/portfolio", label: "Portfolio", prefetchPortfolio: true },
+  { href: "/market", label: "Market" },
   { href: "/runs/performance", label: "Performance" },
   { href: "/settings", label: "Settings" },
 ];
@@ -88,7 +89,7 @@ export function TopNav() {
     <>
       <KeyboardShortcuts />
       <nav className="bg-surface border-b border-border sticky top-0 z-50 shrink-0">
-        <div className={`${APP_CONTENT_CONTAINER_CLASS} flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2`}>
+        <div className={`${APP_CONTENT_CONTAINER_CLASS} flex items-center gap-2 sm:gap-4 ${APP_PAGE_PADDING_X_CLASS} py-2`}>
         <Link href="/runs" className="flex items-center shrink-0" aria-label="AgentFloor home">
           <Logo height={28} />
         </Link>

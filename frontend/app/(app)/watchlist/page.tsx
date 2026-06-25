@@ -299,7 +299,7 @@ export default function WatchlistPage() {
   });
 
   return (
-    <PageShell width="wide" gap="6">
+    <PageShell gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
           title={<PageTitle>Watchlist</PageTitle>}

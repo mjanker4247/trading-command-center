@@ -18,9 +18,6 @@ import {
   getAppSettings,
   getPortfolioNews,
   getPortfolioEarnings,
-  getMarketTrending,
-  getMarketMovers,
-  getMarketSectors,
 } from "@/lib/api";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
@@ -34,9 +31,7 @@ import {
 } from "@/lib/portfolioSelection";
 import {
   portfolioQueryKeys,
-  marketQueryKeys,
   PORTFOLIO_STALE_TIMES,
-  MARKET_STALE_TIMES,
   PORTFOLIO_NEWS_DAYS,
   PORTFOLIO_EARNINGS_DAYS_AHEAD,
 } from "@/lib/portfolioQueries";
@@ -54,9 +49,7 @@ import { EarningsPanel } from "@/components/portfolio/EarningsPanel";
 import { NewsPanel } from "@/components/portfolio/NewsPanel";
 import { ChatPanel } from "@/components/portfolio/ChatPanel";
 import { ThesisPanel } from "@/components/portfolio/ThesisPanel";
-import { TrendingPanel } from "@/components/portfolio/TrendingPanel";
 import { TickerDrawer } from "@/components/portfolio/TickerDrawer";
-import { DiscoverPanel } from "@/components/portfolio/DiscoverPanel";
 import { DeliverySettingsModal } from "@/components/portfolio/DeliverySettingsModal";
 import { SellCandidatesPanel } from "@/components/portfolio/SellCandidatesPanel";
 import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
@@ -67,6 +60,7 @@ import { TabBar, type TabBarItem } from "@/components/layout/TabBar";
 import {
   buildPortfolioTabGroups,
   DEFAULT_PORTFOLIO_TAB,
+  legacyPortfolioTabRedirect,
   resolvePortfolioTab,
   type PortfolioTab,
   type PortfolioTabDefinition,
@@ -253,6 +247,14 @@ function PortfolioPageContent() {
     [searchParams, allCrypto],
   );
 
+  // Redirect legacy Market / Discover portfolio tabs to /market.
+  useEffect(() => {
+    const redirect = legacyPortfolioTabRedirect(searchParams.get("tab"));
+    if (redirect) {
+      router.replace(redirect);
+    }
+  }, [router, searchParams]);
+
   const setTab = useCallback(
     (next: PortfolioTab) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -270,6 +272,7 @@ function PortfolioPageContent() {
   // Drop invalid tab query params (e.g. earnings on an all-crypto portfolio).
   useEffect(() => {
     const fromUrl = searchParams.get("tab");
+    if (legacyPortfolioTabRedirect(fromUrl)) return;
     if (!fromUrl || fromUrl === tab) return;
     setTab(tab);
   }, [searchParams, setTab, tab]);
@@ -345,27 +348,6 @@ function PortfolioPageContent() {
     staleTime: PORTFOLIO_STALE_TIMES.earnings,
   });
 
-  const { isFetching: fetchingMarketTrending } = useQuery({
-    queryKey: marketQueryKeys.trending,
-    queryFn: getMarketTrending,
-    staleTime: MARKET_STALE_TIMES.trending,
-    retry: 1,
-  });
-
-  const { isFetching: fetchingMarketMovers } = useQuery({
-    queryKey: marketQueryKeys.movers,
-    queryFn: getMarketMovers,
-    staleTime: MARKET_STALE_TIMES.movers,
-    retry: 1,
-  });
-
-  const { isFetching: fetchingMarketSectors } = useQuery({
-    queryKey: marketQueryKeys.sectors,
-    queryFn: getMarketSectors,
-    staleTime: MARKET_STALE_TIMES.sectors,
-    retry: 1,
-  });
-
   const { data: tickerMetadata = {}, isFetching: fetchingTickerMetadata } = useTickerMetadata(tickers, {
     enabled: tickers.length > 0,
     forceRefresh: metadataForceToken > 0,
@@ -393,10 +375,7 @@ function PortfolioPageContent() {
     fetchingBehavioralAlerts ||
     fetchingTickerMetadata ||
     fetchingNews ||
-    fetchingEarnings ||
-    fetchingMarketTrending ||
-    fetchingMarketMovers ||
-    fetchingMarketSectors;
+    fetchingEarnings;
 
   function handleSelectPortfolio(id: string) {
     setPreferredId(id);
@@ -476,20 +455,22 @@ function PortfolioPageContent() {
 
   return (
     <>
-    <PageShell width="none" gap="4">
-        <PageHeader title={<PageTitle>Portfolio</PageTitle>} />
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-          <PortfolioSwitcher
-            portfolios={portfolios}
-            selectedId={selectedId}
-            onSelect={handleSelectPortfolio}
-            onCreate={(name) => createMutation.mutate(name)}
-            onDelete={(id) => deleteMutation.mutate(id)}
-          />
-          {selectedPortfolio && (
-            <>
-              <div className="hidden sm:block h-6 w-px shrink-0 bg-border" aria-hidden="true" />
+    <PageShell gap="4">
+        <PageHeader
+          title={
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <PageTitle className="shrink-0">Portfolio</PageTitle>
+              <PortfolioSwitcher
+                portfolios={portfolios}
+                selectedId={selectedId}
+                onSelect={handleSelectPortfolio}
+                onCreate={(name) => createMutation.mutate(name)}
+                onDelete={(id) => deleteMutation.mutate(id)}
+              />
+            </div>
+          }
+          actions={
+            selectedPortfolio ? (
               <PortfolioActions
                 freshnessLabel={
                   <PortfolioFreshnessLabel
@@ -508,9 +489,9 @@ function PortfolioPageContent() {
                 onExportClick={handleExport}
                 onDeliveryClick={() => setDeliveryOpen(true)}
               />
-            </>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
 
         {selectedPortfolio && (
           <PortfolioHeader
@@ -544,7 +525,7 @@ function PortfolioPageContent() {
           </p>
         )}
 
-        {selectedId && loadingCurrent && tab !== "trending" && (
+        {selectedId && loadingCurrent && (
           <div className="text-muted text-sm">Loading portfolio…</div>
         )}
 
@@ -559,13 +540,7 @@ function PortfolioPageContent() {
 
         {/* Tab panels — fixed-width container prevents layout shift between tabs */}
         <div className="min-w-0 w-full overflow-x-hidden">
-        {tab === "trending" && <TrendingPanel />}
-
-        {tab === "discover" && selectedPortfolio && (
-          <DiscoverPanel portfolioId={selectedPortfolio.id} />
-        )}
-
-        {selectedId && !loadingCurrent && current && tab !== "trending" && tab !== "discover" && (
+        {selectedId && !loadingCurrent && current && (
           <>
             {tab === "holdings" && (
               <div className="space-y-3">
@@ -655,7 +630,7 @@ function PortfolioPageContent() {
 export default function PortfolioPage() {
   return (
     <Suspense fallback={
-      <PageShell width="none" gap="4">
+      <PageShell gap="4">
         <PageHeader title={<PageTitle>Portfolio</PageTitle>} />
         <div className="text-muted text-sm">Loading…</div>
       </PageShell>

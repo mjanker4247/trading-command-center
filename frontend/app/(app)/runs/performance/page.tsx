@@ -25,7 +25,7 @@ export default function PerformancePage() {
   );
 
   return (
-    <PageShell width="default" gap="6">
+    <PageShell gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
           title={<PageTitle>Trade Accuracy</PageTitle>}

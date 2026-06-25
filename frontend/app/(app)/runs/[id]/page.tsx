@@ -194,7 +194,7 @@ export default function RunResultsPage() {
 
   if (runLoading) {
     return (
-      <PageShell width="default" gap="6">
+      <PageShell gap="6">
         <Link href="/runs" className="text-blue-400 hover:underline text-sm">
           ← Back to History
         </Link>
@@ -207,7 +207,7 @@ export default function RunResultsPage() {
 
   if (runIsError || !run) {
     return (
-      <PageShell width="default" gap="6">
+      <PageShell gap="6">
         <Link href="/runs" className="text-blue-400 hover:underline text-sm">
           ← Back to History
         </Link>
@@ -219,7 +219,7 @@ export default function RunResultsPage() {
   }
 
   return (
-    <PageShell width="default" gap="6">
+    <PageShell gap="6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Link href="/runs" className="text-blue-400 hover:underline text-sm">

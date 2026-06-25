@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { analyzeWave, getAppSettings } from "@/lib/api";
 import { AnalysisChart } from "@/components/wave/AnalysisChart";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
-import { TOP_NAV_HEIGHT_REM } from "@/components/layout/constants";
+import { APP_PAGE_PADDING_X_CLASS, TOP_NAV_HEIGHT_REM } from "@/components/layout/constants";
 import { fmtMoney } from "@/lib/currency";
 import type {
   AnalyzeResponse,
@@ -57,7 +57,7 @@ export default function WaveChartPage() {
       className="flex min-h-[620px] flex-col overflow-hidden bg-page"
       style={{ height: `calc(100vh - ${TOP_NAV_HEIGHT_REM})` }}
     >
-      <header className="shrink-0 border-b border-border bg-elevated px-4 py-3">
+      <header className={`shrink-0 border-b border-border bg-elevated py-3 ${APP_PAGE_PADDING_X_CLASS}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link href="/portfolio" className="text-xs text-link hover:text-link-hover">
@@ -94,7 +94,7 @@ export default function WaveChartPage() {
       )}
 
       {!settingsLoading && waveEnabled && data && (
-        <section className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+        <section className={`flex min-h-0 flex-1 flex-col gap-3 py-3 ${APP_PAGE_PADDING_X_CLASS}`}>
           <SummaryStrip
             scenario={scenario}
             tradeRegion={tradeRegion}

@@ -3,12 +3,14 @@ import {
   buildPortfolioTabGroups,
   isOverflowPortfolioTab,
   isPortfolioTab,
+  legacyPortfolioTabRedirect,
   resolvePortfolioTab,
 } from "./portfolioTabs";
 
 describe("portfolioTabs", () => {
   it("recognizes valid tab ids", () => {
     expect(isPortfolioTab("holdings")).toBe(true);
+    expect(isPortfolioTab("trending")).toBe(false);
     expect(isPortfolioTab("invalid")).toBe(false);
   });
 
@@ -20,8 +22,6 @@ describe("portfolioTabs", () => {
       "news",
       "chat",
       "thesis",
-      "trending",
-      "discover",
     ]);
   });
 
@@ -38,5 +38,11 @@ describe("portfolioTabs", () => {
   it("marks overflow tabs correctly", () => {
     expect(isOverflowPortfolioTab("news", { allCrypto: false })).toBe(true);
     expect(isOverflowPortfolioTab("holdings", { allCrypto: false })).toBe(false);
+  });
+
+  it("redirects legacy market tabs to /market", () => {
+    expect(legacyPortfolioTabRedirect("trending")).toBe("/market");
+    expect(legacyPortfolioTabRedirect("discover")).toBe("/market?tab=discover");
+    expect(legacyPortfolioTabRedirect("holdings")).toBeNull();
   });
 });

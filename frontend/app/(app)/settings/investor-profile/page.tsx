@@ -180,7 +180,7 @@ export default function InvestorProfilePage() {
   });
 
   return (
-    <PageShell width="narrow">
+    <PageShell>
         <div className="flex items-center gap-3 mb-8">
           <a href="/settings" className="text-muted hover:text-fg-secondary text-sm">← Settings</a>
           <h1 className="text-lg font-semibold text-fg">Investor DNA</h1>

@@ -10,6 +10,7 @@ import { getRun, abortRun, getRunEvents } from "@/lib/api";
 import { useAgentStream } from "@/lib/websocket";
 import { useRunTabTitle } from "@/lib/useRunTabTitle";
 import type { AgentEventPayload } from "@/lib/types";
+import { APP_CONTENT_CONTAINER_CLASS, APP_PAGE_PADDING_X_CLASS } from "@/components/layout/constants";
 
 export default function LiveRunPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +56,7 @@ export default function LiveRunPage() {
 
   return (
     <div className="min-h-0 flex-1 flex flex-col">
-      <div className="flex flex-col lg:flex-row gap-4 p-4 sm:p-6 max-w-7xl mx-auto w-full flex-1 overflow-hidden">
+      <div className={`flex flex-col lg:flex-row gap-4 py-4 sm:py-6 ${APP_CONTENT_CONTAINER_CLASS} ${APP_PAGE_PADDING_X_CLASS} flex-1 overflow-hidden`}>
         <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4 overflow-y-auto">
           <AgentSidebar run={run} onAbort={handleAbort} />
           {run && <PipelinePanel analysts={run.analysts} events={events} />}

@@ -13,8 +13,6 @@ const VALID_TABS: readonly PortfolioTab[] = [
   "news",
   "chat",
   "thesis",
-  "trending",
-  "discover",
 ];
 
 export interface PortfolioTabDefinition {
@@ -34,8 +32,6 @@ const BASE_TAB_DEFINITIONS: PortfolioTabDefinition[] = [
   { id: "news", label: "News", tier: "overflow" },
   { id: "chat", label: "Chat", tier: "overflow" },
   { id: "thesis", label: "Thesis", tier: "overflow" },
-  { id: "trending", label: "Market", tier: "overflow", badge: "↑" },
-  { id: "discover", label: "Discover", tier: "overflow", badge: "🔍" },
 ];
 
 export interface PortfolioTabGroups {
@@ -76,4 +72,11 @@ export function isOverflowPortfolioTab(
   options: { allCrypto: boolean },
 ): boolean {
   return buildPortfolioTabGroups(options).overflow.some((t) => t.id === tab);
+}
+
+/** Legacy portfolio tab query values moved to /market in Phase 1B. */
+export function legacyPortfolioTabRedirect(tab: string | null): string | null {
+  if (tab === "trending") return "/market";
+  if (tab === "discover") return "/market?tab=discover";
+  return null;
 }

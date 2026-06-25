@@ -499,7 +499,7 @@ export default function SettingsPage() {
 
   return (
     <>
-    <PageShell width="settings" gap="8">
+    <PageShell gap="8">
 
         {/* Profile */}
         <SectionCard title="My Profile" description="Your display name and login credentials.">

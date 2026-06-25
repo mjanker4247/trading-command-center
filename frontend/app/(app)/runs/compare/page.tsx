@@ -139,7 +139,7 @@ function CompareContent() {
 
 export default function ComparePage() {
   return (
-    <PageShell width="xl" gap="6">
+    <PageShell gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
           title={<PageTitle>Run Comparison</PageTitle>}
