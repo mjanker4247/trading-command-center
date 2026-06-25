@@ -3,10 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { analyzeWave, getTickerWaveSummary } from "@/lib/api";
 import type { WaveSummary } from "@/lib/types";
-import type { ChartVisibilityOptions } from "@/lib/wave/types";
 import { fmtMoney, fmtPriceString, resolveQuoteCurrency } from "@/lib/currency";
 import { ChartQuickLook } from "@/components/ui/ChartQuickLook";
 import { AnalysisChart } from "@/components/wave/AnalysisChart";
+import { WaveSparkline } from "@/components/wave/WaveSparkline";
 
 interface Props {
   ticker: string;
@@ -17,14 +17,6 @@ interface Props {
   priceCurrency?: string | null;
   variant?: "default" | "compact";
 }
-
-const WAVE_THUMBNAIL_VISIBILITY: ChartVisibilityOptions = {
-  waves: false,
-  fibonacci: false,
-  projection: false,
-  pivots: false,
-  showAllHistory: false,
-};
 
 function parsePrice(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -41,15 +33,7 @@ function directionAligns(verdict: string, direction: string | null | undefined):
   return null;
 }
 
-function WaveChartPanel({
-  ticker,
-  mode,
-  fill = false,
-}: {
-  ticker: string;
-  mode: "thumbnail" | "full";
-  fill?: boolean;
-}) {
+function WaveFullChartPanel({ ticker, fill = false }: { ticker: string; fill?: boolean }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["wave-analyze", ticker, "confluence-preview"],
     queryFn: () => analyzeWave(ticker),
@@ -65,25 +49,12 @@ function WaveChartPanel({
     return <p className="text-[10px] text-muted p-4">Chart unavailable.</p>;
   }
 
-  const isThumbnail = mode === "thumbnail";
-
   return (
     <AnalysisChart
       chart={data.chart}
       title={`${ticker} Elliott / Fib`}
-      compact={isThumbnail}
       fill={fill}
-      height={isThumbnail ? 64 : undefined}
-      maxBars={isThumbnail ? 48 : undefined}
-      hover={!isThumbnail}
-      visibility={isThumbnail ? WAVE_THUMBNAIL_VISIBILITY : undefined}
-      className={
-        isThumbnail
-          ? "border-0 bg-transparent"
-          : fill
-            ? "h-full min-h-0 flex-1 border-0 bg-page rounded-none"
-            : ""
-      }
+      className={fill ? "h-full min-h-0 flex-1 border-0 bg-page rounded-none" : ""}
     />
   );
 }
@@ -138,8 +109,14 @@ export function WaveConfirmation({
     aligns === false ? "text-amber-400" : aligns === true ? "text-green-400" : "text-muted";
 
   const waveChartThumbnail = (
-    <div className="overflow-hidden rounded-md border border-input-border/60 bg-page px-1 py-1">
-      <WaveChartPanel ticker={ticker} mode="thumbnail" />
+    <div className="rounded-md border border-input-border/60 bg-page px-2 py-1.5">
+      <WaveSparkline
+        closes={wave.sparkline ?? []}
+        zoneLow={wave.zone_low}
+        zoneHigh={wave.zone_high}
+        invalidationLevel={wave.invalidation_level}
+        entry={entry}
+      />
     </div>
   );
 
@@ -170,7 +147,7 @@ export function WaveConfirmation({
             maxWidth={960}
             fillContent
             thumbnail={waveChartThumbnail}
-            preview={() => <WaveChartPanel ticker={ticker} mode="full" fill />}
+            preview={() => <WaveFullChartPanel ticker={ticker} fill />}
           />
         </div>
       </details>
@@ -259,7 +236,7 @@ export function WaveConfirmation({
           maxWidth={960}
           fillContent
           thumbnail={waveChartThumbnail}
-          preview={() => <WaveChartPanel ticker={ticker} mode="full" fill />}
+          preview={() => <WaveFullChartPanel ticker={ticker} fill />}
         />
       </div>
     </div>
