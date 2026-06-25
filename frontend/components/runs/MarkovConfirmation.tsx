@@ -2,6 +2,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { getTickerRegime } from "@/lib/api";
 import type { RegimeData } from "@/lib/types";
+import { ChartQuickLook } from "@/components/ui/ChartQuickLook";
+import {
+  MarkovStationaryBars,
+  MarkovTransitionMatrix,
+} from "@/components/runs/confluence/MarkovGraphics";
 
 interface Props {
   ticker: string;
@@ -13,6 +18,42 @@ function regimeColor(regime: RegimeData["current_regime"]): string {
   if (regime === "Bull") return "text-green-400";
   if (regime === "Bear") return "text-red-400";
   return "text-yellow-400";
+}
+
+function MarkovGraphicsPanel({
+  regime,
+  compact = false,
+  expanded = false,
+}: {
+  regime: RegimeData;
+  compact?: boolean;
+  expanded?: boolean;
+}) {
+  return (
+    <div className={expanded ? "space-y-4" : compact ? "space-y-2" : "space-y-3"}>
+      <div>
+        {(!compact || expanded) && (
+          <span
+            className={`text-muted uppercase tracking-wide block mb-2 ${
+              expanded ? "text-xs" : "text-[10px]"
+            }`}
+          >
+            Transition matrix
+          </span>
+        )}
+        <MarkovTransitionMatrix
+          matrix={regime.transition_matrix}
+          compact={compact}
+          expanded={expanded}
+        />
+      </div>
+      <MarkovStationaryBars
+        stationary={regime.stationary}
+        compact={compact && !expanded}
+        expanded={expanded}
+      />
+    </div>
+  );
 }
 
 export function MarkovConfirmation({ ticker, verdict, variant = "default" }: Props) {
@@ -72,16 +113,20 @@ export function MarkovConfirmation({ ticker, verdict, variant = "default" }: Pro
             <span>Sharpe {regime.walk_forward.sharpe?.toFixed(2) ?? "—"}</span>
             <span>Persistence {(regime.persistence * 100).toFixed(0)}%</span>
           </div>
+          <ChartQuickLook
+            label="Markov regime charts"
+            maxWidth={680}
+            thumbnail={
+              <div className="rounded-md border border-input-border/60 bg-page px-2 py-1.5">
+                <MarkovGraphicsPanel regime={regime} compact />
+              </div>
+            }
+            preview={<MarkovGraphicsPanel regime={regime} expanded />}
+          />
         </div>
       </details>
     );
   }
-
-  const statRows: Array<{ label: string; value: number; color: string }> = [
-    { label: "Bull", value: regime.stationary.bull, color: "bg-green-500" },
-    { label: "Sidew.", value: regime.stationary.sideways, color: "bg-yellow-500" },
-    { label: "Bear", value: regime.stationary.bear, color: "bg-red-500" },
-  ];
 
   return (
     <div className={`bg-elevated border ${borderColor} rounded-lg p-4 space-y-3`}>
@@ -116,7 +161,7 @@ export function MarkovConfirmation({ ticker, verdict, variant = "default" }: Pro
         </div>
       </div>
 
-      <div className="border-t border-input-border/50 pt-3 space-y-2">
+      <div className="border-t border-input-border/50 pt-3 space-y-3">
         <div className="flex flex-wrap gap-4 text-xs">
           <div>
             <span className="text-muted text-[10px] uppercase tracking-wide block">Persistence</span>
@@ -138,24 +183,8 @@ export function MarkovConfirmation({ ticker, verdict, variant = "default" }: Pro
           </div>
         </div>
 
-        <div>
-          <span className="text-[10px] text-muted uppercase tracking-wide block mb-1">Long-run distribution</span>
-          <div className="space-y-0.5">
-            {statRows.map((b) => (
-              <div key={b.label} className="flex items-center gap-2">
-                <span className="text-[10px] text-muted w-10">{b.label}</span>
-                <div className="flex-1 bg-muted-surface rounded h-1.5">
-                  <div
-                    className={`h-1.5 rounded ${b.color}`}
-                    style={{ width: `${(b.value * 100).toFixed(0)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-mono text-fg-secondary w-8 text-right">
-                  {(b.value * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="bg-page border border-input-border/60 rounded-md p-2">
+          <MarkovGraphicsPanel regime={regime} />
         </div>
       </div>
     </div>

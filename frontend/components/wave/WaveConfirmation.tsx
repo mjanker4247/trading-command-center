@@ -1,9 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getTickerWaveSummary } from "@/lib/api";
+import { analyzeWave, getTickerWaveSummary } from "@/lib/api";
 import type { WaveSummary } from "@/lib/types";
+import type { ChartVisibilityOptions } from "@/lib/wave/types";
 import { fmtMoney, fmtPriceString, resolveQuoteCurrency } from "@/lib/currency";
+import { ChartQuickLook } from "@/components/ui/ChartQuickLook";
+import { AnalysisChart } from "@/components/wave/AnalysisChart";
 
 interface Props {
   ticker: string;
@@ -14,6 +17,14 @@ interface Props {
   priceCurrency?: string | null;
   variant?: "default" | "compact";
 }
+
+const WAVE_THUMBNAIL_VISIBILITY: ChartVisibilityOptions = {
+  waves: false,
+  fibonacci: false,
+  projection: false,
+  pivots: false,
+  showAllHistory: false,
+};
 
 function parsePrice(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -28,6 +39,53 @@ function directionAligns(verdict: string, direction: string | null | undefined):
   if (verdict === "buy" && direction === "short") return false;
   if (verdict === "sell" && direction === "long") return false;
   return null;
+}
+
+function WaveChartPanel({
+  ticker,
+  mode,
+  fill = false,
+}: {
+  ticker: string;
+  mode: "thumbnail" | "full";
+  fill?: boolean;
+}) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["wave-analyze", ticker, "confluence-preview"],
+    queryFn: () => analyzeWave(ticker),
+    staleTime: 1000 * 60 * 60 * 4,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return <p className="text-[10px] text-muted p-4">Loading chart…</p>;
+  }
+
+  if (isError || !data?.chart) {
+    return <p className="text-[10px] text-muted p-4">Chart unavailable.</p>;
+  }
+
+  const isThumbnail = mode === "thumbnail";
+
+  return (
+    <AnalysisChart
+      chart={data.chart}
+      title={`${ticker} Elliott / Fib`}
+      compact={isThumbnail}
+      fill={fill}
+      height={isThumbnail ? 64 : undefined}
+      maxBars={isThumbnail ? 48 : undefined}
+      hover={!isThumbnail}
+      visibility={isThumbnail ? WAVE_THUMBNAIL_VISIBILITY : undefined}
+      className={
+        isThumbnail
+          ? "border-0 bg-transparent"
+          : fill
+            ? "h-full min-h-0 flex-1 border-0 bg-page rounded-none"
+            : ""
+      }
+    />
+  );
 }
 
 export function WaveConfirmation({
@@ -79,6 +137,12 @@ export function WaveConfirmation({
   const agreementClass =
     aligns === false ? "text-amber-400" : aligns === true ? "text-green-400" : "text-muted";
 
+  const waveChartThumbnail = (
+    <div className="overflow-hidden rounded-md border border-input-border/60 bg-page px-1 py-1">
+      <WaveChartPanel ticker={ticker} mode="thumbnail" />
+    </div>
+  );
+
   if (variant === "compact") {
     return (
       <details open={aligns === false} className={`bg-elevated border ${borderColor} rounded-lg text-xs`}>
@@ -101,6 +165,13 @@ export function WaveConfirmation({
               )}
             </p>
           )}
+          <ChartQuickLook
+            label="Elliott / Fibonacci chart"
+            maxWidth={960}
+            fillContent
+            thumbnail={waveChartThumbnail}
+            preview={() => <WaveChartPanel ticker={ticker} mode="full" fill />}
+          />
         </div>
       </details>
     );
@@ -139,7 +210,7 @@ export function WaveConfirmation({
         </div>
       </div>
 
-      <div className="border-t border-input-border/50 pt-3 space-y-2 text-xs">
+      <div className="border-t border-input-border/50 pt-3 space-y-3 text-xs">
         {wave.zone_low != null && wave.zone_high != null && (
           <div>
             <span className="text-muted text-[10px] uppercase tracking-wide block">Trade zone</span>
@@ -182,6 +253,14 @@ export function WaveConfirmation({
             ))}
           </ul>
         )}
+
+        <ChartQuickLook
+          label="Elliott / Fibonacci chart"
+          maxWidth={960}
+          fillContent
+          thumbnail={waveChartThumbnail}
+          preview={() => <WaveChartPanel ticker={ticker} mode="full" fill />}
+        />
       </div>
     </div>
   );
