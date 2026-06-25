@@ -28,18 +28,16 @@ export default function PerformancePage() {
     <PageShell width="default" gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
-          trailing={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <PageTitle>Trade Accuracy</PageTitle>
-              <button
-                onClick={() => data && downloadPerformanceCsv(data)}
-                disabled={!data || data.outcomes.length === 0}
-                title="Export outcomes table to CSV"
-                className="text-muted hover:text-fg disabled:opacity-40 text-xs border border-input-border rounded px-2 py-1"
-              >
-                Export CSV
-              </button>
-            </div>
+          title={<PageTitle>Trade Accuracy</PageTitle>}
+          actions={
+            <button
+              onClick={() => data && downloadPerformanceCsv(data)}
+              disabled={!data || data.outcomes.length === 0}
+              title="Export outcomes table to CSV"
+              className="text-muted hover:text-fg disabled:opacity-40 text-xs border border-input-border rounded px-2 py-1"
+            >
+              Export CSV
+            </button>
           }
         />
 

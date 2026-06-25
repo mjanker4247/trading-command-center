@@ -1,0 +1,79 @@
+import type { PortfolioTab } from "@/lib/portfolioQueries";
+
+export type { PortfolioTab };
+
+export const DEFAULT_PORTFOLIO_TAB: PortfolioTab = "holdings";
+
+export const PRIMARY_PORTFOLIO_TAB_IDS: readonly PortfolioTab[] = ["holdings", "insights"];
+
+const VALID_TABS: readonly PortfolioTab[] = [
+  "holdings",
+  "insights",
+  "earnings",
+  "news",
+  "chat",
+  "thesis",
+  "trending",
+  "discover",
+];
+
+export interface PortfolioTabDefinition {
+  id: PortfolioTab;
+  label: string;
+  tier: "primary" | "overflow";
+  badge?: string;
+  /** Shown on tab when behavioral alerts exist (Insights only). */
+  showAlertCount?: boolean;
+  hideWhenAllCrypto?: boolean;
+}
+
+const BASE_TAB_DEFINITIONS: PortfolioTabDefinition[] = [
+  { id: "holdings", label: "Holdings", tier: "primary" },
+  { id: "insights", label: "AI Insights", tier: "primary", badge: "✦", showAlertCount: true },
+  { id: "earnings", label: "Earnings", tier: "overflow", hideWhenAllCrypto: true },
+  { id: "news", label: "News", tier: "overflow" },
+  { id: "chat", label: "Chat", tier: "overflow" },
+  { id: "thesis", label: "Thesis", tier: "overflow" },
+  { id: "trending", label: "Market", tier: "overflow", badge: "↑" },
+  { id: "discover", label: "Discover", tier: "overflow", badge: "🔍" },
+];
+
+export interface PortfolioTabGroups {
+  primary: PortfolioTabDefinition[];
+  overflow: PortfolioTabDefinition[];
+  all: PortfolioTabDefinition[];
+}
+
+export function isPortfolioTab(value: string | null | undefined): value is PortfolioTab {
+  return value != null && (VALID_TABS as readonly string[]).includes(value);
+}
+
+export function resolvePortfolioTab(
+  value: string | null | undefined,
+  options: { allCrypto: boolean } = { allCrypto: false },
+): PortfolioTab {
+  const groups = buildPortfolioTabGroups(options);
+  const allowed = new Set(groups.all.map((t) => t.id));
+  if (value && allowed.has(value as PortfolioTab)) {
+    return value as PortfolioTab;
+  }
+  return DEFAULT_PORTFOLIO_TAB;
+}
+
+export function buildPortfolioTabGroups(options: { allCrypto: boolean }): PortfolioTabGroups {
+  const visible = BASE_TAB_DEFINITIONS.filter(
+    (tab) => !(tab.hideWhenAllCrypto && options.allCrypto),
+  );
+  return {
+    primary: visible.filter((tab) => tab.tier === "primary"),
+    overflow: visible.filter((tab) => tab.tier === "overflow"),
+    all: visible,
+  };
+}
+
+export function isOverflowPortfolioTab(
+  tab: PortfolioTab,
+  options: { allCrypto: boolean },
+): boolean {
+  return buildPortfolioTabGroups(options).overflow.some((t) => t.id === tab);
+}

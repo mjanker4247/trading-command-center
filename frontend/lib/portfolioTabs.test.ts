@@ -1,0 +1,42 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildPortfolioTabGroups,
+  isOverflowPortfolioTab,
+  isPortfolioTab,
+  resolvePortfolioTab,
+} from "./portfolioTabs";
+
+describe("portfolioTabs", () => {
+  it("recognizes valid tab ids", () => {
+    expect(isPortfolioTab("holdings")).toBe(true);
+    expect(isPortfolioTab("invalid")).toBe(false);
+  });
+
+  it("splits primary and overflow tabs", () => {
+    const groups = buildPortfolioTabGroups({ allCrypto: false });
+    expect(groups.primary.map((t) => t.id)).toEqual(["holdings", "insights"]);
+    expect(groups.overflow.map((t) => t.id)).toEqual([
+      "earnings",
+      "news",
+      "chat",
+      "thesis",
+      "trending",
+      "discover",
+    ]);
+  });
+
+  it("hides earnings when portfolio is all crypto", () => {
+    const groups = buildPortfolioTabGroups({ allCrypto: true });
+    expect(groups.overflow.some((t) => t.id === "earnings")).toBe(false);
+    expect(resolvePortfolioTab("earnings", { allCrypto: true })).toBe("holdings");
+  });
+
+  it("falls back to holdings for unknown tabs", () => {
+    expect(resolvePortfolioTab("nope", { allCrypto: false })).toBe("holdings");
+  });
+
+  it("marks overflow tabs correctly", () => {
+    expect(isOverflowPortfolioTab("news", { allCrypto: false })).toBe(true);
+    expect(isOverflowPortfolioTab("holdings", { allCrypto: false })).toBe(false);
+  });
+});

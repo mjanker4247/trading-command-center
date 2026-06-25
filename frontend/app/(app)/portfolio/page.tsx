@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { Suspense, useState, useEffect, useMemo, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listPortfolios,
@@ -61,9 +62,15 @@ import { SellCandidatesPanel } from "@/components/portfolio/SellCandidatesPanel"
 import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { PageShell } from "@/components/layout/PageShell";
-import { PageTitle } from "@/components/layout/PageHeader";
-
-type Tab = "holdings" | "insights" | "earnings" | "news" | "trending" | "discover" | "chat" | "thesis";
+import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
+import { TabBar, type TabBarItem } from "@/components/layout/TabBar";
+import {
+  buildPortfolioTabGroups,
+  DEFAULT_PORTFOLIO_TAB,
+  resolvePortfolioTab,
+  type PortfolioTab,
+  type PortfolioTabDefinition,
+} from "@/lib/portfolioTabs";
 
 function BatchAnalyzeModal({
   portfolioId,
@@ -197,11 +204,25 @@ function BatchAnalyzeModal({
   );
 }
 
-export default function PortfolioPage() {
+function toTabBarItem(
+  def: PortfolioTabDefinition,
+  alertCount: number,
+): TabBarItem {
+  return {
+    id: def.id,
+    label: def.label,
+    badge: def.badge,
+    alertCount: def.showAlertCount && alertCount > 0 ? alertCount : undefined,
+  };
+}
+
+function PortfolioPageContent() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [preferredId, setPreferredId] = useState<string | null>(() => getLastPortfolioId());
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("holdings");
   const [batchOpen, setBatchOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [drawerHolding, setDrawerHolding] = useState<PortfolioHolding | null>(null);
@@ -226,6 +247,32 @@ export default function PortfolioPage() {
 
   const hasHoldings = (current?.holdings?.length ?? 0) > 0;
   const allCrypto = hasHoldings && (current?.holdings ?? []).every((h) => isCrypto(h.ticker));
+
+  const tab = useMemo(
+    () => resolvePortfolioTab(searchParams.get("tab"), { allCrypto }),
+    [searchParams, allCrypto],
+  );
+
+  const setTab = useCallback(
+    (next: PortfolioTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === DEFAULT_PORTFOLIO_TAB) {
+        params.delete("tab");
+      } else {
+        params.set("tab", next);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  // Drop invalid tab query params (e.g. earnings on an all-crypto portfolio).
+  useEffect(() => {
+    const fromUrl = searchParams.get("tab");
+    if (!fromUrl || fromUrl === tab) return;
+    setTab(tab);
+  }, [searchParams, setTab, tab]);
   const tickers = useMemo(
     () => (current?.holdings ?? []).map((h) => h.ticker),
     [current?.holdings]
@@ -354,7 +401,7 @@ export default function PortfolioPage() {
   function handleSelectPortfolio(id: string) {
     setPreferredId(id);
     setLastPortfolioId(id);
-    setTab("holdings");
+    setTab(DEFAULT_PORTFOLIO_TAB);
   }
 
   useEffect(() => {
@@ -414,20 +461,23 @@ export default function PortfolioPage() {
     (h) => h.current_price == null && current?.price_unavailable_reason !== "no_finnhub_key"
   );
 
-  const TABS: Array<{ id: Tab; label: string; badge?: string; alertCount?: number }> = [
-    { id: "holdings", label: "Holdings" },
-    { id: "insights", label: "AI Insights", badge: "✦", alertCount: alertCount > 0 ? alertCount : undefined },
-    ...(!allCrypto ? [{ id: "earnings" as Tab, label: "Earnings" }] : []),
-    { id: "news", label: "News" },
-    { id: "chat", label: "Chat" },
-    { id: "thesis", label: "Thesis" },
-    { id: "trending", label: "Market", badge: "↑" },
-  ];
+  const tabGroups = useMemo(
+    () => buildPortfolioTabGroups({ allCrypto }),
+    [allCrypto],
+  );
+  const primaryTabs = useMemo(
+    () => tabGroups.primary.map((def) => toTabBarItem(def, alertCount)),
+    [tabGroups.primary, alertCount],
+  );
+  const overflowTabs = useMemo(
+    () => tabGroups.overflow.map((def) => toTabBarItem(def, alertCount)),
+    [tabGroups.overflow, alertCount],
+  );
 
   return (
     <>
     <PageShell width="none" gap="4">
-        <PageTitle>Portfolio</PageTitle>
+        <PageHeader title={<PageTitle>Portfolio</PageTitle>} />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <PortfolioSwitcher
@@ -498,52 +548,13 @@ export default function PortfolioPage() {
           <div className="text-muted text-sm">Loading portfolio…</div>
         )}
 
-        {/* Tab bar — Market tab is always accessible; portfolio tabs require a loaded portfolio */}
         {!loadingPortfolios && (
-          <div className="flex gap-1 border-b border-border overflow-x-auto scrollbar-thin">
-            {selectedId && current && TABS.filter((t) => t.id !== "trending").map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
-                  tab === t.id
-                    ? "border-purple-500 text-fg"
-                    : "border-transparent text-muted hover:text-fg"
-                }`}
-              >
-                <span>{t.label}</span>
-                {t.alertCount != null && (
-                  <span className="text-xs px-1 py-0.5 bg-red-500 text-fg rounded-sm font-mono leading-none min-w-[16px] text-center">
-                    {t.alertCount}
-                  </span>
-                )}
-                {!t.alertCount && t.badge && <span className="text-purple-400 text-xs">{t.badge}</span>}
-              </button>
-            ))}
-            <button
-              onClick={() => setTab("trending")}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
-                tab === "trending"
-                  ? "border-purple-500 text-fg"
-                  : "border-transparent text-muted hover:text-fg"
-              }`}
-            >
-              <span>Market</span>
-              <span className="text-purple-400 text-xs">↑</span>
-            </button>
-            {selectedId && current && (
-              <button
-                onClick={() => setTab("discover")}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  tab === "discover"
-                    ? "border-violet-500 text-violet-400"
-                    : "border-transparent text-muted hover:text-fg"
-                }`}
-              >
-                Discover 🔍
-              </button>
-            )}
-          </div>
+          <TabBar
+            primaryTabs={primaryTabs}
+            overflowTabs={overflowTabs}
+            activeId={tab}
+            onChange={(id) => setTab(id as PortfolioTab)}
+          />
         )}
 
         {/* Tab panels — fixed-width container prevents layout shift between tabs */}
@@ -638,5 +649,18 @@ export default function PortfolioPage() {
         waveEnabled={waveEnabled}
       />
     </>
+  );
+}
+
+export default function PortfolioPage() {
+  return (
+    <Suspense fallback={
+      <PageShell width="none" gap="4">
+        <PageHeader title={<PageTitle>Portfolio</PageTitle>} />
+        <div className="text-muted text-sm">Loading…</div>
+      </PageShell>
+    }>
+      <PortfolioPageContent />
+    </Suspense>
   );
 }

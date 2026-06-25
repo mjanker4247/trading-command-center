@@ -94,8 +94,8 @@ export default function RunsPage() {
     <PageShell>
         <PageHeader
           className="mb-4"
-          leading={<PageTitle className="text-fg text-lg font-semibold">Run History</PageTitle>}
-          trailing={
+          title={<PageTitle className="text-fg text-lg font-semibold">Run History</PageTitle>}
+          actions={
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {lastUpdated && (
               <span className="text-muted text-xs">

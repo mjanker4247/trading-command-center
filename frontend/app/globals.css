@@ -101,6 +101,13 @@
   --color-on-accent: var(--af-on-accent);
 
   /*
+    Accent usage (layout / actions):
+    - blue / link tokens: primary navigation actions (New Run, Save, links)
+    - purple / accent: AI generation flows (insights, batch analyze)
+    - green / red / yellow: verdict and P&L semantics only
+  */
+
+  /*
     Existing components still use Tailwind palette utilities such as
     text-blue-400 and text-green-400. Remap the common accent steps to
     readable semantic colors so those utilities remain contrast-aware.

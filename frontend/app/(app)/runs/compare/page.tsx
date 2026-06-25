@@ -142,7 +142,7 @@ export default function ComparePage() {
     <PageShell width="xl" gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
-          trailing={<PageTitle>Run Comparison</PageTitle>}
+          title={<PageTitle>Run Comparison</PageTitle>}
         />
         <Suspense fallback={<div className="text-muted text-sm">Loading…</div>}>
           <CompareContent />

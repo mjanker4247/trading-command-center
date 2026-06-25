@@ -1,5 +1,13 @@
 import type { ElementType, ReactNode } from "react";
 
+/**
+ * Page width presets — pick the narrowest width that fits the primary content:
+ * - `default` (max-w-5xl): run history, run detail, performance, new run forms
+ * - `wide` (max-w-6xl): watchlist tables, compare
+ * - `full` / `xl` / `none`: portfolio holdings, dashboards with wide tables
+ * - `settings` (max-w-3xl): stacked settings sections
+ * - `narrow` (max-w-2xl): auth-adjacent or single-column flows
+ */
 export type PageWidth = "none" | "narrow" | "settings" | "default" | "wide" | "xl" | "full";
 export type PageGap = "none" | "4" | "6" | "8";
 

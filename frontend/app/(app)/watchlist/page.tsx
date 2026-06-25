@@ -302,7 +302,7 @@ export default function WatchlistPage() {
     <PageShell width="wide" gap="6">
         <PageHeader
           back={{ href: "/runs", label: "← Back to History" }}
-          trailing={<PageTitle>Watchlist</PageTitle>}
+          title={<PageTitle>Watchlist</PageTitle>}
         />
 
         <div className="bg-elevated border border-input-border rounded-xl p-5">
