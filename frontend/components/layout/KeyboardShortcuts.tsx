@@ -12,6 +12,7 @@ const SHORTCUTS: Array<{ keys: string; description: string }> = [
   { keys: "g m", description: "Go to Market" },
   { keys: "g w", description: "Go to Watchlist" },
   { keys: "g f", description: "Go to Performance" },
+  { keys: "g c", description: "Go to Compare" },
   { keys: "g s", description: "Go to Settings" },
   { keys: "?", description: "Show this help" },
 ];
@@ -38,6 +39,7 @@ export function KeyboardShortcuts() {
       { sequencePrefix: "g", key: "m", handler: () => router.push("/market"), description: "Go to Market" },
       { sequencePrefix: "g", key: "w", handler: () => router.push("/watchlist"), description: "Go to Watchlist" },
       { sequencePrefix: "g", key: "f", handler: () => router.push("/runs/performance"), description: "Go to Performance" },
+      { sequencePrefix: "g", key: "c", handler: () => router.push("/runs/compare"), description: "Go to Compare" },
       { sequencePrefix: "g", key: "s", handler: () => router.push("/settings"), description: "Go to Settings" },
     ],
     [router],

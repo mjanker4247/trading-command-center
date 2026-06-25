@@ -42,20 +42,10 @@ import {
   type AppSettings,
 } from "@/lib/appSettings";
 import { PageShell } from "@/components/layout/PageShell";
-
-function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-3">
-        <h2 className="text-fg text-base font-semibold">{title}</h2>
-        {description && <p className="text-muted text-xs mt-0.5">{description}</p>}
-      </div>
-      <div className="bg-surface border border-border rounded-lg overflow-hidden">
-        {children}
-      </div>
-    </section>
-  );
-}
+import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
+import { SectionCard } from "@/components/settings/SectionCard";
+import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import { visibleSettingsSections } from "@/lib/settingsNav";
 
 function Divider() {
   return <div className="border-t border-border" />;
@@ -189,6 +179,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <SectionCard
+      id="strategy"
       title="Strategy Configuration"
       description="Controls analytical module visibility and Kalman trend/noise defaults."
     >
@@ -499,10 +490,12 @@ export default function SettingsPage() {
 
   return (
     <>
-    <PageShell gap="8">
+    <PageShell gap="6">
+        <PageHeader title={<PageTitle>Settings</PageTitle>} />
 
-        {/* Profile */}
-        <SectionCard title="My Profile" description="Your display name and login credentials.">
+        <SettingsLayout sections={visibleSettingsSections(isAdmin)}>
+
+        <SectionCard id="profile" title="My Profile" description="Your display name and login credentials.">
           <div className="px-4 py-4 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <label className="text-muted text-xs sm:w-32 shrink-0">Display Name</label>
@@ -586,8 +579,7 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
-        {/* Investor DNA */}
-        <SectionCard title="Investor DNA" description="Personalize AI insights with your investment context.">
+        <SectionCard id="investor-dna" title="Investor DNA" description="Personalize AI insights with your investment context.">
           <div className="px-4 py-4">
             {profileLoading ? (
               <div className="h-8 bg-input rounded-sm animate-pulse w-48" />
@@ -629,9 +621,8 @@ export default function SettingsPage() {
 
         <StrategySettingsPanel isAdmin={isAdmin} />
 
-        {/* LLM Providers */}
         {isAdmin && (
-          <SectionCard title="LLM Providers" description="API keys and server URLs used when running analyses.">
+          <SectionCard id="llm-providers" title="LLM Providers" description="API keys and server URLs used when running analyses.">
             <SubGroupLabel label="Cloud APIs" />
             {CLOUD_LLM_PROVIDERS.map((provider, i) => (
               <div key={provider}>
@@ -661,9 +652,9 @@ export default function SettingsPage() {
           </SectionCard>
         )}
 
-        {/* Data Providers */}
         {isAdmin && (
           <SectionCard
+            id="data-providers"
             title="Data Providers"
             description="Third-party data sources used for portfolio prices and outcome tracking."
           >
@@ -681,9 +672,9 @@ export default function SettingsPage() {
           </SectionCard>
         )}
 
-        {/* Email Notifications */}
         {isAdmin && (
           <SectionCard
+            id="notifications"
             title="Email Notifications"
             description="Notifies users when their analysis runs complete."
           >
@@ -737,9 +728,8 @@ SMTP_FROM=noreply@yourdomain.com`}
           </SectionCard>
         )}
 
-        {/* Team */}
         {isAdmin && (
-          <SectionCard title="Team" description="Manage members and send invitations.">
+          <SectionCard id="team" title="Team" description="Manage members and send invitations.">
             <div className="divide-y divide-border">
               {users.map((u) => (
                 <TeamMemberRow
@@ -793,9 +783,9 @@ SMTP_FROM=noreply@yourdomain.com`}
           </SectionCard>
         )}
 
-        {/* Database */}
         {isAdmin && (
           <SectionCard
+            id="database"
             title="Database"
             description="Download a full backup or restore from a previously downloaded backup file."
           >
@@ -863,6 +853,8 @@ SMTP_FROM=noreply@yourdomain.com`}
             </div>
           </SectionCard>
         )}
+
+        </SettingsLayout>
 
       </PageShell>
 

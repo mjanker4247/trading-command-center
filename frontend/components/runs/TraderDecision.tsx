@@ -8,12 +8,19 @@ interface Props {
   run: Run | undefined;
   report: Report | undefined;
   metadata?: TickerMetadata;
+  /** Sidebar layout: smaller verdict badge, rationale collapsed below fold. */
+  compact?: boolean;
 }
 
 const verdictStyles: Record<string, string> = {
-  buy: "bg-green-900 text-green-300 text-2xl font-bold px-6 py-3 rounded-lg",
-  sell: "bg-red-900 text-red-300 text-2xl font-bold px-6 py-3 rounded-lg",
-  hold: "bg-yellow-900 text-yellow-300 text-2xl font-bold px-6 py-3 rounded-lg",
+  buy: "bg-green-900 text-green-300 font-bold rounded-lg",
+  sell: "bg-red-900 text-red-300 font-bold rounded-lg",
+  hold: "bg-yellow-900 text-yellow-300 font-bold rounded-lg",
+};
+
+const verdictSize = {
+  default: "text-2xl px-6 py-3",
+  compact: "text-xl px-4 py-2",
 };
 
 interface PriceLevelProps {
@@ -31,7 +38,7 @@ function PriceLevel({ label, value, currency }: PriceLevelProps) {
   );
 }
 
-export function TraderDecision({ run, report, metadata }: Props) {
+export function TraderDecision({ run, report, metadata, compact = false }: Props) {
   const isTerminated = run?.status === "aborted" || run?.status === "failed";
   const hasPrices =
     report?.suggested_entry || report?.suggested_stop || report?.suggested_target;
@@ -39,11 +46,13 @@ export function TraderDecision({ run, report, metadata }: Props) {
     report?.price_currency ?? run?.price_currency,
     metadata?.currency,
   );
+  const sizeClass = compact ? verdictSize.compact : verdictSize.default;
+  const padding = compact ? "p-4" : "p-6";
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-fg text-lg font-semibold">
+    <div className={`bg-surface border border-border rounded-lg ${padding}`}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className={`font-semibold text-fg ${compact ? "text-base" : "text-lg"}`}>
           {run ? (
             <TickerLabel ticker={run.ticker} metadata={metadata} />
           ) : "—"}
@@ -64,25 +73,36 @@ export function TraderDecision({ run, report, metadata }: Props) {
       )}
 
       {report && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div>
-            <span className={verdictStyles[report.verdict] ?? verdictStyles.hold}>
+            <span className={`${verdictStyles[report.verdict] ?? verdictStyles.hold} ${sizeClass}`}>
               {report.verdict.toUpperCase()}
             </span>
           </div>
 
           {hasPrices && (
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 border-t border-input-border pt-4">
+            <div className={`flex flex-col gap-3 border-t border-input-border pt-3 ${compact ? "" : "sm:flex-row sm:gap-6"}`}>
               <PriceLevel label="Entry" value={report.suggested_entry} currency={currency} />
-              <div className="w-px bg-muted-surface" />
+              {!compact && <div className="hidden sm:block w-px bg-muted-surface" />}
               <PriceLevel label="Stop" value={report.suggested_stop} currency={currency} />
-              <div className="w-px bg-muted-surface" />
+              {!compact && <div className="hidden sm:block w-px bg-muted-surface" />}
               <PriceLevel label="Target" value={report.suggested_target} currency={currency} />
             </div>
           )}
 
-          {report.trader_decision && (
+          {report.trader_decision && !compact && (
             <Markdown>{report.trader_decision}</Markdown>
+          )}
+          {report.trader_decision && compact && (
+            <details className="group border-t border-input-border pt-3">
+              <summary className="cursor-pointer text-xs text-muted hover:text-fg-secondary list-none flex items-center justify-between">
+                <span>Rationale</span>
+                <span className="text-subtle group-open:rotate-180 transition-transform">▾</span>
+              </summary>
+              <div className="mt-2 text-sm">
+                <Markdown>{report.trader_decision}</Markdown>
+              </div>
+            </details>
           )}
         </div>
       )}

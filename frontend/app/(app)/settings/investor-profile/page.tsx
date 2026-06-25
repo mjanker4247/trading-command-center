@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getInvestorProfile, upsertInvestorProfile } from "@/lib/api";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 
 const SECTORS = [
   { slug: "technology", label: "Technology" },
@@ -175,17 +176,17 @@ export default function InvestorProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investorProfile"] });
       setSaved(true);
-      setTimeout(() => router.push("/settings"), 800);
+      setTimeout(() => router.push("/settings#investor-dna"), 800);
     },
   });
 
   return (
-    <PageShell>
-        <div className="flex items-center gap-3 mb-8">
-          <a href="/settings" className="text-muted hover:text-fg-secondary text-sm">← Settings</a>
-          <h1 className="text-lg font-semibold text-fg">Investor DNA</h1>
-        </div>
-        <p className="text-muted text-sm mb-8">
+    <PageShell gap="6">
+        <PageHeader
+          back={{ href: "/settings#investor-dna", label: "← Settings" }}
+          title={<PageTitle>Investor DNA</PageTitle>}
+        />
+        <p className="text-muted text-sm -mt-2">
           All fields are optional. The more context you provide, the more personalized your AI portfolio insights will be.
         </p>
 

@@ -9,6 +9,7 @@ interface Props {
   verdict: "buy" | "sell" | "hold" | null | undefined;
   priceCurrency?: string | null;
   metadataCurrency?: string | null;
+  variant?: "default" | "compact";
 }
 
 function directionColor(direction: KalmanData["trend_direction"]): string {
@@ -52,7 +53,7 @@ function MiniKalmanChart({ chart, currency }: { chart: KalmanData["chart"]; curr
   );
 }
 
-export function KalmanConfirmation({ ticker, verdict, priceCurrency, metadataCurrency }: Props) {
+export function KalmanConfirmation({ ticker, verdict, priceCurrency, metadataCurrency, variant = "default" }: Props) {
   const { data: kalman, isLoading } = useQuery<KalmanData | null>({
     queryKey: ["ticker-kalman", ticker],
     queryFn: () => getTickerKalman(ticker),
@@ -78,6 +79,28 @@ export function KalmanConfirmation({ ticker, verdict, priceCurrency, metadataCur
   const isNeutral = !verdict || verdict === "hold" || kalman.trend_direction === "flat";
   const signalStr = kalman.signal >= 0 ? `+${kalman.signal.toFixed(2)}` : kalman.signal.toFixed(2);
   const borderColor = isConflict ? "border-amber-500/40" : !isNeutral ? "border-green-500/40" : "border-input-border";
+  const agreementLabel = isConflict ? "Conflicts" : isNeutral ? "Neutral" : "Confirms";
+  const agreementClass = isConflict ? "text-amber-400" : isNeutral ? "text-muted" : "text-green-400";
+
+  if (variant === "compact") {
+    return (
+      <details open={isConflict} className={`bg-elevated border ${borderColor} rounded-lg text-xs`}>
+        <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between gap-2">
+          <span className="font-medium text-fg">Kalman trend</span>
+          <span className={`font-semibold shrink-0 ${agreementClass}`}>{agreementLabel}</span>
+        </summary>
+        <div className="px-3 pb-3 pt-2 border-t border-input-border/50 space-y-2">
+          <p className={`font-semibold capitalize ${directionColor(kalman.trend_direction)}`}>
+            {kalman.trend_direction} · <span className="font-mono">{signalStr}</span>
+          </p>
+          <div className="flex flex-wrap gap-3 text-[10px] text-muted font-mono">
+            <span>{fmtMoney(kalman.latest_price, currency)}</span>
+            <span>Kalman {fmtMoney(kalman.kalman_price, currency)}</span>
+          </div>
+        </div>
+      </details>
+    );
+  }
 
   return (
     <div className={`bg-elevated border ${borderColor} rounded-lg p-4 space-y-3`}>

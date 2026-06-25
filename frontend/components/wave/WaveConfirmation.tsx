@@ -12,6 +12,7 @@ interface Props {
   suggestedStop?: string | null;
   suggestedTarget?: string | null;
   priceCurrency?: string | null;
+  variant?: "default" | "compact";
 }
 
 function parsePrice(value: string | null | undefined): number | null {
@@ -36,6 +37,7 @@ export function WaveConfirmation({
   suggestedStop,
   suggestedTarget,
   priceCurrency,
+  variant = "default",
 }: Props) {
   const { data: wave, isLoading } = useQuery<WaveSummary | null>({
     queryKey: ["ticker-wave", ticker],
@@ -71,6 +73,38 @@ export function WaveConfirmation({
     wave.zone_high != null &&
     entry >= wave.zone_low &&
     entry <= wave.zone_high;
+
+  const agreementLabel =
+    aligns === false ? "Conflicts" : aligns === true ? "Confirms" : "Neutral";
+  const agreementClass =
+    aligns === false ? "text-amber-400" : aligns === true ? "text-green-400" : "text-muted";
+
+  if (variant === "compact") {
+    return (
+      <details open={aligns === false} className={`bg-elevated border ${borderColor} rounded-lg text-xs`}>
+        <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between gap-2">
+          <span className="font-medium text-fg">Elliott / Fib</span>
+          <span className={`font-semibold shrink-0 ${agreementClass}`}>{agreementLabel}</span>
+        </summary>
+        <div className="px-3 pb-3 pt-2 border-t border-input-border/50 space-y-2">
+          <p className="font-semibold text-fg">
+            {wave.top_direction ?? "—"}
+            {wave.top_scenario ? ` · ${wave.top_scenario}` : ""}
+          </p>
+          {wave.zone_low != null && wave.zone_high != null && (
+            <p className="font-mono text-[10px] text-muted">
+              Zone {fmtMoney(wave.zone_low, waveCurrency)} – {fmtMoney(wave.zone_high, waveCurrency)}
+              {entry != null && (
+                <span className={inZone ? " text-green-400" : ""}>
+                  {inZone ? " · entry in zone" : " · entry outside"}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      </details>
+    );
+  }
 
   return (
     <div className={`bg-elevated border ${borderColor} rounded-lg p-4 space-y-3`}>
