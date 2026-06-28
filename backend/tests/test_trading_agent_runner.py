@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.services.trading_agent_runner import (
+    _build_provider_env_patch,
     _extract_trader_decision,
     _normalize_price,
     _parse_verdict,
@@ -55,6 +56,27 @@ async def test_extract_trader_decision_falls_back_to_state():
     )
     rec = SimpleNamespace(rationale="")
     assert "BUY" in _extract_trader_decision(state, rec)
+
+
+async def test_openai_compatible_local_providers_use_local_defaults_without_stored_url():
+    assert _build_provider_env_patch("vllm", None) == {
+        "OPENAI_BASE_URL": "http://localhost:8080/v1",
+        "OPENAI_API_KEY": "vllm",
+    }
+    assert _build_provider_env_patch("litellm", None) == {
+        "OPENAI_BASE_URL": "http://localhost:4000/v1",
+        "OPENAI_API_KEY": "litellm",
+    }
+
+
+async def test_local_provider_urls_are_normalized():
+    assert _build_provider_env_patch("ollama", "http://localhost:11434/") == {
+        "OLLAMA_HOST": "http://localhost:11434",
+    }
+    assert _build_provider_env_patch("vllm", "http://localhost:9000/") == {
+        "OPENAI_BASE_URL": "http://localhost:9000/v1",
+        "OPENAI_API_KEY": "vllm",
+    }
 
 
 # ── reasoning_effort guard (Groq / IONOS) ────────────────────────────────────

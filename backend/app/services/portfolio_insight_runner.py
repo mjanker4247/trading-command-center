@@ -411,7 +411,7 @@ def _build_prompt(
             avg_signal = sum(signals) / len(signals) if signals else 0.0
             direction = "bullish" if avg_signal > 0.1 else "bearish" if avg_signal < -0.1 else "neutral"
             regime_block = (
-                f"\nREGIME CONTEXT (Markov chain analysis, yfinance 10y daily):\n"
+                "\nREGIME CONTEXT (Markov chain analysis, yfinance 10y daily):\n"
                 + "\n".join(regime_lines)
                 + f"\n\nPortfolio regime distribution: {bull_count} Bull · {sideways_count} Sideways · {bear_count} Bear"
                 + f"\nPortfolio avg signal: {avg_signal:+.2f} ({direction})"
@@ -533,8 +533,7 @@ async def generate_portfolio_insight(insight_id: str) -> None:
             # Fetch LLM key for the chosen provider
             llm_provider = insight.llm_provider
             llm_model = insight.llm_model
-            provider_for_key = llm_provider if llm_provider not in ("vllm",) else "openai"
-            llm_key = await _get_api_key(provider_for_key, db)
+            llm_key = await _get_api_key(llm_provider, db)
 
             # Fetch prices — crypto batched into one CoinGecko call, stocks via Finnhub.
             from app.models.user import User

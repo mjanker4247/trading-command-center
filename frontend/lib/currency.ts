@@ -6,13 +6,25 @@ export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 export function fmtMoney(n: number | null | undefined, currency: string): string {
   if (n == null) return "—";
-  const fractionDigits = currency === "JPY" ? 0 : 2;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
+  const code = currency.toUpperCase();
+  const fractionDigits = code === "JPY" ? 0 : 2;
+  const options = {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(n);
+  };
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      ...options,
+    }).format(n);
+  } catch (exc) {
+    if (!(exc instanceof RangeError)) {
+      throw exc;
+    }
+    return `${n.toLocaleString("en-US", options)} ${code}`;
+  }
 }
 
 export function fmtPnl(pnl: number | null | undefined, pct: number | null | undefined, currency: string): string {

@@ -4,7 +4,12 @@ from queue import Queue as SyncQueue
 from datetime import datetime, timezone
 from langchain_core.callbacks import BaseCallbackHandler
 
-from app.services.llm_provider_registry import is_openai_compatible_local_provider, openai_compatible_base_url
+from app.services.llm_provider_registry import (
+    LOCAL_PROVIDER_DEFAULT_URLS,
+    is_openai_compatible_local_provider,
+    normalize_base_url,
+    openai_compatible_base_url,
+)
 
 # Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
 _env_fallback_lock = asyncio.Lock()
@@ -95,6 +100,32 @@ async def _get_stored_key(provider: str) -> str | None:
     if not row:
         return None
     return decrypt_key(row.encrypted_key)
+
+
+def _build_provider_env_patch(provider: str, stored_key: str | None) -> dict[str, str]:
+    """Return env vars needed by TradingAgents for the selected provider."""
+    if provider == "ionos" and stored_key:
+        return {
+            "OPENAI_BASE_URL": "https://openai.inference.de-txl.ionos.com/v1",
+            "OPENAI_API_KEY": stored_key,
+        }
+    if provider == "groq" and stored_key:
+        return {
+            "OPENAI_BASE_URL": "https://api.groq.com/openai/v1",
+            "OPENAI_API_KEY": stored_key,
+        }
+    if provider in _CLOUD_KEY_ENV and stored_key:
+        return {_CLOUD_KEY_ENV[provider]: stored_key}
+    if provider == "ollama":
+        base_url = stored_key or LOCAL_PROVIDER_DEFAULT_URLS[provider]
+        return {"OLLAMA_HOST": normalize_base_url(base_url)}
+    if is_openai_compatible_local_provider(provider):
+        base_url = stored_key or LOCAL_PROVIDER_DEFAULT_URLS[provider]
+        return {
+            "OPENAI_BASE_URL": openai_compatible_base_url(base_url),
+            "OPENAI_API_KEY": provider,
+        }
+    return {}
 
 
 async def execute_run(run_id: str, config: dict) -> None:
@@ -191,20 +222,7 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         # Patch env vars needed by TradingAgents: API keys for cloud providers,
         # server URLs for local inference.
-        env_patch: dict[str, str] = {}
-        if provider == "ionos" and stored_key:
-            env_patch["OPENAI_BASE_URL"] = "https://openai.inference.de-txl.ionos.com/v1"
-            env_patch["OPENAI_API_KEY"] = stored_key
-        elif provider == "groq" and stored_key:
-            env_patch["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
-            env_patch["OPENAI_API_KEY"] = stored_key
-        elif provider in _CLOUD_KEY_ENV and stored_key:
-            env_patch[_CLOUD_KEY_ENV[provider]] = stored_key
-        elif provider == "ollama" and stored_key:
-            env_patch["OLLAMA_HOST"] = stored_key.rstrip("/")
-        elif is_openai_compatible_local_provider(provider) and stored_key:
-            env_patch["OPENAI_BASE_URL"] = openai_compatible_base_url(stored_key)
-            env_patch["OPENAI_API_KEY"] = provider
+        env_patch = _build_provider_env_patch(provider, stored_key)
 
         needs_lock = bool(env_patch)
         prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
@@ -302,7 +320,9 @@ async def execute_run(run_id: str, config: dict) -> None:
         await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
 
     except Exception as exc:
-        import traceback, logging
+        import logging
+        import traceback
+
         logging.getLogger(__name__).error("Run %s failed: %s", run_id, traceback.format_exc())
         drain_task.cancel()
         process_task.cancel()
@@ -349,7 +369,7 @@ def _extract_trader_decision(state, recommendation) -> str:
     return str(final_decision).strip()
 
 
-def _parse_verdict(recommendation) -> "RunVerdict":
+def _parse_verdict(recommendation):
     from app.models.run import RunVerdict
 
     signal = str(getattr(recommendation, "signal", "")).strip().lower()
