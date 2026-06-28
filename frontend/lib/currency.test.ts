@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fmtMoney } from "./currency.ts";
+import { fmtMoney } from "./currency";
 
 test("fmtMoney formats standard ISO currencies", () => {
   assert.equal(fmtMoney(1234.56, "USD"), "$1,234.56");
