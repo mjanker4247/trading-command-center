@@ -320,7 +320,9 @@ async def execute_run(run_id: str, config: dict) -> None:
         await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
 
     except Exception as exc:
-        import traceback, logging
+        import logging
+        import traceback
+
         logging.getLogger(__name__).error("Run %s failed: %s", run_id, traceback.format_exc())
         drain_task.cancel()
         process_task.cancel()
@@ -367,7 +369,7 @@ def _extract_trader_decision(state, recommendation) -> str:
     return str(final_decision).strip()
 
 
-def _parse_verdict(recommendation) -> "RunVerdict":
+def _parse_verdict(recommendation):
     from app.models.run import RunVerdict
 
     signal = str(getattr(recommendation, "signal", "")).strip().lower()

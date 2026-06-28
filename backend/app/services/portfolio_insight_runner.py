@@ -411,7 +411,7 @@ def _build_prompt(
             avg_signal = sum(signals) / len(signals) if signals else 0.0
             direction = "bullish" if avg_signal > 0.1 else "bearish" if avg_signal < -0.1 else "neutral"
             regime_block = (
-                f"\nREGIME CONTEXT (Markov chain analysis, yfinance 10y daily):\n"
+                "\nREGIME CONTEXT (Markov chain analysis, yfinance 10y daily):\n"
                 + "\n".join(regime_lines)
                 + f"\n\nPortfolio regime distribution: {bull_count} Bull · {sideways_count} Sideways · {bear_count} Bear"
                 + f"\nPortfolio avg signal: {avg_signal:+.2f} ({direction})"
