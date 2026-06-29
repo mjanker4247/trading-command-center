@@ -59,6 +59,7 @@ import { Briefcase } from "lucide-react";
 import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
 import {
+  ALERT_BANNER_CLASS,
   BTN_AI_CLASS,
   BTN_GHOST_CLASS,
   BTN_SECONDARY_CLASS,
@@ -593,7 +594,7 @@ function PortfolioPageContent() {
                   />
                 )}
                 {markovEnabled && trimSignalsError && (
-                  <div className="rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-400/90">
+                  <div className={ALERT_BANNER_CLASS}>
                     Trim signals could not be loaded. Sell-candidate flags may be incomplete.{" "}
                     <button
                       type="button"

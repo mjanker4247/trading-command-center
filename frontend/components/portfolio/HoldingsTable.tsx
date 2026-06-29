@@ -14,7 +14,7 @@ import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimS
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HoldingsMobileCards } from "@/components/portfolio/HoldingsMobileCards";
-import { FIELD_INPUT_SM_CLASS, BTN_SECONDARY_CLASS } from "@/lib/uiClasses";
+import { FIELD_INPUT_SM_CLASS, BTN_SECONDARY_CLASS, ALERT_BANNER_CLASS } from "@/lib/uiClasses";
 
 interface HoldingsTableProps {
   portfolioId: string;
@@ -529,14 +529,14 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
   return (
     <div className="space-y-3">
       {priceUnavailableReason === "no_finnhub_key" && (
-        <div className="text-xs text-amber-400/80 bg-amber-900/20 border border-amber-700/40 rounded-md px-3 py-2">
+        <div className={`${ALERT_BANNER_CLASS} text-amber-400/80`}>
           Showing delayed prices via Yahoo Finance — add your Finnhub API key in{" "}
           <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>{" "}
           for real-time data.
         </div>
       )}
       {fundamentalsMessage && (
-        <div className="text-xs text-amber-400/90 bg-amber-900/20 border border-amber-700/40 rounded-md px-3 py-2">
+        <div className={ALERT_BANNER_CLASS}>
           {fundamentalsMessage}
         </div>
       )}
@@ -789,10 +789,20 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
               <SortableHeader label="Unrealized P&L" colKey="unrealized_pnl" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
               <th className="text-left px-3 py-3 whitespace-nowrap text-xs text-muted">Last analysis</th>
               {showDetailColumns && hasRegime && (
-                <th className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-xs text-muted">AI vs regime</th>
+                <th
+                  className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-xs text-muted"
+                  title="Compares latest AI verdict (buy/sell/hold) with the Markov regime signal (bull/sideways/bear)"
+                >
+                  AI vs regime
+                </th>
               )}
               {showDetailColumns && hasTrimSignals && (
-                <th className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-xs text-muted">Trim</th>
+                <th
+                  className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-xs text-muted"
+                  title="Sell-candidate score from regime, fundamentals, and position size — strong trim suggests reducing exposure"
+                >
+                  Trim
+                </th>
               )}
               <th className="text-left px-3 py-3 text-xs text-muted">Actions</th>
             </tr>

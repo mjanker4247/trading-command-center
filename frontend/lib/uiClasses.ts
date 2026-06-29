@@ -18,6 +18,10 @@ export const BTN_PRIMARY_SM_CLASS =
 export const BTN_SECONDARY_CLASS =
   "inline-flex items-center justify-center rounded-lg border border-input-border bg-surface px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:border-border-strong hover:bg-muted-surface hover:text-fg disabled:opacity-50";
 
+/** Amber warning strip — Finnhub missing, partial data, trim errors. */
+export const ALERT_BANNER_CLASS =
+  "text-xs text-amber-400/90 bg-amber-900/20 border border-amber-700/40 rounded-md px-3 py-2";
+
 export const BTN_GHOST_CLASS =
   "rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:text-fg disabled:opacity-30";
 
