@@ -559,9 +559,19 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
           onClick={() => setShowDetailColumns((v) => !v)}
           className={BTN_SECONDARY_CLASS}
           aria-pressed={showDetailColumns}
+          title={
+            !showDetailColumns && (hasRegime || hasTrimSignals)
+              ? "Show price, value, regime agreement, and trim columns. Expand a row for full fundamentals."
+              : undefined
+          }
         >
           {showDetailColumns ? "Fewer columns" : "More columns"}
         </button>
+        {!showDetailColumns && (hasRegime || hasTrimSignals) && (
+          <span className="text-xs text-muted">
+            Regime &amp; trim signals in more columns · expand rows for fundamentals
+          </span>
+        )}
         {isFiltered && (
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted tabular-nums">

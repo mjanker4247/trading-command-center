@@ -18,6 +18,8 @@ const VALID_TABS: readonly PortfolioTab[] = [
 export interface PortfolioTabDefinition {
   id: PortfolioTab;
   label: string;
+  /** Shown below `sm` when the full label would crowd the tab bar. */
+  shortLabel?: string;
   tier: "primary" | "overflow";
   badge?: string;
   /** Shown on tab when behavioral alerts exist (Insights only). */
@@ -27,8 +29,8 @@ export interface PortfolioTabDefinition {
 
 const BASE_TAB_DEFINITIONS: PortfolioTabDefinition[] = [
   { id: "holdings", label: "Holdings", tier: "primary" },
-  { id: "insights", label: "AI Insights", tier: "primary", badge: "✦", showAlertCount: true },
-  { id: "earnings", label: "Earnings", tier: "primary", hideWhenAllCrypto: true },
+  { id: "insights", label: "AI Insights", shortLabel: "Insights", tier: "primary", badge: "✦", showAlertCount: true },
+  { id: "earnings", label: "Earnings", shortLabel: "Earn.", tier: "primary", hideWhenAllCrypto: true },
   { id: "news", label: "News", tier: "primary" },
   { id: "chat", label: "Chat", tier: "overflow" },
   { id: "thesis", label: "Thesis", tier: "overflow" },

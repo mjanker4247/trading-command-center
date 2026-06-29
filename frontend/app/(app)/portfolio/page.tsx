@@ -217,6 +217,7 @@ function toTabBarItem(
   return {
     id: def.id,
     label: def.label,
+    shortLabel: def.shortLabel,
     badge: def.badge,
     alertCount: def.showAlertCount && alertCount > 0 ? alertCount : undefined,
   };
@@ -325,7 +326,7 @@ function PortfolioPageContent() {
     staleTime: PORTFOLIO_STALE_TIMES.wave,
   });
 
-  const { data: trimSignals, isFetching: fetchingTrimSignals } = useQuery<TrimSignalsResponse>({
+  const { data: trimSignals, isFetching: fetchingTrimSignals, isError: trimSignalsError, refetch: refetchTrimSignals } = useQuery<TrimSignalsResponse>({
     queryKey: portfolioQueryKeys.trimSignals(selectedId ?? ""),
     queryFn: () => getPortfolioTrimSignals(selectedId!),
     enabled: selectedId != null && markovEnabled,
@@ -597,6 +598,18 @@ function PortfolioPageContent() {
                     regime={markovEnabled ? regime : undefined}
                     trimSignals={markovEnabled ? trimByHoldingId : undefined}
                   />
+                )}
+                {markovEnabled && trimSignalsError && (
+                  <div className="rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-400/90">
+                    Trim signals could not be loaded. Sell-candidate flags may be incomplete.{" "}
+                    <button
+                      type="button"
+                      onClick={() => refetchTrimSignals()}
+                      className="text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 )}
                 {markovEnabled && (
                   <SellCandidatesPanel

@@ -11,6 +11,7 @@ const GAP = 4;
 export type TabBarItem = {
   id: string;
   label: string;
+  shortLabel?: string;
   badge?: string;
   alertCount?: number;
 };
@@ -44,13 +45,20 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onSelect}
-      className={`flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors -mb-px whitespace-nowrap ${
+      className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors -mb-px whitespace-nowrap sm:px-4 ${
         active
           ? "border-purple-500 text-fg"
           : "border-transparent text-muted hover:text-fg"
       }`}
     >
-      <span>{tab.label}</span>
+      {tab.shortLabel ? (
+        <>
+          <span className="sm:hidden">{tab.shortLabel}</span>
+          <span className="hidden sm:inline">{tab.label}</span>
+        </>
+      ) : (
+        <span>{tab.label}</span>
+      )}
       {tab.alertCount != null && tab.alertCount > 0 && (
         <span className="min-w-[16px] rounded-sm bg-red-500 px-1 py-0.5 text-center font-mono text-xs leading-none text-fg">
           {tab.alertCount}
@@ -155,7 +163,7 @@ export function TabBar({
   return (
     <div
       role="tablist"
-      className={`flex gap-1 border-b border-border ${className}`.trim()}
+      className={`flex gap-1 overflow-x-auto border-b border-border scrollbar-thin ${className}`.trim()}
     >
       {primaryTabs.map((tab) => (
         <TabButton
@@ -179,13 +187,26 @@ export function TabBar({
             aria-expanded={menuOpen}
             aria-controls={menuOpen ? menuId : undefined}
             onClick={() => setMenuOpen((open) => !open)}
-            className={`flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors -mb-px whitespace-nowrap ${
+            className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors -mb-px whitespace-nowrap sm:px-4 ${
               activeOverflow
                 ? "border-purple-500 text-fg"
                 : "border-transparent text-muted hover:text-fg"
             }`}
           >
-            <span>{activeOverflow && activeOverflowTab ? activeOverflowTab.label : overflowLabel}</span>
+            <span>
+              {activeOverflow && activeOverflowTab ? (
+                activeOverflowTab.shortLabel ? (
+                  <>
+                    <span className="sm:hidden">{activeOverflowTab.shortLabel}</span>
+                    <span className="hidden sm:inline">{activeOverflowTab.label}</span>
+                  </>
+                ) : (
+                  activeOverflowTab.label
+                )
+              ) : (
+                overflowLabel
+              )}
+            </span>
             <span className="text-xs text-muted" aria-hidden>
               {menuOpen ? "▴" : "▾"}
             </span>
