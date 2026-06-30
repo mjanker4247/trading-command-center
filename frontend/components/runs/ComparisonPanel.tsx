@@ -5,6 +5,7 @@ import { agreementBannerClass } from "@/lib/uiClasses";
 import type { RunWithReport, TickerMetadata } from "@/lib/types";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { fmtPriceString, resolveQuoteCurrency } from "@/lib/currency";
+import { useDateFormat } from "@/lib/useDateFormat";
 
 const VERDICT_COLOR: Record<string, string> = {
   buy: "text-green-400",
@@ -32,6 +33,7 @@ function RunColumn({
   metadata?: TickerMetadata;
 }) {
   const { run, report } = data;
+  const { formatDate } = useDateFormat();
   const raw = report?.raw_report as Record<string, unknown> | undefined;
   const currency = resolveQuoteCurrency(report?.price_currency ?? run.price_currency);
 
@@ -40,7 +42,7 @@ function RunColumn({
       <div className="flex items-center gap-3 flex-wrap">
         <span className="bg-muted-surface text-fg-secondary text-xs font-bold px-2 py-0.5 rounded-sm">Run {side}</span>
         <TickerLabel ticker={run.ticker} metadata={metadata} logoSize="md" />
-        <span className="text-sm text-muted">{run.analysis_date}</span>
+        <span className="text-sm text-muted">{formatDate(run.analysis_date)}</span>
       </div>
 
       {report ? (

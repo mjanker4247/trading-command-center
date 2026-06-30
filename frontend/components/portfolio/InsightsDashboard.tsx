@@ -10,6 +10,7 @@ import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { BehavioralAlerts } from "@/components/portfolio/BehavioralAlerts";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, BTN_AI_SM_CLASS, BTN_SECONDARY_CLASS, FIELD_INPUT_CLASS } from "@/lib/uiClasses";
 
 const ACTION_COLORS: Record<string, string> = {
@@ -56,12 +57,6 @@ function stanceColor(stance: string): string {
   if (stance === "bearish") return "bg-red-500/20 text-red-300 border-red-500/30";
   if (stance === "mixed")   return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
   return "bg-muted-surface text-fg-secondary border-input-border";
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 function timeAgo(iso: string): string {
@@ -294,6 +289,7 @@ function triggerDownload(blob: Blob, filename: string) {
 
 function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; portfolioName?: string }) {
   const [pdfLoading, setPdfLoading] = useState(false);
+  const { dateFormat, formatDateTime, formatFilenameDate } = useDateFormat();
   const actionTickers = (insight.action_items ?? [])
     .map((item) => item.ticker)
     .filter((ticker): ticker is string => Boolean(ticker));
@@ -309,10 +305,9 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
         import("@/lib/export/InsightPdf"),
       ]);
       const blob = await pdf(
-        <InsightDocument insight={insight} portfolioName={portfolioName} />
+        <InsightDocument insight={insight} portfolioName={portfolioName} dateFormat={dateFormat} />
       ).toBlob();
-      const date = new Date(insight.generated_at).toISOString().slice(0, 10);
-      triggerDownload(blob, `${portfolioName ?? "portfolio"}-insights-${date}.pdf`);
+      triggerDownload(blob, `${portfolioName ?? "portfolio"}-insights-${formatFilenameDate()}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);
     } finally {
@@ -357,7 +352,7 @@ function InsightView({ insight, portfolioName }: { insight: PortfolioInsight; po
                 {insight.overall_stance}
               </span>
             )}
-            <span className="text-subtle text-xs">{fmtDate(insight.generated_at)}</span>
+            <span className="text-subtle text-xs">{formatDateTime(insight.generated_at)}</span>
             <span className="text-subtle text-xs">·</span>
             <span className="text-subtle text-xs capitalize">{insight.trigger}</span>
             <div className="flex-1" />

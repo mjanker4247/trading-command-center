@@ -7,6 +7,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { BTN_SECONDARY_CLASS } from "@/lib/uiClasses";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { useDateFormat } from "@/lib/useDateFormat";
 
 function AccuracyBadge({ value }: { value: number | null }) {
   if (value === null) return <span className="text-muted text-sm">—</span>;
@@ -15,6 +16,7 @@ function AccuracyBadge({ value }: { value: number | null }) {
 }
 
 export default function PerformancePage() {
+  const { dateFormat, formatDate } = useDateFormat();
   const { data, isLoading } = useQuery({
     queryKey: ["performance"],
     queryFn: getPerformanceStats,
@@ -32,7 +34,7 @@ export default function PerformancePage() {
           title={<PageTitle>Trade Accuracy</PageTitle>}
           actions={
             <button
-              onClick={() => data && downloadPerformanceCsv(data)}
+              onClick={() => data && downloadPerformanceCsv(data, dateFormat)}
               disabled={!data || data.outcomes.length === 0}
               title="Export outcomes table to CSV"
               className={BTN_SECONDARY_CLASS}
@@ -66,7 +68,7 @@ export default function PerformancePage() {
                 <thead className="bg-page">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Ticker</th>
-                    <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase min-w-[6.75rem] whitespace-nowrap">Date</th>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Verdict</th>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Day 0</th>
                     <th className="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">+7d</th>
@@ -99,7 +101,7 @@ export default function PerformancePage() {
                             href={`/runs/${o.run_id}`}
                           />
                         </td>
-                        <td className="px-4 py-3 text-muted">{o.analysis_date}</td>
+                        <td className="px-4 py-3 text-muted whitespace-nowrap">{formatDate(o.analysis_date)}</td>
                         <td className="px-4 py-3">
                           <span className={o.verdict === "buy" ? "text-green-400" : o.verdict === "sell" ? "text-red-400" : "text-amber-400"}>
                             {o.verdict.toUpperCase()}

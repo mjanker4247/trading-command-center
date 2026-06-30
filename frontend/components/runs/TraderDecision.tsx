@@ -3,6 +3,7 @@ import { TickerLabel } from "@/components/ui/TickerLabel";
 import type { Run, Report, TickerMetadata } from "@/lib/types";
 import { Markdown } from "@/components/ui/Markdown";
 import { fmtPriceString, resolveQuoteCurrency } from "@/lib/currency";
+import { useDateFormat } from "@/lib/useDateFormat";
 
 interface Props {
   run: Run | undefined;
@@ -95,6 +96,7 @@ export function TraderDecision({ run, report, metadata, compact = false }: Props
     report?.price_currency ?? run?.price_currency,
     metadata?.currency,
   );
+  const { formatDate } = useDateFormat();
   const sizeClass = compact ? verdictSize.compact : verdictSize.default;
   const padding = compact ? "p-4" : "p-6";
 
@@ -107,7 +109,7 @@ export function TraderDecision({ run, report, metadata, compact = false }: Props
           ) : "—"}
         </h2>
         {run?.analysis_date && (
-          <span className="text-muted text-sm">{run.analysis_date}</span>
+          <span className="text-muted text-sm">{formatDate(run.analysis_date)}</span>
         )}
       </div>
 

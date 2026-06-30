@@ -1,6 +1,11 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { PortfolioInsight } from "../types";
+import {
+  DEFAULT_DATE_FORMAT,
+  formatDateTimeValue,
+  type DateFormatId,
+} from "@/lib/dateFormat";
 
 const HEADER_HEIGHT = 36;
 const FOOTER_HEIGHT = 28;
@@ -185,15 +190,16 @@ function severityBg(s: string) {
   return "#1e3a5f";
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    year: "numeric", month: "long", day: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
-export function InsightDocument({ insight, portfolioName }: { insight: PortfolioInsight; portfolioName?: string }) {
-  const date = formatDate(insight.generated_at);
+export function InsightDocument({
+  insight,
+  portfolioName,
+  dateFormat = DEFAULT_DATE_FORMAT,
+}: {
+  insight: PortfolioInsight;
+  portfolioName?: string;
+  dateFormat?: DateFormatId;
+}) {
+  const date = formatDateTimeValue(dateFormat, insight.generated_at);
   const stance = insight.overall_stance ?? "neutral";
   const stanceBg = STANCE_COLOR[stance] ?? "#1e3a5f";
   const sectors = insight.sector_analysis

@@ -16,6 +16,8 @@ import {
   updateAppSettings,
 } from "@/lib/api";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
+import { DATE_FORMAT_OPTIONS, DEFAULT_DATE_FORMAT, type DateFormatId } from "@/lib/dateFormat";
+import { useDateFormat } from "@/lib/useDateFormat";
 import {
   CLOUD_LLM_PROVIDERS,
   DEFAULT_LLM_DEPTH,
@@ -58,6 +60,7 @@ import {
 
 const SETTINGS_INPUT_CLASS = `${FIELD_INPUT_CLASS} w-full sm:max-w-xs`;
 const SETTINGS_INPUT_MD_CLASS = `${FIELD_INPUT_CLASS} w-full sm:max-w-md`;
+const SETTINGS_INPUT_DATE_FORMAT_CLASS = `${FIELD_INPUT_CLASS} w-full min-w-[15rem] sm:max-w-lg`;
 const SETTINGS_INPUT_NARROW_CLASS = `${FIELD_INPUT_CLASS} w-32`;
 const SETTINGS_INPUT_COMPACT_CLASS = `${FIELD_INPUT_SM_CLASS} w-full sm:max-w-xs`;
 
@@ -393,6 +396,8 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [preferredCurrency, setPreferredCurrency] = useState("USD");
+  const [dateFormat, setDateFormat] = useState<DateFormatId>(DEFAULT_DATE_FORMAT);
+  const { formatFilenameDate } = useDateFormat();
   const [defaultLlmConfig, setDefaultLlmConfig] = useState<LlmConfigValue>({
     provider: DEFAULT_LLM_PROVIDER,
     model: "",
@@ -404,6 +409,7 @@ export default function SettingsPage() {
   // Sync preferred_currency and default LLM config from server once loaded
   useEffect(() => {
     if (me?.preferred_currency) setPreferredCurrency(me.preferred_currency);
+    if (me?.date_format) setDateFormat(me.date_format as DateFormatId);
     if (me) {
       setDefaultLlmConfig({
         provider: (me.default_llm_provider as LlmProvider) ?? DEFAULT_LLM_PROVIDER,
@@ -411,7 +417,7 @@ export default function SettingsPage() {
         depth: (me.default_llm_depth as LlmDepth) ?? DEFAULT_LLM_DEPTH,
       });
     }
-  }, [me?.preferred_currency, me?.default_llm_provider, me?.default_llm_model, me?.default_llm_depth, me]);
+  }, [me?.preferred_currency, me?.date_format, me?.default_llm_provider, me?.default_llm_model, me?.default_llm_depth, me]);
 
   const profileMutation = useMutation({
     mutationFn: () => {
@@ -427,6 +433,7 @@ export default function SettingsPage() {
         ...(profileName.trim() ? { name: profileName.trim() } : {}),
         ...(currentPassword && newPassword ? { current_password: currentPassword, new_password: newPassword } : {}),
         preferred_currency: preferredCurrency,
+        date_format: dateFormat,
         default_llm_provider: defaultLlmConfig.provider,
         default_llm_model: defaultLlmConfig.model.trim() || null,
         default_llm_depth: defaultLlmConfig.depth ?? DEFAULT_LLM_DEPTH,
@@ -492,7 +499,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `agentfloor-backup-${new Date().toISOString().slice(0, 10)}.dump`;
+      a.download = `agentfloor-backup-${formatFilenameDate()}.dump`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -559,6 +566,24 @@ export default function SettingsPage() {
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <Divider />
+            <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+              <div className="sm:w-32 shrink-0">
+                <label className="text-muted text-xs">Date Format</label>
+                <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
+                  Controls how dates and times appear across runs, portfolio, and exports.
+                </p>
+              </div>
+              <select
+                value={dateFormat}
+                onChange={(e) => { setDateFormat(e.target.value as DateFormatId); setProfileStatus("idle"); }}
+                className={SETTINGS_INPUT_DATE_FORMAT_CLASS}
+              >
+                {DATE_FORMAT_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
                 ))}
               </select>
             </div>

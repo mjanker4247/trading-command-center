@@ -73,6 +73,7 @@ async def me(user: User = Depends(get_current_user)):
         "name": user.name,
         "role": user.role,
         "preferred_currency": user.preferred_currency,
+        "date_format": user.date_format,
         "default_llm_provider": user.default_llm_provider,
         "default_llm_model": user.default_llm_model,
         "default_llm_depth": user.default_llm_depth,
@@ -100,6 +101,8 @@ async def update_me(req: UpdateMeRequest, user: User = Depends(get_current_user)
         if code not in SUPPORTED_CURRENCIES:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported currency: {code}")
         user.preferred_currency = code
+    if req.date_format is not None:
+        user.date_format = req.date_format
     if req.default_llm_provider is not None:
         user.default_llm_provider = req.default_llm_provider
     if "default_llm_model" in req.model_fields_set:

@@ -24,6 +24,7 @@ import {
 } from "@/lib/api";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
 import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, WaveSummary, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
 import { isCrypto } from "@/lib/asset";
@@ -231,6 +232,7 @@ function toTabBarItem(
 
 function PortfolioPageContent() {
   const queryClient = useQueryClient();
+  const { formatFilenameDate } = useDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -468,7 +470,7 @@ function PortfolioPageContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `portfolio-${selectedPortfolio.name}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `portfolio-${selectedPortfolio.name}-${formatFilenameDate()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

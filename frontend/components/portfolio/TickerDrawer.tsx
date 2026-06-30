@@ -6,6 +6,7 @@ import { getTickerSnapshot } from "@/lib/api";
 import { getClosesForDays } from "@/lib/chartWindow";
 import { fmtMoney } from "@/lib/currency";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { WavePanel } from "@/components/wave/WavePanel";
 import type { PortfolioHolding, TickerChart } from "@/lib/types";
@@ -111,6 +112,7 @@ function DrawerContent({
   waveEnabled?: boolean;
 }) {
   const [chartDays, setChartDays] = useState<7 | 30 | 90>(30);
+  const { formatDate } = useDateFormat();
   const ticker = holding.ticker.toUpperCase();
 
   const { data: metadataByTicker = {} } = useTickerMetadata([ticker]);
@@ -238,7 +240,7 @@ function DrawerContent({
                 <StatCell label="24h Vol" value={fmtLarge(snap.fundamentals.volume_24h as number | null)} />
                 <StatCell label="Circ Supply" value={fmtLarge(snap.fundamentals.circulating_supply as number | null)} />
                 <StatCell label="ATH" value={snap.fundamentals.all_time_high != null ? `$${(snap.fundamentals.all_time_high as number).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : null} />
-                <StatCell label="ATH Date" value={snap.fundamentals.ath_date ? String(snap.fundamentals.ath_date).slice(0, 10) : null} />
+                <StatCell label="ATH Date" value={snap.fundamentals.ath_date ? formatDate(String(snap.fundamentals.ath_date)) : null} />
                 <StatCell label="Max Supply" value={fmtLarge(snap.fundamentals.max_supply as number | null)} />
               </div>
             ) : (
@@ -288,7 +290,7 @@ function DrawerContent({
               <span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${verdictColors[holding.last_run.verdict?.toLowerCase()] ?? "bg-muted-surface text-fg-secondary border border-input-border"}`}>
                 {holding.last_run.verdict?.toUpperCase()}
               </span>
-              <span className="text-xs text-muted">{holding.last_run.analysis_date}</span>
+              <span className="text-xs text-muted">{formatDate(holding.last_run.analysis_date)}</span>
               <Link href={`/runs/${holding.last_run.run_id}`}
                 className="text-xs text-purple-400 hover:underline ml-auto">
                 View Report →

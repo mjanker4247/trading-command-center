@@ -1,5 +1,6 @@
 "use client";
 import { RunContextIcons } from "@/components/runs/RunContextIcons";
+import { useDateFormat } from "@/lib/useDateFormat";
 import type { Run } from "@/lib/types";
 
 interface AgentSidebarProps {
@@ -22,6 +23,7 @@ const verdictBadge: Record<NonNullable<Run["verdict"]>, string> = {
 };
 
 export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
+  const { formatDateTime } = useDateFormat();
   if (!run) {
     return (
       <div className="space-y-3 p-4">
@@ -63,18 +65,18 @@ export function AgentSidebar({ run, onAbort }: AgentSidebarProps) {
       </div>
       <div>
         <p className="text-muted text-xs uppercase tracking-wider mb-1">Created</p>
-        <p className="text-muted text-xs">{new Date(run.created_at).toLocaleString()}</p>
+        <p className="text-muted text-xs">{formatDateTime(run.created_at)}</p>
       </div>
       {run.started_at && (
         <div>
           <p className="text-muted text-xs uppercase tracking-wider mb-1">Started</p>
-          <p className="text-muted text-xs">{new Date(run.started_at).toLocaleString()}</p>
+          <p className="text-muted text-xs">{formatDateTime(run.started_at)}</p>
         </div>
       )}
       {run.completed_at && (
         <div>
           <p className="text-muted text-xs uppercase tracking-wider mb-1">Completed</p>
-          <p className="text-muted text-xs">{new Date(run.completed_at).toLocaleString()}</p>
+          <p className="text-muted text-xs">{formatDateTime(run.completed_at)}</p>
         </div>
       )}
       {run.status === "running" && (

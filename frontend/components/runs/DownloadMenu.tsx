@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import type { Run, Report } from "@/lib/types";
 import { buildMarkdown } from "@/lib/export/buildMarkdown";
+import { useDateFormat } from "@/lib/useDateFormat";
+import { parseDateInput } from "@/lib/dateFormat";
 
 interface Props {
   run: Run | undefined;
@@ -21,6 +23,7 @@ export function DownloadMenu({ run, report }: Props) {
   const [open, setOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { dateFormat, formatFilenameDate } = useDateFormat();
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +37,7 @@ export function DownloadMenu({ run, report }: Props) {
   }, [open]);
 
   const disabled = !report;
-  const stem = run && report ? `${run.ticker}-${run.analysis_date}-report` : "report";
+  const stem = run && report ? `${run.ticker}-${formatFilenameDate(parseDateInput(run.analysis_date))}-report` : "report";
 
   function handleJson() {
     if (!report) return;
@@ -45,7 +48,7 @@ export function DownloadMenu({ run, report }: Props) {
 
   function handleMarkdown() {
     if (!run || !report) return;
-    const blob = new Blob([buildMarkdown(run, report)], { type: "text/markdown" });
+    const blob = new Blob([buildMarkdown(run, report, dateFormat)], { type: "text/markdown" });
     triggerDownload(blob, `${stem}.md`);
     setOpen(false);
   }
@@ -59,7 +62,7 @@ export function DownloadMenu({ run, report }: Props) {
         import("@react-pdf/renderer"),
         import("@/lib/export/ReportPdf"),
       ]);
-      const blob = await pdf(<ReportDocument run={run} report={report} />).toBlob();
+      const blob = await pdf(<ReportDocument run={run} report={report} dateFormat={dateFormat} />).toBlob();
       triggerDownload(blob, `${stem}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);

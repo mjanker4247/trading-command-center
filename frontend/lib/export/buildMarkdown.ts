@@ -2,6 +2,7 @@ import type { Run, Report } from "../types";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { responseLanguageLabel } from "@/lib/responseLanguage";
+import { DEFAULT_DATE_FORMAT, formatDateValue, type DateFormatId } from "@/lib/dateFormat";
 
 /** "fundamental_analysis" → "Fundamental Analysis" */
 function humanize(s: string): string {
@@ -38,8 +39,13 @@ function mdSection(heading: string, content: string | undefined | null): string 
   return `## ${heading}\n\n${content.trim()}\n\n`;
 }
 
-export function buildMarkdown(run: Run, report: Report): string {
+export function buildMarkdown(
+  run: Run,
+  report: Report,
+  dateFormat: DateFormatId = DEFAULT_DATE_FORMAT,
+): string {
   const raw = report.raw_report;
+  const formattedAnalysisDate = formatDateValue(dateFormat, run.analysis_date);
 
   const priceParts = [
     priceField("Entry", report.suggested_entry), 
@@ -50,7 +56,7 @@ export function buildMarkdown(run: Run, report: Report): string {
   const pricesLine = priceParts.length > 0 ? priceParts.join(" · ") + "\n\n" : "";
 
   const header =
-    `# ${run.ticker} Research Report — ${run.analysis_date}\n\n` +
+    `# ${run.ticker} Research Report — ${formattedAnalysisDate}\n\n` +
     `**Verdict:** ${report.verdict.toUpperCase()}\n\n` +
     pricesLine +
     `**Model:** ${run.llm_provider} / ${run.llm_model}` +

@@ -5,6 +5,12 @@ import { responseLanguageLabel } from "@/lib/responseLanguage";
 import { getAnalystReportContent } from "@/lib/analystReports";
 import { normalizeMarkdownBlock } from "@/lib/normalizeMarkdown";
 import { parseMdForPdf, type MdSegment } from "./parseMdForPdf";
+import {
+  DEFAULT_DATE_FORMAT,
+  formatDateValue,
+  formatDateTimeValue,
+  type DateFormatId,
+} from "@/lib/dateFormat";
 
 const HEADER_HEIGHT = 36;
 const FOOTER_HEIGHT = 28;
@@ -392,15 +398,21 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function formatNow(): string {
-  return new Date().toLocaleString("en-US", {
-    year: "numeric", month: "short", day: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+function formatNow(dateFormat: DateFormatId): string {
+  return formatDateTimeValue(dateFormat, new Date());
 }
 
 // ── document ──────────────────────────────────────────────────────────────
-export function ReportDocument({ run, report }: { run: Run; report: Report }) {
+export function ReportDocument({
+  run,
+  report,
+  dateFormat = DEFAULT_DATE_FORMAT,
+}: {
+  run: Run;
+  report: Report;
+  dateFormat?: DateFormatId;
+}) {
+  const formattedAnalysisDate = formatDateValue(dateFormat, run.analysis_date);
   const raw = report.raw_report;
   const hasPrices = report.suggested_entry || report.suggested_stop || report.suggested_target;
 
@@ -423,17 +435,17 @@ export function ReportDocument({ run, report }: { run: Run; report: Report }) {
   ];
 
   return (
-    <Document title={`${run.ticker} Research Report — ${run.analysis_date}`} author="AgentFloor">
+    <Document title={`${run.ticker} Research Report — ${formattedAnalysisDate}`} author="AgentFloor">
       <Page size="A4" style={styles.page}>
-        <PageHeader ticker={run.ticker} date={run.analysis_date} />
+        <PageHeader ticker={run.ticker} date={formattedAnalysisDate} />
         <PageFooter />
 
         {/* ── Cover ── */}
-        <Text style={styles.coverGeneratedAt}>Generated {formatNow()}</Text>
+        <Text style={styles.coverGeneratedAt}>Generated {formatNow(dateFormat)}</Text>
         <View style={styles.coverTickerRow}>
           <Text style={styles.coverTicker}>{run.ticker}</Text>
         </View>
-        <Text style={styles.coverDate}>{run.analysis_date}</Text>
+        <Text style={styles.coverDate}>{formattedAnalysisDate}</Text>
 
         <View style={verdictWrapper(report.verdict)}>
           <Text style={styles.verdictText}>{report.verdict.toUpperCase()}</Text>

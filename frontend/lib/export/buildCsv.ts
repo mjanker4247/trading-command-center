@@ -1,4 +1,11 @@
 import type { Run, PerformanceStats } from "@/lib/types";
+import {
+  DEFAULT_DATE_FORMAT,
+  formatDateValue,
+  formatDateTimeValue,
+  formatFilenameDateValue,
+  type DateFormatId,
+} from "@/lib/dateFormat";
 
 function escapeCsvCell(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";
@@ -29,7 +36,7 @@ function triggerDownload(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function buildRunsCsv(runs: Run[]): string {
+export function buildRunsCsv(runs: Run[], dateFormat: DateFormatId = DEFAULT_DATE_FORMAT): string {
   const headers = [
     "id",
     "ticker",
@@ -52,7 +59,7 @@ export function buildRunsCsv(runs: Run[]): string {
   const rows = runs.map((r) => [
     r.id,
     r.ticker,
-    r.analysis_date,
+    formatDateValue(dateFormat, r.analysis_date),
     r.status,
     r.verdict ?? "",
     r.llm_provider,
@@ -64,16 +71,16 @@ export function buildRunsCsv(runs: Run[]): string {
     r.suggested_entry ?? "",
     r.suggested_stop ?? "",
     r.suggested_target ?? "",
-    r.created_at,
-    r.started_at ?? "",
-    r.completed_at ?? "",
+    formatDateTimeValue(dateFormat, r.created_at),
+    r.started_at ? formatDateTimeValue(dateFormat, r.started_at) : "",
+    r.completed_at ? formatDateTimeValue(dateFormat, r.completed_at) : "",
   ]);
   return rowsToCsv(headers, rows);
 }
 
-export function downloadRunsCsv(runs: Run[]): void {
-  const stamp = new Date().toISOString().slice(0, 10);
-  triggerDownload(`agentfloor-runs-${stamp}.csv`, buildRunsCsv(runs));
+export function downloadRunsCsv(runs: Run[], dateFormat: DateFormatId = DEFAULT_DATE_FORMAT): void {
+  const stamp = formatFilenameDateValue(dateFormat);
+  triggerDownload(`agentfloor-runs-${stamp}.csv`, buildRunsCsv(runs, dateFormat));
 }
 
 function pctChange(base: number | null, later: number | null): string {
@@ -82,7 +89,10 @@ function pctChange(base: number | null, later: number | null): string {
   return (((later - base) / base) * 100).toFixed(2);
 }
 
-export function buildPerformanceCsv(stats: PerformanceStats): string {
+export function buildPerformanceCsv(
+  stats: PerformanceStats,
+  dateFormat: DateFormatId = DEFAULT_DATE_FORMAT,
+): string {
   const headers = [
     "run_id",
     "ticker",
@@ -102,7 +112,7 @@ export function buildPerformanceCsv(stats: PerformanceStats): string {
     o.run_id,
     o.ticker,
     o.verdict,
-    o.analysis_date,
+    formatDateValue(dateFormat, o.analysis_date),
     o.price_at_analysis ?? "",
     o.price_7d ?? "",
     pctChange(o.price_at_analysis, o.price_7d),
@@ -116,7 +126,10 @@ export function buildPerformanceCsv(stats: PerformanceStats): string {
   return rowsToCsv(headers, rows);
 }
 
-export function downloadPerformanceCsv(stats: PerformanceStats): void {
-  const stamp = new Date().toISOString().slice(0, 10);
-  triggerDownload(`agentfloor-performance-${stamp}.csv`, buildPerformanceCsv(stats));
+export function downloadPerformanceCsv(
+  stats: PerformanceStats,
+  dateFormat: DateFormatId = DEFAULT_DATE_FORMAT,
+): void {
+  const stamp = formatFilenameDateValue(dateFormat);
+  triggerDownload(`agentfloor-performance-${stamp}.csv`, buildPerformanceCsv(stats, dateFormat));
 }

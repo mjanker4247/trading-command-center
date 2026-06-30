@@ -8,6 +8,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { AnalystIcons, LanguageFlag } from "@/components/runs/RunContextIcons";
 import { CronLabel } from "@/components/watchlist/CronLabel";
 import { WatchlistScheduleEditor } from "@/components/watchlist/WatchlistScheduleEditor";
+import { useDateFormat } from "@/lib/useDateFormat";
 import type { TickerMetadata, WatchlistItem } from "@/lib/types";
 
 type WatchlistItemCardProps = {
@@ -31,6 +32,7 @@ export function WatchlistItemCard({
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [draftCron, setDraftCron] = useState<string | null>(item.schedule_cron);
   const [scheduleEditorKey, setScheduleEditorKey] = useState(0);
+  const { formatDate } = useDateFormat();
 
   return (
     <article className="rounded-lg border border-border bg-surface p-4 space-y-3 md:hidden">
@@ -47,7 +49,7 @@ export function WatchlistItemCard({
         <div>
           {item.last_run_at && item.last_run_id ? (
             <Link href={`/runs/${item.last_run_id}`} className="text-blue-400 hover:underline">
-              Last run {new Date(item.last_run_at).toLocaleDateString()}
+              Last run {formatDate(item.last_run_at)}
             </Link>
           ) : (
             <span className="text-muted">Never run</span>
