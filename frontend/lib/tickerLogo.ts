@@ -2,5 +2,5 @@
 export function tickerLogoSrc(ticker: string): string {
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return "";
-  return `/api/tickers/${encodeURIComponent(normalized)}/logo`;
+  return `/ticker-logos/${encodeURIComponent(normalized)}`;
 }

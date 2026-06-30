@@ -59,18 +59,24 @@ async def test_refresh_stock_upserts_row():
         "display_name": "Apple Inc.",
         "sector": "Technology",
         "industry": "Technology",
+        "logo_url": "https://logo.example/aapl.png",
         "source": "finnhub",
     }
     with patch(
         "app.services.ticker_metadata_service._fetch_stock_profile",
         new=AsyncMock(return_value=(mapped, raw, None)),
-    ):
+    ), patch(
+        "app.services.logo_cache_service.ensure_logo_cached",
+        new=AsyncMock(),
+    ) as mock_logo_cache:
         async with AsyncSessionLocal() as db:
             row = await ticker_metadata_service.refresh_ticker_metadata(
                 "ZZTEST", db, finnhub_key="fake-key"
             )
             assert row.ticker == "ZZTEST"
             assert row.company_name == "Apple Inc."
+            assert row.logo_url == "https://logo.example/aapl.png"
+            mock_logo_cache.assert_not_called()
 
         async with AsyncSessionLocal() as db:
             cached = await db.get(TickerMetadata, "ZZTEST")
