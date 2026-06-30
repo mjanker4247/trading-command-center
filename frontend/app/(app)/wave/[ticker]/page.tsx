@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { analyzeWave, getAppSettings } from "@/lib/api";
 import { AnalysisChart } from "@/components/wave/AnalysisChart";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { TOP_NAV_HEIGHT_REM } from "@/components/layout/constants";
 import { fmtMoney } from "@/lib/currency";
 import type {
@@ -63,9 +64,12 @@ export default function WaveChartPage() {
             <Link href="/portfolio" className="text-xs text-link hover:text-link-hover">
               ← Portfolio
             </Link>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="font-mono text-2xl font-semibold text-fg">{symbol}</h1>
-              <p className="truncate text-sm text-muted">{companyName}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <CompanyLogo ticker={symbol} size="lg" />
+              <div className="min-w-0">
+                <h1 className="font-mono text-2xl font-semibold text-fg">{symbol}</h1>
+                <p className="truncate text-sm text-muted">{companyName}</p>
+              </div>
             </div>
           </div>
           <VisibilityControls value={visibility} onChange={setVisibility} />

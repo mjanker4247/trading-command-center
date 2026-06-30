@@ -16,6 +16,7 @@ import { LanguageFlag } from "@/components/runs/RunContextIcons";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { Run, RunOutcome } from "@/lib/types";
 import { PageShell } from "@/components/layout/PageShell";
+import { TickerLabel } from "@/components/ui/TickerLabel";
 
 function rerunUrl(run: Run): string {
   const p = new URLSearchParams({
@@ -218,6 +219,8 @@ export default function RunResultsPage() {
     );
   }
 
+  const metadata = tickerMetadata[run.ticker.toUpperCase()];
+
   return (
     <PageShell width="default" gap="6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -225,6 +228,7 @@ export default function RunResultsPage() {
             <Link href="/runs" className="text-blue-400 hover:underline text-sm">
               ← Back to History
             </Link>
+            <TickerLabel ticker={run.ticker} metadata={metadata} logoSize="md" />
             <LabelEditor id={id} label={run.label} />
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
