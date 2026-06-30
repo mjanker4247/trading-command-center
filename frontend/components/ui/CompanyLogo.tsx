@@ -38,9 +38,9 @@ function InitialsFallback({
 
 export function CompanyLogo({ ticker, size = "md", className = "" }: CompanyLogoProps) {
   const normalized = ticker.trim().toUpperCase();
-  const [failed, setFailed] = useState(false);
+  const [failedTicker, setFailedTicker] = useState<string | null>(null);
 
-  if (!normalized || failed) {
+  if (!normalized || failedTicker === normalized) {
     return <InitialsFallback ticker={normalized || ticker} size={size} className={className} />;
   }
 
@@ -50,7 +50,7 @@ export function CompanyLogo({ ticker, size = "md", className = "" }: CompanyLogo
       src={tickerLogoSrc(normalized)}
       alt=""
       className={`${SIZE_CLASS[size]} shrink-0 rounded-sm object-contain bg-muted-surface p-0.5 ${className}`.trim()}
-      onError={() => setFailed(true)}
+      onError={() => setFailedTicker(normalized)}
     />
   );
 }
