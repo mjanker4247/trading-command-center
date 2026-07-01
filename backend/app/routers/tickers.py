@@ -79,6 +79,10 @@ async def get_ticker_metadata_batch(
 
 
 _LOGO_CACHE_CONTROL = "public, max-age=2592000, immutable"
+_LOGO_HEADERS = {
+    "Cache-Control": _LOGO_CACHE_CONTROL,
+    "X-Content-Type-Options": "nosniff",
+}
 
 
 @router.get("/tickers/{symbol}/logo")
@@ -104,5 +108,5 @@ async def get_ticker_logo(
     return FileResponse(
         path,
         media_type=content_type,
-        headers={"Cache-Control": _LOGO_CACHE_CONTROL},
+        headers=_LOGO_HEADERS,
     )
