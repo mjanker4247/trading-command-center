@@ -1995,7 +1995,8 @@ async def get_portfolio_trim_signals(
             *[_fetch_fundamentals(ticker, av_key) for ticker in tickers]
         )
         fundamentals_map = {
-            ticker: data for ticker, (data, _err) in zip(tickers, fundamentals_results)
+            ticker: fundamentals
+            for ticker, (fundamentals, _) in zip(tickers, fundamentals_results)
         }
 
     total_value = 0.0

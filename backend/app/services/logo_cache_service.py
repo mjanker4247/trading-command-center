@@ -70,6 +70,54 @@ def _extension_from_content_type(content_type: str | None, fallback_url: str) ->
     return _extension_from_url(fallback_url)
 
 
+_MIN_LOGO_BYTES = 64
+
+
+def _domain_from_website(website: str | None) -> str | None:
+    if not website or not website.strip():
+        return None
+    raw = website.strip()
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    host = (parsed.netloc or parsed.path.split("/")[0]).lower()
+    host = host.removeprefix("www.")
+    if not host or "." not in host:
+        return None
+    return host
+
+
+def _logo_source_candidates(logo_url: str | None, website: str | None) -> list[str]:
+    """Ordered logo download URLs: Finnhub direct URL, then website favicon services."""
+    candidates: list[str] = []
+    if logo_url and logo_url.strip():
+        candidates.append(logo_url.strip())
+
+    domain = _domain_from_website(website)
+    if domain:
+        favicon_urls = [
+            f"https://icons.duckduckgo.com/ip3/{domain}.ico",
+            f"https://www.google.com/s2/favicons?domain={domain}&sz=128",
+        ]
+        if website and website.strip():
+            base = website.strip().rstrip("/")
+            if "://" not in base:
+                base = f"https://{base}"
+            favicon_urls.append(f"{base}/favicon.ico")
+        for url in favicon_urls:
+            if url not in candidates:
+                candidates.append(url)
+    return candidates
+
+
+def _is_valid_logo_content(content: bytes, content_type: str | None) -> bool:
+    if len(content) < _MIN_LOGO_BYTES:
+        return False
+    if content_type:
+        base = content_type.split(";", 1)[0].strip().lower()
+        if base.startswith("image/"):
+            return True
+    return content.startswith((b"\x89PNG", b"\xff\xd8\xff", b"GIF8"))
+
+
 def _load_meta(ticker: str) -> dict[str, Any] | None:
     path = _meta_path(ticker)
     if not path.is_file():
@@ -149,6 +197,9 @@ async def ensure_logo_cached(ticker: str, source_url: str | None) -> tuple[Path,
             if not content:
                 return None
             content_type = response.headers.get("content-type")
+            if not _is_valid_logo_content(content, content_type):
+                logger.info("logo download rejected for %s: invalid or too small payload", ticker)
+                return None
     except Exception as exc:
         logger.info("logo download failed for %s: %s", ticker, exc)
         return None
@@ -168,3 +219,17 @@ async def ensure_logo_cached(ticker: str, source_url: str | None) -> tuple[Path,
         },
     )
     return image_path, normalized_type
+
+
+async def ensure_logo_for_ticker(
+    ticker: str,
+    *,
+    logo_url: str | None = None,
+    website: str | None = None,
+) -> tuple[Path, str] | None:
+    """Download and cache a logo, trying Finnhub URL then website favicon fallbacks."""
+    for source_url in _logo_source_candidates(logo_url, website):
+        cached = await ensure_logo_cached(ticker, source_url)
+        if cached is not None:
+            return cached
+    return None

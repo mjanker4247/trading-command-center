@@ -87,15 +87,16 @@ async def get_ticker_logo(
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    """Serve a disk-cached company logo (30-day TTL). Source URL remains in ticker_metadata."""
+    """Serve a disk-cached company logo (30-day TTL). Uses Finnhub URL or website favicon fallback."""
     ticker = normalize_ticker(symbol)
     finnhub_key = await _get_finnhub_key(db)
     metadata = await get_ticker_metadata(ticker, db, finnhub_key)
-    source_url = metadata.logo_url
-    if not source_url:
-        raise HTTPException(status_code=404, detail="Logo not available")
 
-    cached = await logo_cache_service.ensure_logo_cached(ticker, source_url)
+    cached = await logo_cache_service.ensure_logo_for_ticker(
+        ticker,
+        logo_url=metadata.logo_url,
+        website=metadata.website,
+    )
     if cached is None:
         raise HTTPException(status_code=404, detail="Logo not available")
 

@@ -219,7 +219,7 @@ async def test_get_ticker_logo_serves_cached_file(tmp_path):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         token = await _token(client, "logo_route@test.com")
         with patch(
-            "app.routers.tickers.logo_cache_service.ensure_logo_cached",
+            "app.routers.tickers.logo_cache_service.ensure_logo_for_ticker",
             new=AsyncMock(return_value=(png_path, "image/png")),
         ):
             r = await client.get(
@@ -231,3 +231,45 @@ async def test_get_ticker_logo_serves_cached_file(tmp_path):
     assert r.content == b"png-bytes"
     assert "image/png" in r.headers.get("content-type", "")
     assert r.headers.get("cache-control") == "public, max-age=2592000, immutable"
+
+
+@pytest.mark.asyncio
+async def test_get_ticker_logo_uses_website_favicon_fallback(tmp_path):
+    from app.database import AsyncSessionLocal
+
+    now = datetime.now(timezone.utc)
+    async with AsyncSessionLocal() as db:
+        db.add(
+            TickerMetadata(
+                ticker="RHM.DE",
+                asset_type="stock",
+                company_name="Rheinmetall AG",
+                display_name="Rheinmetall AG",
+                website="https://www.rheinmetall.com",
+                source="yfinance",
+                fetched_at=now,
+                expires_at=now + timedelta(days=7),
+            )
+        )
+        await db.commit()
+
+    png_path = tmp_path / "RHM.DE.png"
+    png_path.write_bytes(b"png-bytes")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "logo_favicon@test.com")
+        with patch(
+            "app.routers.tickers.logo_cache_service.ensure_logo_for_ticker",
+            new=AsyncMock(return_value=(png_path, "image/png")),
+        ) as mock_logo:
+            r = await client.get(
+                "/tickers/RHM.DE/logo",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+    assert r.status_code == 200
+    mock_logo.assert_awaited_once()
+    kwargs = mock_logo.await_args.kwargs
+    assert kwargs["logo_url"] is None
+    assert kwargs["website"] == "https://www.rheinmetall.com"
+
