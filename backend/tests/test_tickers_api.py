@@ -231,6 +231,7 @@ async def test_get_ticker_logo_serves_cached_file(tmp_path):
     assert r.content == b"png-bytes"
     assert "image/png" in r.headers.get("content-type", "")
     assert r.headers.get("cache-control") == "public, max-age=2592000, immutable"
+    assert r.headers.get("x-content-type-options") == "nosniff"
 
 
 @pytest.mark.asyncio

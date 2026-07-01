@@ -24,8 +24,9 @@ _CONTENT_TYPE_EXT: dict[str, str] = {
     "image/jpeg": ".jpg",
     "image/jpg": ".jpg",
     "image/webp": ".webp",
-    "image/svg+xml": ".svg",
     "image/gif": ".gif",
+    "image/x-icon": ".ico",
+    "image/vnd.microsoft.icon": ".ico",
 }
 
 
@@ -56,7 +57,7 @@ def _image_path(ticker: str, extension: str) -> Path:
 
 def _extension_from_url(url: str) -> str:
     path = urlparse(url).path.lower()
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"):
+    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico"):
         if path.endswith(ext):
             return ".jpg" if ext == ".jpeg" else ext
     return ".png"
@@ -113,9 +114,19 @@ def _is_valid_logo_content(content: bytes, content_type: str | None) -> bool:
         return False
     if content_type:
         base = content_type.split(";", 1)[0].strip().lower()
-        if base.startswith("image/"):
-            return True
-    return content.startswith((b"\x89PNG", b"\xff\xd8\xff", b"GIF8"))
+        if base == "image/svg+xml":
+            return False
+    if content.startswith(b"\x89PNG"):
+        return True
+    if content.startswith(b"\xff\xd8\xff"):
+        return True
+    if content.startswith(b"GIF8"):
+        return True
+    if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return True
+    if content.startswith((b"\x00\x00\x01\x00", b"\x00\x00\x02\x00")):
+        return True
+    return False
 
 
 def _load_meta(ticker: str) -> dict[str, Any] | None:

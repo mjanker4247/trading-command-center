@@ -57,6 +57,31 @@ async def test_ensure_logo_cached_refreshes_when_source_url_changes(logo_cache_d
     assert refreshed[0].read_bytes() == png_b
 
 
+@pytest.mark.asyncio
+async def test_ensure_logo_cached_rejects_svg_payloads(logo_cache_dir):
+    svg_bytes = (
+        b"<svg xmlns='http://www.w3.org/2000/svg'>"
+        b"<script>alert('xss')</script>"
+        b"<rect width='100' height='100'/></svg>"
+    )
+
+    async def fake_get(url: str):
+        request = httpx.Request("GET", url)
+        return httpx.Response(
+            200,
+            content=svg_bytes,
+            headers={"content-type": "image/svg+xml"},
+            request=request,
+        )
+
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=fake_get)):
+        result = await logo_cache_service.ensure_logo_cached("EVIL", "https://logo.example/evil.svg")
+
+    assert result is None
+    assert not (logo_cache_dir / "EVIL.svg").exists()
+    assert not (logo_cache_dir / "EVIL.meta.json").exists()
+
+
 def test_get_cached_logo_expired(logo_cache_dir, monkeypatch):
     ticker = "NVDA"
     source_url = "https://logo.example/nvda.png"
