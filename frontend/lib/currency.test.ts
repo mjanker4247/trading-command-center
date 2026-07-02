@@ -15,3 +15,8 @@ test("fmtMoney formats JPY without fractional digits", () => {
   assert.doesNotThrow(() => fmtMoney(1500, "JPY"));
   assert.equal(fmtMoney(1500, "JPY"), "¥1,500");
 });
+
+test("fmtMoney falls back for non-ISO crypto quote currencies", () => {
+  assert.doesNotThrow(() => fmtMoney(1234.5, "USDT"));
+  assert.equal(fmtMoney(1234.5, "USDT"), "1,234.50 USDT");
+});
