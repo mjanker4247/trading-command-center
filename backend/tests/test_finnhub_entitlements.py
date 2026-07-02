@@ -140,6 +140,7 @@ async def test_get_portfolio_fundamentals_surfaces_unavailable_reason(monkeypatc
     assert response["fundamentals_unavailable_reason"] == FinnhubReason.PREMIUM_REQUIRED.value
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_fundamentals_keeps_crypto_data_without_finnhub_key(monkeypatch):
     async def fake_fetch_fundamentals(ticker, api_key):
