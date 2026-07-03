@@ -13,13 +13,22 @@ function fractionDigitsFor(currency: string): number {
 
 export function fmtMoney(n: number | null | undefined, currency: string): string {
   if (n == null) return "—";
-  const digits = fractionDigitsFor(currency);
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(n);
+  const normalizedCurrency = currency.trim().toUpperCase() || "USD";
+  const digits = fractionDigitsFor(normalizedCurrency);
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: normalizedCurrency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(n);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    return `${n.toLocaleString("en-US", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    })} ${normalizedCurrency}`;
+  }
 }
 
 export function fmtPnl(pnl: number | null | undefined, pct: number | null | undefined, currency: string): string {

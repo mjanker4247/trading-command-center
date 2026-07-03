@@ -146,7 +146,7 @@ function FundamentalsRow({ data, colSpan }: { data: FundamentalsData; colSpan: n
         { label: "52w Low", value: data.week52_low != null ? `$${data.week52_low.toFixed(2)}` : "—" },
         { label: "Div Yield", value: fmtNum(data.dividend_yield ?? null, 2, "%") },
         { label: "EPS (TTM)", value: data.eps_ttm != null ? `$${data.eps_ttm.toFixed(2)}` : "—" },
-        { label: "Mkt Cap", value: fmtLargeNum(data.market_cap ?? null) },
+        { label: "Mkt Cap", value: fmtLargeNum(data.market_cap != null ? data.market_cap * 1e6 : null) },
       ];
 
   return (
