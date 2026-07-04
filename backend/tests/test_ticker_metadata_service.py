@@ -137,6 +137,10 @@ async def test_refresh_stock_upserts_row():
             "app.services.ticker_metadata_service._fetch_stock_profile",
             new=AsyncMock(return_value=(fh_mapped, fh_raw, None)),
         ),
+        patch(
+            "app.services.logo_cache_service.ensure_logo_for_ticker",
+            new=AsyncMock(),
+        ) as mock_logo_cache,
     ):
         async with AsyncSessionLocal() as db:
             row = await ticker_metadata_service.refresh_ticker_metadata(
@@ -148,6 +152,7 @@ async def test_refresh_stock_upserts_row():
             assert row.industry == "Consumer Electronics"
             assert row.logo_url == "https://logo.test/aapl.png"
             assert row.source == "yfinance+finnhub"
+            mock_logo_cache.assert_not_awaited()
 
         async with AsyncSessionLocal() as db:
             cached = await db.get(TickerMetadata, "ZZTEST")

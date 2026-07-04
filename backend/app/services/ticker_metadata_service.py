@@ -297,17 +297,6 @@ async def refresh_ticker_metadata(
     await db.commit()
     await db.refresh(row)
 
-    from app.services import logo_cache_service
-
-    try:
-        await logo_cache_service.ensure_logo_for_ticker(
-            normalized,
-            logo_url=row.logo_url,
-            website=row.website,
-        )
-    except Exception as exc:
-        logger.warning("logo cache warm failed for %s: %s", normalized, exc)
-
     return row
 
 
