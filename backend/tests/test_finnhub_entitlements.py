@@ -138,3 +138,49 @@ async def test_get_portfolio_fundamentals_surfaces_unavailable_reason(monkeypatc
 
     assert response["data"] == {"AAPL": {"asset_type": "stock"}}
     assert response["fundamentals_unavailable_reason"] == FinnhubReason.PREMIUM_REQUIRED.value
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_portfolio_fundamentals_keeps_crypto_data_without_finnhub_key(monkeypatch):
+    async def fake_fetch_fundamentals(ticker, api_key):
+        assert api_key is None
+        if ticker == "BTC-USD":
+            return {"asset_type": "crypto", "market_cap": 1_000_000}, None
+        return {}, None
+
+    from app.routers import portfolio as portfolio_router
+
+    monkeypatch.setattr(portfolio_router, "_fetch_fundamentals", fake_fetch_fundamentals)
+    monkeypatch.setattr(portfolio_router, "_get_finnhub_key", AsyncMock(return_value=None))
+    monkeypatch.setattr(portfolio_router, "_verify_portfolio_access", AsyncMock())
+
+    class FakeHolding:
+        def __init__(self, ticker):
+            self.ticker = ticker
+
+    class FakeSnapshot:
+        holdings = [FakeHolding("AAPL"), FakeHolding("BTC-USD")]
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return FakeSnapshot()
+
+    class FakeDb:
+        async def execute(self, *_args, **_kwargs):
+            return FakeResult()
+
+    class FakeUser:
+        id = "00000000-0000-0000-0000-000000000099"
+
+    response = await portfolio_router.get_portfolio_fundamentals(
+        portfolio_id="00000000-0000-0000-0000-000000000001",
+        db=FakeDb(),
+        user=FakeUser(),
+    )
+
+    assert response["data"] == {
+        "AAPL": {},
+        "BTC-USD": {"asset_type": "crypto", "market_cap": 1_000_000},
+    }
+    assert response["fundamentals_unavailable_reason"] == "no_finnhub_key"

@@ -1409,12 +1409,7 @@ async def get_portfolio_fundamentals(
     tickers = [h.ticker for h in snapshot.holdings]
     # Crypto metrics come from CoinGecko (no key needed); stocks need Finnhub key.
     has_stock = any(not is_crypto(t) for t in tickers)
-    if has_stock and not av_key:
-        return {
-            "price_unavailable_reason": "no_finnhub_key",
-            "fundamentals_unavailable_reason": "no_finnhub_key",
-            "data": {},
-        }
+    no_key_reason = "no_finnhub_key" if has_stock and not av_key else None
 
     errors: list[FinnhubError | None] = []
     results = await asyncio.gather(*[_fetch_fundamentals(t, av_key) for t in tickers])
@@ -1424,8 +1419,8 @@ async def get_portfolio_fundamentals(
         if error and not is_crypto(ticker):
             errors.append(error)
     return {
-        "price_unavailable_reason": None,
-        "fundamentals_unavailable_reason": aggregate_unavailable_reason(errors),
+        "price_unavailable_reason": no_key_reason,
+        "fundamentals_unavailable_reason": no_key_reason or aggregate_unavailable_reason(errors),
         "data": data,
     }
 
@@ -1991,10 +1986,13 @@ async def get_portfolio_trim_signals(
 
     fundamentals_map: dict[str, dict] = {}
     if av_key:
-        fundamentals_list = await asyncio.gather(
+        fundamentals_results = await asyncio.gather(
             *[_fetch_fundamentals(ticker, av_key) for ticker in tickers]
         )
-        fundamentals_map = dict(zip(tickers, fundamentals_list))
+        fundamentals_map = {
+            ticker: fundamentals
+            for ticker, (fundamentals, _) in zip(tickers, fundamentals_results)
+        }
 
     total_value = 0.0
     holding_values: dict[str, float] = {}
