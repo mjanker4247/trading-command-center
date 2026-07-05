@@ -83,16 +83,16 @@ export function ApiKeyRow({
           disabled={mutation.isPending || !value}
           className={`${BTN_PRIMARY_SM_CLASS} shrink-0`}
         >
-          {mutation.isPending ? "Saving…" : "Save"}
+          {mutation.isPending ? "Saving…" : "Save key"}
         </button>
         {mutation.isError && (
           <span className={STATUS_ERROR_CLASS}>{(mutation.error as Error).message}</span>
         )}
         {!mutation.isError && savedResult === "valid" && (
-          <span className={STATUS_OK_CLASS}>Saved ✓</span>
+          <span className={STATUS_OK_CLASS}>Key saved and verified</span>
         )}
         {!mutation.isError && savedResult === "invalid" && (
-          <span className="text-xs text-warning">Saved — key could not be verified</span>
+          <span className="text-xs text-warning">Key saved — we couldn&apos;t verify it. Double-check the value.</span>
         )}
       </div>
 

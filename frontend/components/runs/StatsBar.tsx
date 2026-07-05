@@ -36,7 +36,7 @@ export function StatsBar() {
       <Stat label="Buy" value={stats.verdicts.buy} color="text-green-400" />
       <Stat label="Sell" value={stats.verdicts.sell} color="text-red-400" />
       <Stat label="Hold" value={stats.verdicts.hold} color="text-yellow-400" />
-      <Stat label="Success Rate" value={successRate != null ? `${successRate}%` : "—"} />
+      <Stat label="Run completion" value={successRate != null ? `${successRate}%` : "—"} />
       <Stat label="Avg Duration" value={formatDur(stats.avg_duration_secs)} />
     </div>
   );

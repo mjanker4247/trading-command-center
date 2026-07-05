@@ -106,8 +106,8 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
         </div>
       )}
       <p className="text-xs text-muted">
-        Upcoming earnings dates for your holdings (next 60 days). Dates flagged{" "}
-        <span className="text-yellow-400">yellow</span> have stale or missing analysis.
+        Upcoming earnings for your holdings (next 60 days). Rows highlighted in{" "}
+        <span className="text-yellow-400">yellow</span> have no recent AI analysis — re-run before earnings if you rely on verdicts.
       </p>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">

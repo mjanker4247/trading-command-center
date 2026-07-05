@@ -82,11 +82,11 @@ function SubGroupLabel({ label }: { label: string }) {
 
 const KALMAN_TOOLTIPS = {
   observationCovariance:
-    "Controls sensitivity to market noise. Higher values treat daily price fluctuations as random noise, resulting in a smoother, lag-prone trend line. Lower values track raw prices tightly, increasing responsiveness but adding market noise.",
+    "How much daily price wiggles are smoothed out. Higher values draw a steadier trend line but react slower to new moves — useful when you want the big picture, not every tick. Lower values hug the price closely, which can look noisier but catches turns faster.",
   transitionCovariance:
-    "Controls how fast the underlying trend can change. Higher values assume the market regime or trend shifts rapidly, allowing the filter to catch trend reversals quickly. Lower values assume a stable structural trend, producing a rigid baseline.",
+    "How quickly the underlying trend is allowed to change. Higher values let the trend line pivot fast when the market shifts regime. Lower values keep a stable baseline — better when you believe the current trend will persist.",
   mode:
-    "'Live Tracking' utilizes only data up to day T to eliminate look-ahead bias, making it mandatory for backtesting and trading signals. 'Historical View' uses the entire dataset to build a perfectly smoothed history, ideal for retroactive macro research but unusable for live execution.",
+    "Live Tracking uses only data available up to each day — required for signals and backtests (no look-ahead). Historical View uses the full price history to draw a perfectly smooth line for research; do not use it for live decisions.",
 };
 
 interface AppSettingsDraft {
@@ -202,12 +202,12 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
     <SectionCard
       id="strategy"
       title="Strategy Configuration"
-      description="Controls analytical module visibility and Kalman trend/noise defaults."
+      description="Choose which analysis modules appear in the app and tune how trend lines are drawn."
     >
       <div className="px-4 py-4 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
           <InfoPopover
-            label="Observation Covariance (R)"
+            label="Price noise filter (R)"
             tooltip={KALMAN_TOOLTIPS.observationCovariance}
             open={openInfo === "observationCovariance"}
             onToggle={() => setOpenInfo(openInfo === "observationCovariance" ? null : "observationCovariance")}
@@ -226,7 +226,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               disabled={disabled}
               className={inputClass}
             />
-            <p className="mt-1 text-[10px] text-muted">Range: 0.0001 to 10.0. Default: 0.1.</p>
+            <p className="mt-1 text-[10px] text-muted">0.0001–10.0 (default 0.1). Higher = smoother trend, slower to react.</p>
           </div>
         </div>
 
@@ -234,7 +234,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
 
         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
           <InfoPopover
-            label="Transition Covariance (Q)"
+            label="Trend responsiveness (Q)"
             tooltip={KALMAN_TOOLTIPS.transitionCovariance}
             open={openInfo === "transitionCovariance"}
             onToggle={() => setOpenInfo(openInfo === "transitionCovariance" ? null : "transitionCovariance")}
@@ -253,7 +253,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               disabled={disabled}
               className={inputClass}
             />
-            <p className="mt-1 text-[10px] text-muted">Range: 0.0001 to 1.0. Default: 0.01.</p>
+            <p className="mt-1 text-[10px] text-muted">0.0001–1.0 (default 0.01). Higher = trend adapts faster to shifts.</p>
           </div>
         </div>
 
@@ -275,8 +275,8 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
             disabled={disabled}
             className={SETTINGS_INPUT_CLASS}
           >
-            <option value="causal">Live Tracking (Causal)</option>
-            <option value="historical">Historical View (Smoothed)</option>
+            <option value="causal">Live Tracking — for signals and backtests</option>
+            <option value="historical">Historical View — research overlay only</option>
           </select>
         </div>
 
@@ -284,14 +284,14 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
 
         <div className="space-y-2">
           <div>
-            <p className="text-muted text-xs font-medium uppercase tracking-wide">Strategy Modules</p>
+            <p className="text-muted text-xs font-medium uppercase tracking-wide">Analysis modules</p>
             <p className="text-[10px] text-muted mt-0.5">
-              Disable a module to hide its charts, badges, and confirmation cards across the app.
+              Turn modules off to hide their charts, badges, and confirmation cards everywhere in the app.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             <ModuleToggle
-              label="Enable Kalman Filter Module"
+              label="Kalman trend filter"
               checked={values.enableKalmanFilter}
               disabled={disabled}
               onChange={(checked) => {
@@ -300,7 +300,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               }}
             />
             <ModuleToggle
-              label="Enable Elliott Wave Module"
+              label="Elliott Wave analysis"
               checked={values.enableElliottWave}
               disabled={disabled}
               onChange={(checked) => {
@@ -309,7 +309,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               }}
             />
             <ModuleToggle
-              label="Enable Markov Regime Module"
+              label="Markov regime detection"
               checked={values.enableMarkovRegime}
               disabled={disabled}
               onChange={(checked) => {
@@ -335,9 +335,9 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           >
             Reset defaults
           </button>
-          {!isAdmin && <span className="text-muted text-xs">Admin access required to modify.</span>}
-          {isLoading && <span className="text-muted text-xs">Loading settings...</span>}
-          {status === "success" && <StatusAnnouncer variant="success">Saved.</StatusAnnouncer>}
+          {!isAdmin && <span className="text-muted text-xs">Only admins can change strategy settings.</span>}
+          {isLoading && <span className="text-muted text-xs">Loading strategy settings…</span>}
+          {status === "success" && <StatusAnnouncer variant="success">Strategy settings saved.</StatusAnnouncer>}
           {status === "error" && <StatusAnnouncer variant="error">{error}</StatusAnnouncer>}
         </div>
       </div>
@@ -565,7 +565,7 @@ export default function SettingsPage() {
               <div className="sm:w-32 shrink-0">
                 <label htmlFor="profile-preferred-currency" className="text-muted text-xs">Preferred Currency</label>
                 <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
-                  Selects which currency to use when multiple are available. Values are never converted.
+                  Which currency to display when a holding reports more than one. Prices are not converted between currencies.
                 </p>
               </div>
               <select
@@ -584,8 +584,7 @@ export default function SettingsPage() {
               <div className="sm:w-32 shrink-0">
                 <label htmlFor="profile-date-format" className="text-muted text-xs">Date Format</label>
                 <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
-                  Controls how dates and times appear across runs, portfolio, and exports.
-                  New-run date pickers still use the browser&apos;s ISO control.
+                  How dates and times appear in runs, portfolio, and exports. New-run date pickers always stay in ISO format.
                 </p>
               </div>
               <select
@@ -599,7 +598,7 @@ export default function SettingsPage() {
                 ))}
               </select>
               <p className="text-[10px] text-muted mt-0.5 sm:hidden">
-                New-run date pickers stay ISO regardless of this setting.
+                New-run date pickers always use ISO format.
               </p>
             </div>
             <Divider />
@@ -607,7 +606,7 @@ export default function SettingsPage() {
               <div>
                 <p className="text-muted text-xs font-medium uppercase tracking-wide">Default LLM Configuration</p>
                 <p className="text-[10px] text-muted mt-0.5">
-                  Pre-fills provider and model on new runs, watchlist items, portfolio AI features, and discover recommendations.
+                  Pre-fills provider, model, and depth on new runs, watchlist schedules, portfolio insights, and recommendations.
                 </p>
               </div>
               <LlmConfigPicker
@@ -627,7 +626,7 @@ export default function SettingsPage() {
               >
                 {profileMutation.isPending ? "Saving…" : "Save Changes"}
               </button>
-              {profileStatus === "success" && <StatusAnnouncer variant="success">Saved.</StatusAnnouncer>}
+              {profileStatus === "success" && <StatusAnnouncer variant="success">Profile updated.</StatusAnnouncer>}
               {profileStatus === "error" && <StatusAnnouncer variant="error">{profileError}</StatusAnnouncer>}
             </div>
           </div>
@@ -813,12 +812,12 @@ SMTP_FROM=noreply@yourdomain.com`}
               >
                 {inviteMutation.isPending ? "Sending…" : "Invite Member"}
               </button>
-              {inviteStatus === "success" && !inviteUrl && <StatusAnnouncer variant="success">Invite sent.</StatusAnnouncer>}
+              {inviteStatus === "success" && !inviteUrl && <StatusAnnouncer variant="success">Invite email sent.</StatusAnnouncer>}
               {inviteStatus === "error" && <StatusAnnouncer variant="error">{inviteError}</StatusAnnouncer>}
             </div>
             {inviteUrl && (
               <div className="border-t border-border px-4 py-3 flex flex-col gap-1">
-                <span className="text-muted text-xs">SMTP not configured — share this invite link directly:</span>
+                <span className="text-muted text-xs">SMTP is not configured — copy this invite link and send it manually:</span>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
@@ -842,7 +841,7 @@ SMTP_FROM=noreply@yourdomain.com`}
           <SectionCard
             id="database"
             title="Database"
-            description="Download a full backup or restore from a previously downloaded backup file."
+            description="Download a full backup or restore from a file you exported earlier."
           >
             <div className="px-4 py-4 flex flex-col gap-5">
               {/* Backup */}
@@ -850,7 +849,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 <div className="flex-1">
                   <p className="text-fg-secondary text-xs font-medium mb-0.5">Download Backup</p>
                   <p className="text-muted text-xs">
-                    Exports a compressed pg_dump file (.dump) of the full database.
+                    Exports a compressed backup (.dump) of all runs, portfolios, watchlists, and settings.
                   </p>
                 </div>
                 <button
@@ -885,7 +884,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 <div className="flex-1">
                   <p className="text-fg-secondary text-xs font-medium mb-0.5">Restore from Backup</p>
                   <p className="text-muted text-xs">
-                    Select a .dump file exported from this app. This will replace all current data.
+                    Choose a .dump file from this app. Restore replaces everything currently stored — runs, portfolios, API keys, and users.
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
@@ -974,7 +973,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   </p>
                   <p className="text-xs text-muted font-mono bg-input rounded-sm px-3 py-2">{restoreFile.name}</p>
                   <p className="text-xs text-muted">
-                    All runs, portfolios, watchlists, API keys, and user data will be overwritten. This cannot be undone.
+                    Overwrites all runs, portfolios, watchlists, API keys, and user accounts. This cannot be undone.
                   </p>
                   <div className="space-y-1">
                     <label htmlFor="restore-confirm-text" className="text-xs text-muted">Type <span className="font-mono text-fg">RESTORE</span> to confirm</label>
@@ -998,7 +997,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 <p className={STATUS_ERROR_CLASS} role="alert">{(restoreMutation.error as Error).message}</p>
               )}
               {restoreMutation.isSuccess && (
-                <p className={STATUS_OK_CLASS} role="status" aria-live="polite">Restore completed successfully.</p>
+                <p className={STATUS_OK_CLASS} role="status" aria-live="polite">Database restored successfully.</p>
               )}
 
               <div className="flex gap-2 justify-end pt-1">
@@ -1007,7 +1006,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                   disabled={restoreMutation.isPending}
                   className={BTN_GHOST_CLASS}
                 >
-                  Cancel
+                  Cancel restore
                 </button>
                 {!restoreMutation.isPending && (
                   <button

@@ -138,7 +138,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
                   <span className="text-red-400">{bearCount} bear</span>
                 </>
               }
-              title="Markov regime distribution across holdings"
+              title="How many holdings sit in bull, sideways, or bear regimes"
             />
           )}
           {hasRegimeData && (
@@ -147,7 +147,7 @@ export function PortfolioStatsBar({ holdings, onAnalyzeStale, fundamentals, regi
               value={`${avgSignal >= 0 ? "+" : ""}${avgSignal.toFixed(2)} ${signalArrow}`}
               color={signalColor}
               mono
-              title="Average Markov directional signal (bull_prob − bear_prob)"
+              title="Average regime direction across holdings (−1 bearish to +1 bullish)"
             />
           )}
           {trimFlagged.length > 0 && (

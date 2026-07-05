@@ -35,7 +35,7 @@ export const DATE_FORMAT_OPTIONS: Array<{
   {
     id: "locale",
     label: "Browser locale",
-    description: "Follows your system or browser language settings",
+    description: "Follows your device language — exact format varies by browser",
   },
 ];
 

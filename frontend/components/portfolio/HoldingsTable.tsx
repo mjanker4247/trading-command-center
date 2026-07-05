@@ -227,10 +227,11 @@ function RegimeBadge({ data }: { data: RegimeData | undefined | null }) {
   );
   const { text, bg } = regimeColors(data.current_regime);
   const signStr = data.signal >= 0 ? `+${data.signal.toFixed(2)}` : data.signal.toFixed(2);
+  const signalHint = data.signal >= 0.3 ? "bullish tilt" : data.signal <= -0.3 ? "bearish tilt" : "neutral";
   return (
     <span
       className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${text} ${bg}`}
-      title={`Markov regime: ${data.current_regime} (${(data.persistence * 100).toFixed(0)}% persistence). Signal: ${signStr} (bull_prob − bear_prob). Powered by yfinance 10y daily data.`}
+      title={`Market regime: ${data.current_regime}. ${(data.persistence * 100).toFixed(0)}% chance it persists next month. Direction score ${signStr} (${signalHint}, −1 bearish to +1 bullish). Based on 10 years of daily prices.`}
     >
       ● {data.current_regime} {signStr}
     </span>
@@ -794,7 +795,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
               {showDetailColumns && hasRegime && (
                 <th
                   className="hidden lg:table-cell text-left px-3 py-3 whitespace-nowrap text-xs text-muted"
-                  title="Compares latest AI verdict (buy/sell/hold) with the Markov regime signal (bull/sideways/bear)"
+                  title="Compares the latest AI verdict (buy/sell/hold) with the market regime direction score"
                 >
                   AI vs regime
                 </th>
@@ -950,7 +951,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                         {(() => {
                           const entry = analysisFromLastRun(h.last_run);
                           if (!entry) {
-                            return <span className="text-xs text-subtle italic">Never analyzed</span>;
+                            return <span className="text-xs text-subtle italic">No analysis yet</span>;
                           }
                           const days = daysAgo(entry.completed_at);
                           const stale = days > 14;
@@ -970,13 +971,16 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className={`ml-1 ${TOUCH_TARGET_INLINE_LINK_CLASS} text-amber-400 hover:text-amber-300`}
-                                  title={`Verdict changed from ${h.last_run?.previous_verdict} on ${formatDate(h.last_run?.previous_analysis_date ?? "")} → ${h.last_run?.verdict} on ${formatDate(h.last_run?.analysis_date ?? "")}. Click to compare.`}
+                                  title={`Verdict changed from ${h.last_run?.previous_verdict} (${formatDate(h.last_run?.previous_analysis_date ?? "")}) to ${h.last_run?.verdict} (${formatDate(h.last_run?.analysis_date ?? "")}). Open side-by-side comparison.`}
                                   aria-label={`Compare runs: verdict changed from ${h.last_run.previous_verdict} to ${h.last_run.verdict ?? entry.verdict}`}
                                 >
                                   ↺ changed
                                 </a>
                               )}
-                              <span className={`text-xs ${stale ? "text-amber-400" : "text-muted"}`}>
+                              <span
+                                className={`text-xs ${stale ? "text-amber-400" : "text-muted"}`}
+                                title={stale ? `Last analysis was ${days} days ago — consider re-running for a fresh verdict.` : undefined}
+                              >
                                 {days === 0 ? "today" : `${days}d ago`}{stale ? " ⚠" : ""}
                               </span>
                               <Link
@@ -1007,7 +1011,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                             {isConflict ? (
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-900/30 text-amber-400 border border-amber-500/30"
-                                title={`AI verdict (${verdict}) conflicts with Markov regime (${r.current_regime}, signal ${signStr}). Consider reviewing.`}
+                                title={`AI says ${verdict.toUpperCase()}, but the ${r.current_regime} regime score (${signStr}) points the other way. Worth a closer look.`}
                               >
                                 ⚠ Conflicts
                               </span>
@@ -1016,7 +1020,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                             ) : (
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900/30 text-green-400 border border-green-500/30"
-                                title={`AI verdict (${verdict}) aligns with Markov regime (${r.current_regime}).`}
+                                title={`AI verdict (${verdict.toUpperCase()}) matches the ${r.current_regime} regime direction.`}
                               >
                                 ✓ Agrees
                               </span>

@@ -25,20 +25,26 @@ export const APP_SETTINGS_RANGES = {
 
 export function validateAppSettings(settings: AppSettings): string | null {
   const { observationCovariance, transitionCovariance, mode } = settings;
-  if (!Number.isFinite(observationCovariance)) return "Observation covariance must be a valid number.";
-  if (!Number.isFinite(transitionCovariance)) return "Transition covariance must be a valid number.";
+  if (!Number.isFinite(observationCovariance)) {
+    return "Enter a number for the price noise filter (R).";
+  }
+  if (!Number.isFinite(transitionCovariance)) {
+    return "Enter a number for trend responsiveness (Q).";
+  }
   if (
     observationCovariance < APP_SETTINGS_RANGES.observationCovariance.min ||
     observationCovariance > APP_SETTINGS_RANGES.observationCovariance.max
   ) {
-    return "Observation covariance must be between 0.0001 and 10.0.";
+    return "Price noise filter (R) must be between 0.0001 and 10.0.";
   }
   if (
     transitionCovariance < APP_SETTINGS_RANGES.transitionCovariance.min ||
     transitionCovariance > APP_SETTINGS_RANGES.transitionCovariance.max
   ) {
-    return "Transition covariance must be between 0.0001 and 1.0.";
+    return "Trend responsiveness (Q) must be between 0.0001 and 1.0.";
   }
-  if (mode !== "causal" && mode !== "historical") return "Processing mode is invalid.";
+  if (mode !== "causal" && mode !== "historical") {
+    return "Choose Live Tracking or Historical View for processing mode.";
+  }
   return null;
 }
