@@ -109,6 +109,12 @@ export const STATUS_ERROR_CLASS = "text-xs text-danger";
 /** Active configuration state (API key set, URL reachable, feature enabled). */
 export const STATUS_CONFIGURED_CLASS = "text-xs text-info font-medium";
 
+/** Non-blocking warning status (missing optional config, unverified key). */
+export const STATUS_WARNING_CLASS = "text-xs text-warning";
+
+export const LINK_INLINE_CLASS =
+  "text-link transition-colors hover:text-link-hover hover:underline focus:outline-hidden focus-visible:underline";
+
 export function matrixCellToneClass(value: number): string {
   if (value >= 0.7) return "text-green-800 bg-green-100 dark:text-green-300 dark:bg-green-900/40";
   if (value >= 0.5) return "text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20";

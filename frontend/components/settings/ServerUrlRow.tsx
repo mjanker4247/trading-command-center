@@ -29,7 +29,7 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
         <div className="text-fg text-sm">{label}</div>
       </div>
       <span className={`w-28 shrink-0 ${isValid ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
-        {isValid ? "Connected ✓" : "Not configured"}
+        {isValid ? "Connected" : "Not configured"}
       </span>
       <input
         type="text"
@@ -43,7 +43,7 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
         disabled={mutation.isPending || !value}
         className={BTN_PRIMARY_SM_CLASS}
       >
-        {mutation.isPending ? "Saving…" : "Save"}
+        {mutation.isPending ? "Saving…" : "Save URL"}
       </button>
       {mutation.isError && (
         <span className={STATUS_ERROR_CLASS}>{(mutation.error as Error).message}</span>

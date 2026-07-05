@@ -9,6 +9,9 @@ interface TeamMemberRowProps {
   onChanged: () => void;
 }
 
+const ROW_ACTION_CLASS =
+  "rounded-sm px-1 py-2 text-xs touch-manipulation transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50";
+
 export function TeamMemberRow({ user, currentUserId, onChanged }: TeamMemberRowProps) {
   const isSelf = user.id === currentUserId;
 
@@ -38,18 +41,20 @@ export function TeamMemberRow({ user, currentUserId, onChanged }: TeamMemberRowP
       {!isSelf && (
         <>
           <button
+            type="button"
             onClick={() => roleMutation.mutate()}
             disabled={roleMutation.isPending}
-            className="text-muted hover:text-fg-secondary text-xs disabled:opacity-50"
+            className={`${ROW_ACTION_CLASS} text-muted hover:text-fg-secondary`}
           >
-            {user.role === "admin" ? "Make Member" : "Make Admin"}
+            {user.role === "admin" ? "Make member" : "Make admin"}
           </button>
           <button
+            type="button"
             onClick={() => deleteMutation.mutate()}
             disabled={deleteMutation.isPending}
-            className="text-red-400 hover:text-red-300 text-xs disabled:opacity-50"
+            className={`${ROW_ACTION_CLASS} text-danger hover:text-danger/80`}
           >
-            Remove
+            Remove member
           </button>
         </>
       )}

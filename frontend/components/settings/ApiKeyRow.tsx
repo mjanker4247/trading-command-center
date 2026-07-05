@@ -69,7 +69,7 @@ export function ApiKeyRow({
           {description && <div className="text-muted text-xs mt-0.5">{description}</div>}
         </div>
         <span className={`w-28 shrink-0 mt-0.5 ${isSet ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
-          {isSet ? "Configured ✓" : "Not configured"}
+          {isSet ? "Configured" : "Not configured"}
         </span>
         <input
           type="password"

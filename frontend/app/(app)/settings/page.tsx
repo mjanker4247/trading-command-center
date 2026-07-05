@@ -60,6 +60,8 @@ import {
   STATUS_CONFIGURED_CLASS,
   STATUS_ERROR_CLASS,
   STATUS_OK_CLASS,
+  STATUS_WARNING_CLASS,
+  LINK_INLINE_CLASS,
 } from "@/lib/uiClasses";
 
 const SETTINGS_INPUT_CLASS = `${FIELD_INPUT_CLASS} w-full sm:max-w-xs`;
@@ -326,7 +328,7 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
             disabled={disabled}
             className={BTN_PRIMARY_SM_CLASS}
           >
-            {mutation.isPending ? "Saving..." : "Save Strategy Settings"}
+            {mutation.isPending ? "Saving…" : "Save Strategy Settings"}
           </button>
           <button
             onClick={resetDefaults}
@@ -578,6 +580,9 @@ export default function SettingsPage() {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+              <p className="text-[10px] text-muted mt-0.5 sm:hidden">
+                Display only — prices are not converted between currencies.
+              </p>
             </div>
             <Divider />
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
@@ -660,7 +665,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className={STATUS_CONFIGURED_CLASS}>● DNA active</span>
-                  <a href="/settings/investor-profile" className={`${BTN_SECONDARY_CLASS} text-blue-400 hover:text-blue-300 border-blue-500/30`}>Edit</a>
+                  <a href="/settings/investor-profile" className={BTN_SECONDARY_CLASS}>Edit profile</a>
                 </div>
               </div>
             ) : (
@@ -739,9 +744,9 @@ export default function SettingsPage() {
                 ) : smtpError ? (
                   <span className="text-muted text-xs">Unavailable — restart the backend to load status</span>
                 ) : smtpStatus?.configured ? (
-                  <span className={STATUS_OK_CLASS}>Configured ✓</span>
+                  <span className={STATUS_CONFIGURED_CLASS}>Configured</span>
                 ) : (
-                  <span className="text-amber-400 text-xs">Not configured — emails are disabled</span>
+                  <span className={STATUS_WARNING_CLASS}>Not configured — run-completion emails are off</span>
                 )}
               </div>
               {!smtpLoading && !smtpError && smtpStatus?.configured && smtpStatus.from_address && (
@@ -769,7 +774,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                       href="https://myaccount.google.com/apppasswords"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-400 hover:underline"
+                      className={LINK_INLINE_CLASS}
                     >
                       App Password
                     </a>{" "}

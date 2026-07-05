@@ -13,7 +13,7 @@ import { WaveBadge } from "@/components/wave/WaveBadge";
 import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason, TickerMetadata } from "@/lib/types";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { useDateFormat } from "@/lib/useDateFormat";
-import { TOUCH_TARGET_INLINE_LINK_CLASS } from "@/lib/uiClasses";
+import { TOUCH_TARGET_INLINE_LINK_CLASS, LINK_INLINE_CLASS } from "@/lib/uiClasses";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HoldingsMobileCards } from "@/components/portfolio/HoldingsMobileCards";
 import { FIELD_INPUT_SM_CLASS, BTN_SECONDARY_CLASS, ALERT_BANNER_CLASS } from "@/lib/uiClasses";
@@ -535,7 +535,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
       {priceUnavailableReason === "no_finnhub_key" && (
         <div className={`${ALERT_BANNER_CLASS} text-amber-400/80`}>
           Showing delayed prices via Yahoo Finance — add your Finnhub API key in{" "}
-          <Link href="/settings" className="text-blue-400 hover:underline">Settings</Link>{" "}
+          <Link href="/settings" className={LINK_INLINE_CLASS}>Settings</Link>{" "}
           for real-time data.
         </div>
       )}
@@ -970,7 +970,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                                   href={`/runs/compare?a=${h.last_run?.previous_run_id}&b=${h.last_run?.run_id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`ml-1 ${TOUCH_TARGET_INLINE_LINK_CLASS} text-amber-400 hover:text-amber-300`}
+                                  className={`ml-1 ${TOUCH_TARGET_INLINE_LINK_CLASS} text-warning hover:text-warning/80`}
                                   title={`Verdict changed from ${h.last_run?.previous_verdict} (${formatDate(h.last_run?.previous_analysis_date ?? "")}) to ${h.last_run?.verdict} (${formatDate(h.last_run?.analysis_date ?? "")}). Open side-by-side comparison.`}
                                   aria-label={`Compare runs: verdict changed from ${h.last_run.previous_verdict} to ${h.last_run.verdict ?? entry.verdict}`}
                                 >
@@ -978,14 +978,14 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                                 </a>
                               )}
                               <span
-                                className={`text-xs ${stale ? "text-amber-400" : "text-muted"}`}
+                                className={`text-xs ${stale ? "text-warning" : "text-muted"}`}
                                 title={stale ? `Last analysis was ${days} days ago — consider re-running for a fresh verdict.` : undefined}
                               >
                                 {days === 0 ? "today" : `${days}d ago`}{stale ? " ⚠" : ""}
                               </span>
                               <Link
                                 href={`/runs/${entry.run_id}`}
-                                className={`${TOUCH_TARGET_INLINE_LINK_CLASS} text-xs text-blue-400 hover:text-blue-300`}
+                                className={`${TOUCH_TARGET_INLINE_LINK_CLASS} text-xs ${LINK_INLINE_CLASS}`}
                                 title="View run"
                                 aria-label={`View analysis run for ${h.ticker}`}
                               >
@@ -1010,7 +1010,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                           <td className="hidden lg:table-cell px-3 py-2 text-xs whitespace-nowrap">
                             {isConflict ? (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-900/30 text-amber-400 border border-amber-500/30"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning-soft/40 text-warning border border-warning/30"
                                 title={`AI says ${verdict.toUpperCase()}, but the ${r.current_regime} regime score (${signStr}) points the other way. Worth a closer look.`}
                               >
                                 ⚠ Conflicts
@@ -1019,7 +1019,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                               <span className="text-subtle text-[11px]">— Neutral</span>
                             ) : (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900/30 text-green-400 border border-green-500/30"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success-soft/40 text-success border border-success/30"
                                 title={`AI verdict (${verdict.toUpperCase()}) matches the ${r.current_regime} regime direction.`}
                               >
                                 ✓ Agrees

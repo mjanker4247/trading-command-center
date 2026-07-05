@@ -6,7 +6,7 @@ import {
   PORTFOLIO_STALE_TIMES,
   PORTFOLIO_EARNINGS_DAYS_AHEAD,
 } from "@/lib/portfolioQueries";
-import { ALERT_BANNER_CLASS } from "@/lib/uiClasses";
+import { ALERT_BANNER_CLASS, LINK_INLINE_CLASS } from "@/lib/uiClasses";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
@@ -42,7 +42,7 @@ function UnavailableMessage({ message }: { message: string }) {
     <div className="text-muted text-sm py-6 text-center space-y-1">
       <p>{message}</p>
       <p>
-        <a href="/settings" className="text-blue-400 hover:underline">Open Settings</a>
+        <a href="/settings" className={LINK_INLINE_CLASS}>Open Settings</a>
       </p>
     </div>
   );

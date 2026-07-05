@@ -14,7 +14,7 @@ export function StatusAnnouncer({ variant, children }: StatusAnnouncerProps) {
     <span
       role="status"
       aria-live="polite"
-      className={variant === "success" ? STATUS_OK_CLASS : STATUS_ERROR_CLASS}
+      className={`shrink-0 ${variant === "success" ? STATUS_OK_CLASS : STATUS_ERROR_CLASS}`}
     >
       {children}
     </span>

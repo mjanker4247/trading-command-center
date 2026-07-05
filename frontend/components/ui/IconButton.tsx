@@ -21,7 +21,7 @@ const toneClass: Record<IconTone, string> = {
 };
 
 const baseClass =
-  `${TOUCH_TARGET_ICON_CLASS} rounded-sm transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500/60 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`;
+  `${TOUCH_TARGET_ICON_CLASS} rounded-sm transition-colors duration-150 focus:outline-hidden focus:ring-2 focus:ring-blue-500/60 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`;
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
