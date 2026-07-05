@@ -1,4 +1,5 @@
 export type DateFormatId = "iso" | "us" | "us_long" | "eu" | "uk" | "locale";
+export type DateInput = string | Date | null | undefined;
 
 export const DEFAULT_DATE_FORMAT: DateFormatId = "iso";
 
@@ -56,18 +57,19 @@ function pad2(value: number): string {
 }
 
 /** Parse API date-only strings as local calendar dates to avoid UTC day shifts. */
-export function parseDateInput(value: string | Date): Date {
+export function parseDateInput(value: DateInput): Date {
   if (value instanceof Date) return value;
-  const dateOnly = value.slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly) && value.length <= 10) {
+  if (value == null) return new Date(Number.NaN);
+
+  const trimmed = value.trim();
+  if (trimmed === "") return new Date(Number.NaN);
+
+  const dateOnly = trimmed.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly) && trimmed.length <= 10) {
     const [year, month, day] = dateOnly.split("-").map(Number);
     return new Date(year, month - 1, day);
   }
-  return new Date(value);
-}
-
-function isDateOnlyString(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value.slice(0, 10)) && value.length <= 10;
+  return new Date(trimmed);
 }
 
 function dateParts(date: Date) {
@@ -90,12 +92,8 @@ function formatTime12(hours: number, minutes: number): string {
   return `${hour12}:${pad2(minutes)} ${period}`;
 }
 
-export function formatDateValue(format: DateFormatId, value: string | Date): string {
-  if (typeof value === "string" && value.trim() === "") return "—";
-
-  const date = typeof value === "string" && isDateOnlyString(value)
-    ? parseDateInput(value)
-    : parseDateInput(value);
+export function formatDateValue(format: DateFormatId, value: DateInput): string {
+  const date = parseDateInput(value);
   if (Number.isNaN(date.getTime())) return "—";
 
   const { year, month, day } = dateParts(date);
@@ -119,9 +117,7 @@ export function formatDateValue(format: DateFormatId, value: string | Date): str
   }
 }
 
-export function formatDateTimeValue(format: DateFormatId, value: string | Date): string {
-  if (typeof value === "string" && value.trim() === "") return "—";
-
+export function formatDateTimeValue(format: DateFormatId, value: DateInput): string {
   const date = parseDateInput(value);
   if (Number.isNaN(date.getTime())) return "—";
 
@@ -150,8 +146,8 @@ export function createDateFormatter(format: DateFormatId) {
   const normalized = normalizeDateFormat(format);
   return {
     dateFormat: normalized,
-    formatDate: (value: string | Date) => formatDateValue(normalized, value),
-    formatDateTime: (value: string | Date) => formatDateTimeValue(normalized, value),
+    formatDate: (value: DateInput) => formatDateValue(normalized, value),
+    formatDateTime: (value: DateInput) => formatDateTimeValue(normalized, value),
     formatFilenameDate: (value?: Date) => formatFilenameDateValue(normalized, value),
   };
 }

@@ -26,6 +26,11 @@ describe("parseDateInput", () => {
     expect(date.getMonth()).toBe(5);
     expect(date.getDate()).toBe(30);
   });
+
+  it("treats missing values as invalid dates", () => {
+    expect(Number.isNaN(parseDateInput(null).getTime())).toBe(true);
+    expect(Number.isNaN(parseDateInput(undefined).getTime())).toBe(true);
+  });
 });
 
 describe("formatDateValue", () => {
@@ -49,8 +54,12 @@ describe("formatDateValue", () => {
 
   it("returns em dash for empty or invalid input", () => {
     expect(formatDateValue("iso", "")).toBe("—");
+    expect(formatDateValue("iso", null)).toBe("—");
+    expect(formatDateValue("iso", undefined)).toBe("—");
     expect(formatDateValue("iso", "not-a-date")).toBe("—");
     expect(formatDateTimeValue("iso", "")).toBe("—");
+    expect(formatDateTimeValue("iso", null)).toBe("—");
+    expect(formatDateTimeValue("iso", undefined)).toBe("—");
   });
 
   it("formats uk", () => {
