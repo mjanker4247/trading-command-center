@@ -30,6 +30,7 @@ interface Props {
   providerClassName?: string;
   modelClassName?: string;
   depthClassName?: string;
+  idPrefix?: string;
 }
 
 const INPUT_CLASS = FIELD_INPUT_CLASS;
@@ -45,6 +46,7 @@ export function LlmConfigPicker({
   providerClassName,
   modelClassName,
   depthClassName,
+  idPrefix,
 }: Props) {
   const isLocal = isLocalLlmProvider(value.provider);
   const inputClass = layout === "compact" ? COMPACT_INPUT_CLASS : INPUT_CLASS;
@@ -68,12 +70,17 @@ export function LlmConfigPicker({
     onChange({ ...value, provider, model: "" });
   }
 
+  const providerId = idPrefix ? `${idPrefix}-provider` : undefined;
+  const modelId = idPrefix ? `${idPrefix}-model` : undefined;
+  const depthId = idPrefix ? `${idPrefix}-depth` : undefined;
+
   const providerSelect = (
     <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
       {layout !== "compact" && (
-        <label className="block text-muted text-xs mb-1">LLM Provider</label>
+        <label htmlFor={providerId} className="block text-muted text-xs mb-1">LLM Provider</label>
       )}
       <select
+        id={providerId}
         value={value.provider}
         onChange={(e) => handleProviderChange(e.target.value as LlmProvider)}
         disabled={!enabled}
@@ -94,6 +101,7 @@ export function LlmConfigPicker({
     </select>
   ) : models.length > 0 ? (
     <select
+      id={modelId}
       value={value.model}
       onChange={(e) => onChange({ ...value, model: e.target.value })}
       disabled={!enabled}
@@ -106,6 +114,7 @@ export function LlmConfigPicker({
   ) : (
     <>
       <input
+        id={modelId}
         type="text"
         value={value.model}
         onChange={(e) => onChange({ ...value, model: e.target.value })}
@@ -114,7 +123,7 @@ export function LlmConfigPicker({
         className={modelClassName ?? `${inputClass} w-full`}
       />
       {isLocal && layout !== "compact" && (
-        <p className="text-amber-400 text-xs mt-1">Server unreachable — enter model name manually</p>
+        <p className="text-warning text-xs mt-1">Server unreachable — enter model name manually</p>
       )}
     </>
   );
@@ -122,7 +131,7 @@ export function LlmConfigPicker({
   const modelField = (
     <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
       {layout !== "compact" && (
-        <label className="block text-muted text-xs mb-1">LLM Model</label>
+        <label htmlFor={modelId} className="block text-muted text-xs mb-1">LLM Model</label>
       )}
       {modelControl}
     </div>
@@ -131,9 +140,10 @@ export function LlmConfigPicker({
   const depthField = showDepth && (
     <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
       {layout !== "compact" && (
-        <label className="block text-muted text-xs mb-1">Research Depth</label>
+        <label htmlFor={depthId} className="block text-muted text-xs mb-1">Research Depth</label>
       )}
       <select
+        id={depthId}
         value={value.depth ?? "standard"}
         onChange={(e) => onChange({ ...value, depth: e.target.value as LlmDepth })}
         disabled={!enabled}

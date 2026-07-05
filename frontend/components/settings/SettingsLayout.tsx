@@ -15,11 +15,11 @@ type SettingsLayoutProps = {
 function navItemClass(active: boolean, variant: "sidebar" | "mobile") {
   if (variant === "sidebar") {
     return active
-      ? "bg-elevated text-fg font-medium border-l-2 border-blue-500 pl-[calc(0.75rem-2px)]"
-      : "text-muted hover:text-fg-secondary hover:bg-elevated/60 border-l-2 border-transparent pl-[calc(0.75rem-2px)]";
+      ? "bg-elevated text-fg font-medium"
+      : "text-muted hover:text-fg-secondary hover:bg-elevated/60";
   }
   return active
-    ? "border-b-2 border-blue-400 text-blue-400"
+    ? "border-b-2 border-link text-link"
     : "border-b-2 border-transparent text-muted hover:text-fg";
 }
 
@@ -83,7 +83,7 @@ export function SettingsLayout({ sections, children }: SettingsLayoutProps) {
             key={section.id}
             type="button"
             onClick={() => handleNavClick(section.id)}
-            className={`shrink-0 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${navItemClass(activeId === section.id, "mobile")}`}
+            className={`shrink-0 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors ${navItemClass(activeId === section.id, "mobile")}`}
           >
             {section.label}
           </button>
@@ -99,7 +99,7 @@ export function SettingsLayout({ sections, children }: SettingsLayoutProps) {
               key={section.id}
               type="button"
               onClick={() => handleNavClick(section.id)}
-              className={`w-full text-left py-2 pr-2 text-sm rounded-r-sm transition-colors ${navItemClass(activeId === section.id, "sidebar")}`}
+              className={`w-full text-left py-2 px-3 text-sm rounded-sm transition-colors ${navItemClass(activeId === section.id, "sidebar")}`}
             >
               {section.label}
             </button>

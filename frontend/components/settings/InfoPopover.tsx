@@ -12,9 +12,10 @@ interface InfoPopoverProps {
   tooltip: string;
   open: boolean;
   onToggle: () => void;
+  controlId?: string;
 }
 
-export function InfoPopover({ label, tooltip, open, onToggle }: InfoPopoverProps) {
+export function InfoPopover({ label, tooltip, open, onToggle, controlId }: InfoPopoverProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -70,16 +71,22 @@ export function InfoPopover({ label, tooltip, open, onToggle }: InfoPopoverProps
   return (
     <>
       <div className="flex items-center gap-1.5 text-muted text-xs sm:w-44 shrink-0">
-        <span>{label}</span>
+        {controlId ? (
+          <label htmlFor={controlId} className="cursor-default">{label}</label>
+        ) : (
+          <span>{label}</span>
+        )}
         <button
           ref={buttonRef}
           type="button"
           onClick={onToggle}
           aria-label={`Explain ${label}`}
           aria-expanded={open}
-          className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-input-border text-[10px] text-muted hover:border-blue-500 hover:text-blue-400"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full touch-manipulation sm:min-h-7 sm:min-w-7"
         >
-          i
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-input-border text-[10px] text-muted hover:border-link hover:text-link transition-colors">
+            i
+          </span>
         </button>
       </div>
       {open &&

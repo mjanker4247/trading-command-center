@@ -31,6 +31,9 @@ export function ApiKeyRow({
 }: ApiKeyRowProps) {
   const [value, setValue] = useState("");
   const [savedResult, setSavedResult] = useState<"valid" | "invalid" | null>(null);
+  const inputId = `api-key-${provider}`;
+  const displayName = label ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+  const capabilityEntries = capabilities ? Object.entries(capabilities) : [];
 
   const mutation = useMutation({
     mutationFn: () => upsertApiKey(provider, value),
@@ -42,24 +45,22 @@ export function ApiKeyRow({
     onError: () => setSavedResult(null),
   });
 
-  const displayName = label ?? provider.charAt(0).toUpperCase() + provider.slice(1);
-  const capabilityEntries = capabilities ? Object.entries(capabilities) : [];
-
   return (
     <div className="px-4 py-3 space-y-3">
-      <div className="flex items-start gap-4">
-        <div className="w-36 shrink-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+        <div className="sm:w-36 shrink-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-fg text-sm">{displayName}</span>
+            <label htmlFor={inputId} className="text-fg text-sm">{displayName}</label>
             {docsUrl && (
               <a
                 href={docsUrl}
                 target="_blank"
                 rel="noreferrer"
+                aria-label={`Get ${displayName} API key (opens in new tab)`}
                 title="Get API key"
                 className="text-muted hover:text-link transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
                   <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
                   <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
                 </svg>
@@ -68,20 +69,23 @@ export function ApiKeyRow({
           </div>
           {description && <div className="text-muted text-xs mt-0.5">{description}</div>}
         </div>
-        <span className={`w-28 shrink-0 mt-0.5 ${isSet ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
+        <span className={`sm:w-28 shrink-0 sm:mt-0.5 ${isSet ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
           {isSet ? "Configured" : "Not configured"}
         </span>
         <input
+          id={inputId}
           type="password"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder ?? "sk-…"}
+          autoComplete="off"
           className={`${FIELD_INPUT_SM_CLASS} w-full sm:max-w-xs`}
         />
         <button
+          type="button"
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending || !value}
-          className={`${BTN_PRIMARY_SM_CLASS} shrink-0`}
+          className={`${BTN_PRIMARY_SM_CLASS} shrink-0 w-full sm:w-auto`}
         >
           {mutation.isPending ? "Saving…" : "Save key"}
         </button>
@@ -97,7 +101,7 @@ export function ApiKeyRow({
       </div>
 
       {provider === "finnhub" && capabilityEntries.length > 0 && (
-        <div className="pl-[calc(9rem+1rem)] space-y-2">
+        <div className="space-y-2 sm:pl-[calc(9rem+1rem)]">
           <p className="text-[11px] text-muted uppercase tracking-wide">Plan capabilities</p>
           <div className="flex flex-wrap gap-2">
             {capabilityEntries.map(([key, status]) => (

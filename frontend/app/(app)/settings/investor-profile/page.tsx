@@ -63,25 +63,42 @@ const EMPTY: FormState = {
   anti_portfolio: [], target_portfolio_size: "", income_goal: "", milestones: "",
 };
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="text-muted text-xs mb-1 block">{children}</label>;
+function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return <label htmlFor={htmlFor} className="text-muted text-xs mb-1 block">{children}</label>;
 }
 
-function Select({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+function Select({
+  id,
+  value,
+  onChange,
+  children,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+}) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={FIELD_INPUT_CLASS}
-    >
+    <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={FIELD_INPUT_CLASS}>
       {children}
     </select>
   );
 }
 
-function Textarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Textarea({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <textarea
+      id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -201,8 +218,8 @@ export default function InvestorProfilePage() {
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Operating Base" description="Your financial context shapes every recommendation." />
             <div>
-              <Label>Annual income range</Label>
-              <Select value={form.income_range} onChange={set("income_range")}>
+              <FieldLabel htmlFor="investor-dna-income-range">Annual income range</FieldLabel>
+              <Select id="investor-dna-income-range" value={form.income_range} onChange={set("income_range")}>
                 <option value="">— Select —</option>
                 <option value="lt_50k">Less than $50k</option>
                 <option value="50k_100k">$50k – $100k</option>
@@ -213,8 +230,9 @@ export default function InvestorProfilePage() {
               </Select>
             </div>
             <div>
-              <Label>{"Monthly liquidity reserve (e.g. \"3 months expenses\")"}</Label>
+              <FieldLabel htmlFor="investor-dna-liquidity-reserve">{"Monthly liquidity reserve (e.g. \"3 months expenses\")"}</FieldLabel>
               <input
+                id="investor-dna-liquidity-reserve"
                 type="text"
                 value={form.liquidity_reserve}
                 onChange={(e) => set("liquidity_reserve")(e.target.value)}
@@ -223,8 +241,9 @@ export default function InvestorProfilePage() {
               />
             </div>
             <div>
-              <Label>Financial dependents</Label>
+              <FieldLabel htmlFor="investor-dna-dependents">Financial dependents</FieldLabel>
               <input
+                id="investor-dna-dependents"
                 type="number"
                 min={0}
                 value={form.dependents}
@@ -239,8 +258,8 @@ export default function InvestorProfilePage() {
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Capital Base" description="Your time horizon and risk profile." />
             <div>
-              <Label>Investment time horizon</Label>
-              <Select value={form.time_horizon} onChange={set("time_horizon")}>
+              <FieldLabel htmlFor="investor-dna-time-horizon">Investment time horizon</FieldLabel>
+              <Select id="investor-dna-time-horizon" value={form.time_horizon} onChange={set("time_horizon")}>
                 <option value="">— Select —</option>
                 <option value="lt_1y">Less than 1 year</option>
                 <option value="1_3y">1 – 3 years</option>
@@ -250,10 +269,11 @@ export default function InvestorProfilePage() {
               </Select>
             </div>
             <div>
-              <Label>Risk willingness: {form.risk_willingness}/5</Label>
+              <FieldLabel htmlFor="investor-dna-risk-willingness">Risk willingness: {form.risk_willingness}/5</FieldLabel>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <span className="text-muted text-xs">Conservative</span>
                 <input
+                  id="investor-dna-risk-willingness"
                   type="range"
                   min={1}
                   max={5}
@@ -265,8 +285,8 @@ export default function InvestorProfilePage() {
               </div>
             </div>
             <div>
-              <Label>Risk ability</Label>
-              <Select value={form.risk_ability} onChange={set("risk_ability")}>
+              <FieldLabel htmlFor="investor-dna-risk-ability">Risk ability</FieldLabel>
+              <Select id="investor-dna-risk-ability" value={form.risk_ability} onChange={set("risk_ability")}>
                 <option value="">— Select —</option>
                 <option value="low">Low — cannot afford significant losses</option>
                 <option value="medium">Medium — can absorb moderate drawdowns</option>
@@ -278,8 +298,8 @@ export default function InvestorProfilePage() {
           {/* Section 3 */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Investment Philosophy" description="How you approach building a portfolio." />
-            <div>
-              <Label>Investment style</Label>
+            <fieldset>
+              <legend className="text-muted text-xs mb-1 block">Investment style</legend>
               <div className="flex gap-2">
                 {[["passive", "Passive (index/ETF-first)"], ["active", "Active (stock picking)"], ["hybrid", "Hybrid"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("investment_style")(v)}
@@ -288,9 +308,9 @@ export default function InvestorProfilePage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div>
-              <Label>Position sizing approach</Label>
+            </fieldset>
+            <fieldset>
+              <legend className="text-muted text-xs mb-1 block">Position sizing approach</legend>
               <div className="flex gap-2 flex-wrap">
                 {[["equal_weight", "Equal weight"], ["conviction", "Conviction-based"], ["market_cap", "Market-cap weighted"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("sizing_approach")(v)}
@@ -299,40 +319,40 @@ export default function InvestorProfilePage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div>
-              <Label>Preferred sectors / themes</Label>
+            </fieldset>
+            <fieldset>
+              <legend className="text-muted text-xs mb-1 block">Preferred sectors / themes</legend>
               <CheckboxGroup options={SECTORS} selected={form.preferred_sectors} onChange={set("preferred_sectors") as (v: string[]) => void} />
-            </div>
+            </fieldset>
           </div>
 
           {/* Section 4 */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Behavioral Profile" description="Self-awareness is the edge most investors skip." />
             <div>
-              <Label>Known blind spots</Label>
-              <Textarea value={form.blind_spots} onChange={set("blind_spots") as (v: string) => void} placeholder="e.g. I tend to hold losers too long" />
+              <FieldLabel htmlFor="investor-dna-blind-spots">Known blind spots</FieldLabel>
+              <Textarea id="investor-dna-blind-spots" value={form.blind_spots} onChange={set("blind_spots") as (v: string) => void} placeholder="e.g. I tend to hold losers too long" />
             </div>
             <div>
-              <Label>Emotional tendencies</Label>
-              <Textarea value={form.emotional_tendencies} onChange={set("emotional_tendencies") as (v: string) => void} placeholder="e.g. FOMO buyer in bull markets" />
+              <FieldLabel htmlFor="investor-dna-emotional-tendencies">Emotional tendencies</FieldLabel>
+              <Textarea id="investor-dna-emotional-tendencies" value={form.emotional_tendencies} onChange={set("emotional_tendencies") as (v: string) => void} placeholder="e.g. FOMO buyer in bull markets" />
             </div>
             <div>
-              <Label>Personal rules</Label>
-              <Textarea value={form.personal_rules} onChange={set("personal_rules") as (v: string) => void} placeholder="e.g. Never buy without a stop-loss" />
+              <FieldLabel htmlFor="investor-dna-personal-rules">Personal rules</FieldLabel>
+              <Textarea id="investor-dna-personal-rules" value={form.personal_rules} onChange={set("personal_rules") as (v: string) => void} placeholder="e.g. Never buy without a stop-loss" />
             </div>
           </div>
 
           {/* Section 5 */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <SectionHeader title="Constraints and Goals" description="Hard limits and where you're headed." />
-            <div>
-              <Label>Anti-portfolio (never recommend these)</Label>
+            <fieldset>
+              <legend className="text-muted text-xs mb-1 block">Anti-portfolio (never recommend these)</legend>
               <CheckboxGroup options={ALL_ANTI} selected={form.anti_portfolio} onChange={set("anti_portfolio") as (v: string[]) => void} />
-            </div>
+            </fieldset>
             <div>
-              <Label>Target portfolio size</Label>
-              <Select value={form.target_portfolio_size} onChange={set("target_portfolio_size")}>
+              <FieldLabel htmlFor="investor-dna-target-portfolio-size">Target portfolio size</FieldLabel>
+              <Select id="investor-dna-target-portfolio-size" value={form.target_portfolio_size} onChange={set("target_portfolio_size")}>
                 <option value="">— Select —</option>
                 <option value="lt_50k">Less than $50k</option>
                 <option value="50k_250k">$50k – $250k</option>
@@ -341,8 +361,8 @@ export default function InvestorProfilePage() {
                 <option value="gt_5m">Over $5M</option>
               </Select>
             </div>
-            <div>
-              <Label>Income goal</Label>
+            <fieldset>
+              <legend className="text-muted text-xs mb-1 block">Income goal</legend>
               <div className="flex gap-2 flex-wrap">
                 {[["growth_only", "Growth only"], ["some_income", "Some income (5–20% yield)"], ["income_first", "Income-first (>20% yield)"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => set("income_goal")(v)}
@@ -351,10 +371,10 @@ export default function InvestorProfilePage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
             <div>
-              <Label>Key milestones</Label>
-              <Textarea value={form.milestones} onChange={set("milestones") as (v: string) => void} placeholder="e.g. Retire at 55 with $2M, fund college in 2031" />
+              <FieldLabel htmlFor="investor-dna-milestones">Key milestones</FieldLabel>
+              <Textarea id="investor-dna-milestones" value={form.milestones} onChange={set("milestones") as (v: string) => void} placeholder="e.g. Retire at 55 with $2M, fund college in 2031" />
             </div>
           </div>
 

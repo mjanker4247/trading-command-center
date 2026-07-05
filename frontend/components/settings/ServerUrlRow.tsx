@@ -14,6 +14,7 @@ interface ServerUrlRowProps {
 
 export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRowProps) {
   const [value, setValue] = useState("");
+  const inputId = `server-url-${provider}`;
 
   const mutation = useMutation({
     mutationFn: () => upsertApiKey(provider, value),
@@ -24,24 +25,27 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
   });
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
-      <div className="w-36 shrink-0">
-        <div className="text-fg text-sm">{label}</div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 px-4 py-3">
+      <div className="sm:w-36 shrink-0">
+        <label htmlFor={inputId} className="text-fg text-sm">{label}</label>
       </div>
-      <span className={`w-28 shrink-0 ${isValid ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
+      <span className={`sm:w-28 shrink-0 ${isValid ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
         {isValid ? "Connected" : "Not configured"}
       </span>
       <input
-        type="text"
+        id={inputId}
+        type="url"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={LLM_SERVER_URL_PLACEHOLDERS[provider]}
+        autoComplete="off"
         className={`${FIELD_INPUT_SM_CLASS} w-full sm:max-w-xs`}
       />
       <button
+        type="button"
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || !value}
-        className={BTN_PRIMARY_SM_CLASS}
+        className={`${BTN_PRIMARY_SM_CLASS} shrink-0 w-full sm:w-auto`}
       >
         {mutation.isPending ? "Saving…" : "Save URL"}
       </button>
