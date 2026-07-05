@@ -8,6 +8,7 @@ import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 import {
   BTN_AI_CLASS,
   FIELD_INPUT_CLASS,
+  STATUS_ERROR_CLASS,
   aiSelectionPillClass,
 } from "@/lib/uiClasses";
 
@@ -367,7 +368,7 @@ export default function InvestorProfilePage() {
             </button>
             <a href="/settings" className="text-muted hover:text-fg text-sm">Cancel</a>
             {saveMutation.isError && (
-              <span className="text-red-400 text-xs">{(saveMutation.error as Error).message}</span>
+              <span className={STATUS_ERROR_CLASS}>{(saveMutation.error as Error).message}</span>
             )}
           </div>
         </form>

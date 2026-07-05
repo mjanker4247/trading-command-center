@@ -45,6 +45,7 @@ import {
 } from "@/lib/appSettings";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
+import { StatusAnnouncer } from "@/components/ui/StatusAnnouncer";
 import { SectionCard } from "@/components/settings/SectionCard";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { visibleSettingsSections } from "@/lib/settingsNav";
@@ -56,6 +57,9 @@ import {
   BTN_SECONDARY_CLASS,
   FIELD_INPUT_CLASS,
   FIELD_INPUT_SM_CLASS,
+  STATUS_CONFIGURED_CLASS,
+  STATUS_ERROR_CLASS,
+  STATUS_OK_CLASS,
 } from "@/lib/uiClasses";
 
 const SETTINGS_INPUT_CLASS = `${FIELD_INPUT_CLASS} w-full sm:max-w-xs`;
@@ -333,8 +337,8 @@ function StrategySettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           </button>
           {!isAdmin && <span className="text-muted text-xs">Admin access required to modify.</span>}
           {isLoading && <span className="text-muted text-xs">Loading settings...</span>}
-          {status === "success" && <span className="text-green-400 text-xs">Saved.</span>}
-          {status === "error" && <span className="text-red-400 text-xs">{error}</span>}
+          {status === "success" && <StatusAnnouncer variant="success">Saved.</StatusAnnouncer>}
+          {status === "error" && <StatusAnnouncer variant="error">{error}</StatusAnnouncer>}
         </div>
       </div>
     </SectionCard>
@@ -519,8 +523,9 @@ export default function SettingsPage() {
         <SectionCard id="profile" title="My Profile" description="Your display name and login credentials.">
           <div className="px-4 py-4 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <label className="text-muted text-xs sm:w-32 shrink-0">Display Name</label>
+              <label htmlFor="profile-display-name" className="text-muted text-xs sm:w-32 shrink-0">Display Name</label>
               <input
+                id="profile-display-name"
                 type="text"
                 value={profileName}
                 onChange={(e) => { setProfileName(e.target.value); setProfileStatus("idle"); }}
@@ -531,22 +536,26 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-2">
               <span className="text-muted text-xs">Change Password</span>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <label className="text-muted text-xs sm:w-32 shrink-0">Current</label>
+                <label htmlFor="profile-current-password" className="text-muted text-xs sm:w-32 shrink-0">Current</label>
                 <input
+                  id="profile-current-password"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => { setCurrentPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="Current password"
+                  autoComplete="current-password"
                   className={SETTINGS_INPUT_CLASS}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <label className="text-muted text-xs sm:w-32 shrink-0">New</label>
+                <label htmlFor="profile-new-password" className="text-muted text-xs sm:w-32 shrink-0">New</label>
                 <input
+                  id="profile-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setProfileStatus("idle"); }}
                   placeholder="New password"
+                  autoComplete="new-password"
                   className={SETTINGS_INPUT_CLASS}
                 />
               </div>
@@ -554,12 +563,13 @@ export default function SettingsPage() {
             <Divider />
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div className="sm:w-32 shrink-0">
-                <label className="text-muted text-xs">Preferred Currency</label>
+                <label htmlFor="profile-preferred-currency" className="text-muted text-xs">Preferred Currency</label>
                 <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
                   Selects which currency to use when multiple are available. Values are never converted.
                 </p>
               </div>
               <select
+                id="profile-preferred-currency"
                 value={preferredCurrency}
                 onChange={(e) => { setPreferredCurrency(e.target.value); setProfileStatus("idle"); }}
                 className={SETTINGS_INPUT_NARROW_CLASS}
@@ -572,12 +582,14 @@ export default function SettingsPage() {
             <Divider />
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
               <div className="sm:w-32 shrink-0">
-                <label className="text-muted text-xs">Date Format</label>
+                <label htmlFor="profile-date-format" className="text-muted text-xs">Date Format</label>
                 <p className="text-[10px] text-muted mt-0.5 hidden sm:block">
                   Controls how dates and times appear across runs, portfolio, and exports.
+                  New-run date pickers still use the browser&apos;s ISO control.
                 </p>
               </div>
               <select
+                id="profile-date-format"
                 value={dateFormat}
                 onChange={(e) => { setDateFormat(e.target.value as DateFormatId); setProfileStatus("idle"); }}
                 className={SETTINGS_INPUT_DATE_FORMAT_CLASS}
@@ -586,6 +598,9 @@ export default function SettingsPage() {
                   <option key={option.id} value={option.id}>{option.label}</option>
                 ))}
               </select>
+              <p className="text-[10px] text-muted mt-0.5 sm:hidden">
+                New-run date pickers stay ISO regardless of this setting.
+              </p>
             </div>
             <Divider />
             <div className="flex flex-col gap-3">
@@ -612,8 +627,8 @@ export default function SettingsPage() {
               >
                 {profileMutation.isPending ? "Saving…" : "Save Changes"}
               </button>
-              {profileStatus === "success" && <span className="text-green-400 text-xs">Saved.</span>}
-              {profileStatus === "error" && <span className="text-red-400 text-xs">{profileError}</span>}
+              {profileStatus === "success" && <StatusAnnouncer variant="success">Saved.</StatusAnnouncer>}
+              {profileStatus === "error" && <StatusAnnouncer variant="error">{profileError}</StatusAnnouncer>}
             </div>
           </div>
         </SectionCard>
@@ -645,7 +660,7 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <span className="text-xs text-green-400 font-medium">● DNA active</span>
+                  <span className={STATUS_CONFIGURED_CLASS}>● DNA active</span>
                   <a href="/settings/investor-profile" className={`${BTN_SECONDARY_CLASS} text-blue-400 hover:text-blue-300 border-blue-500/30`}>Edit</a>
                 </div>
               </div>
@@ -725,7 +740,7 @@ export default function SettingsPage() {
                 ) : smtpError ? (
                   <span className="text-muted text-xs">Unavailable — restart the backend to load status</span>
                 ) : smtpStatus?.configured ? (
-                  <span className="text-green-400 text-xs">Configured ✓</span>
+                  <span className={STATUS_OK_CLASS}>Configured ✓</span>
                 ) : (
                   <span className="text-amber-400 text-xs">Not configured — emails are disabled</span>
                 )}
@@ -788,6 +803,7 @@ SMTP_FROM=noreply@yourdomain.com`}
                 value={inviteEmail}
                 onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus("idle"); }}
                 placeholder="member@example.com"
+                aria-label="Email address for team invite"
                 className={SETTINGS_INPUT_COMPACT_CLASS}
               />
               <button
@@ -797,8 +813,8 @@ SMTP_FROM=noreply@yourdomain.com`}
               >
                 {inviteMutation.isPending ? "Sending…" : "Invite Member"}
               </button>
-              {inviteStatus === "success" && !inviteUrl && <span className="text-green-400 text-xs">Invite sent.</span>}
-              {inviteStatus === "error" && <span className="text-red-400 text-xs">{inviteError}</span>}
+              {inviteStatus === "success" && !inviteUrl && <StatusAnnouncer variant="success">Invite sent.</StatusAnnouncer>}
+              {inviteStatus === "error" && <StatusAnnouncer variant="error">{inviteError}</StatusAnnouncer>}
             </div>
             {inviteUrl && (
               <div className="border-t border-border px-4 py-3 flex flex-col gap-1">
@@ -858,7 +874,9 @@ SMTP_FROM=noreply@yourdomain.com`}
                   )}
                 </button>
               </div>
-              {backupError && <p className="text-red-400 text-xs -mt-3">{backupError}</p>}
+              {backupError && (
+                <p className={`${STATUS_ERROR_CLASS} -mt-3`} role="alert">{backupError}</p>
+              )}
 
               <Divider />
 
@@ -912,7 +930,7 @@ SMTP_FROM=noreply@yourdomain.com`}
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
             <div className="bg-elevated border border-input-border rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
               <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-400 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-danger shrink-0">
                   <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                 </svg>
                 <h2 className="text-base font-semibold text-fg">Restore Database</h2>
@@ -952,15 +970,16 @@ SMTP_FROM=noreply@yourdomain.com`}
                 /* ── Confirmation view ── */
                 <>
                   <p className="text-sm text-fg-secondary">
-                    This will <span className="text-red-400 font-medium">replace all current data</span> with the contents of:
+                    This will <span className="text-danger font-medium">replace all current data</span> with the contents of:
                   </p>
                   <p className="text-xs text-muted font-mono bg-input rounded-sm px-3 py-2">{restoreFile.name}</p>
                   <p className="text-xs text-muted">
                     All runs, portfolios, watchlists, API keys, and user data will be overwritten. This cannot be undone.
                   </p>
                   <div className="space-y-1">
-                    <label className="text-xs text-muted">Type <span className="font-mono text-fg">RESTORE</span> to confirm</label>
+                    <label htmlFor="restore-confirm-text" className="text-xs text-muted">Type <span className="font-mono text-fg">RESTORE</span> to confirm</label>
                     <input
+                      id="restore-confirm-text"
                       type="text"
                       value={restoreConfirmText}
                       onChange={(e) => setRestoreConfirmText(e.target.value)}
@@ -976,10 +995,10 @@ SMTP_FROM=noreply@yourdomain.com`}
               )}
 
               {restoreMutation.isError && (
-                <p className="text-xs text-red-400">{(restoreMutation.error as Error).message}</p>
+                <p className={STATUS_ERROR_CLASS} role="alert">{(restoreMutation.error as Error).message}</p>
               )}
               {restoreMutation.isSuccess && (
-                <p className="text-xs text-green-400">Restore completed successfully.</p>
+                <p className={STATUS_OK_CLASS} role="status" aria-live="polite">Restore completed successfully.</p>
               )}
 
               <div className="flex gap-2 justify-end pt-1">

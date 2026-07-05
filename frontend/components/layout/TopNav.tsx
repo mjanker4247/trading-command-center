@@ -81,7 +81,7 @@ export function TopNav() {
   return (
     <>
       <KeyboardShortcuts />
-      <nav className="bg-surface border-b border-border sticky top-0 z-50 shrink-0">
+      <nav className="bg-surface border-b border-border sticky top-0 z-50 shrink-0 pt-[max(0px,env(safe-area-inset-top))]">
         <div className={`${APP_CONTENT_CONTAINER_CLASS} flex items-center gap-2 sm:gap-4 ${APP_PAGE_PADDING_X_CLASS} py-2`}>
           <Link href="/runs" className="flex items-center shrink-0" aria-label="AgentFloor home">
             <Logo height={28} />
@@ -126,7 +126,7 @@ export function TopNav() {
             </button>
             <button
               type="button"
-              className="lg:hidden p-1.5 rounded border border-border text-fg-secondary hover:text-fg hover:bg-elevated"
+              className="lg:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded border border-border text-fg-secondary hover:text-fg hover:bg-elevated touch-manipulation"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -175,7 +175,7 @@ export function TopNav() {
                     active={isNavItemActive(path, href)}
                     onPrefetch={shouldPrefetch ? prefetchPortfolio : undefined}
                     onNavigate={closeMobileMenu}
-                    className={`text-sm px-3 py-2.5 rounded-sm ${
+                    className={`text-sm px-3 py-3 coarse:py-3.5 rounded-sm ${
                       isNavItemActive(path, href)
                         ? "bg-elevated text-fg font-medium"
                         : "text-fg-secondary hover:bg-elevated"
@@ -197,7 +197,7 @@ export function TopNav() {
               <button
                 type="button"
                 onClick={() => signOut()}
-                className="text-left text-subtle hover:text-muted text-xs"
+                className="text-left text-subtle hover:text-muted text-xs py-2 touch-manipulation"
               >
                 Sign out
               </button>

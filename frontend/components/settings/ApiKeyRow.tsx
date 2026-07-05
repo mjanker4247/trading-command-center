@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { upsertApiKey } from "@/lib/api";
 import type { FinnhubCapabilityStatus } from "@/lib/types";
 import { FINNHUB_CAPABILITY_LABELS } from "@/lib/finnhubMessages";
-import { BTN_PRIMARY_SM_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
+import { BTN_PRIMARY_SM_CLASS, FIELD_INPUT_SM_CLASS, STATUS_CONFIGURED_CLASS, STATUS_ERROR_CLASS, STATUS_OK_CLASS } from "@/lib/uiClasses";
 
 interface ApiKeyRowProps {
   provider: string;
@@ -57,7 +57,7 @@ export function ApiKeyRow({
                 target="_blank"
                 rel="noreferrer"
                 title="Get API key"
-                className="text-muted hover:text-blue-400 transition-colors"
+                className="text-muted hover:text-link transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
                   <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
@@ -68,7 +68,7 @@ export function ApiKeyRow({
           </div>
           {description && <div className="text-muted text-xs mt-0.5">{description}</div>}
         </div>
-        <span className={`text-xs w-28 shrink-0 mt-0.5 ${isSet ? "text-green-400" : "text-muted"}`}>
+        <span className={`w-28 shrink-0 mt-0.5 ${isSet ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
           {isSet ? "Configured ✓" : "Not configured"}
         </span>
         <input
@@ -86,13 +86,13 @@ export function ApiKeyRow({
           {mutation.isPending ? "Saving…" : "Save"}
         </button>
         {mutation.isError && (
-          <span className="text-red-400 text-xs mt-0.5">{(mutation.error as Error).message}</span>
+          <span className={STATUS_ERROR_CLASS}>{(mutation.error as Error).message}</span>
         )}
         {!mutation.isError && savedResult === "valid" && (
-          <span className="text-green-400 text-xs mt-0.5">Saved ✓</span>
+          <span className={STATUS_OK_CLASS}>Saved ✓</span>
         )}
         {!mutation.isError && savedResult === "invalid" && (
-          <span className="text-amber-400 text-xs mt-0.5">Saved — key could not be verified</span>
+          <span className="text-xs text-warning">Saved — key could not be verified</span>
         )}
       </div>
 
@@ -105,8 +105,8 @@ export function ApiKeyRow({
                 key={key}
                 className={`text-[10px] px-2 py-1 rounded-sm border ${
                   status.ok
-                    ? "text-green-300 border-green-500/30 bg-green-500/10"
-                    : "text-amber-300 border-amber-500/30 bg-amber-500/10"
+                    ? "text-info border-info/30 bg-info-soft/60"
+                    : "text-warning border-warning/30 bg-warning-soft/60"
                 }`}
                 title={status.message ?? undefined}
               >
@@ -116,7 +116,7 @@ export function ApiKeyRow({
             ))}
           </div>
           {capabilityWarning && (
-            <p className="text-xs text-amber-400/90">{capabilityWarning}</p>
+            <p className="text-xs text-warning/90">{capabilityWarning}</p>
           )}
         </div>
       )}

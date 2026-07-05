@@ -4,10 +4,10 @@ export const FIELD_LABEL_CLASS =
   "mb-1 block text-xs font-medium uppercase tracking-wide text-muted";
 
 export const FIELD_INPUT_CLASS =
-  "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-fg transition-colors focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/30";
+  "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm coarse:text-base text-fg transition-colors focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/30";
 
 export const FIELD_INPUT_SM_CLASS =
-  "w-full rounded-md border border-input-border bg-input px-2 py-1.5 text-sm text-fg transition-colors focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/30";
+  "w-full rounded-md border border-input-border bg-input px-2 py-1.5 text-sm coarse:text-base text-fg transition-colors focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/30";
 
 export const BTN_PRIMARY_CLASS =
   "inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50";
@@ -38,7 +38,15 @@ export const BTN_DANGER_SM_CLASS =
   "inline-flex items-center justify-center rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const BTN_ICON_CLASS =
-  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-muted-surface hover:text-fg disabled:opacity-40";
+  "inline-flex h-8 w-8 coarse:h-11 coarse:w-11 items-center justify-center rounded-lg touch-manipulation text-muted transition-colors hover:bg-muted-surface hover:text-fg disabled:opacity-40";
+
+/** Icon-only control sizing — 28px on fine pointer, 44px on touch/stylus. */
+export const TOUCH_TARGET_ICON_CLASS =
+  "inline-flex h-7 w-7 coarse:h-11 coarse:w-11 items-center justify-center touch-manipulation";
+
+/** Inline text/icon links in dense tables — expand tap area without changing layout on desktop. */
+export const TOUCH_TARGET_INLINE_LINK_CLASS =
+  "inline-flex min-h-7 coarse:min-h-11 items-center px-0.5 coarse:px-1 touch-manipulation";
 
 export function selectionPillClass(selected: boolean, compact = false): string {
   const size = compact ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
@@ -91,6 +99,15 @@ export function agreementBannerClass(agrees: boolean): string {
     ? "border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-400"
     : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400";
 }
+
+/** Non-financial save/confirm feedback — info blue per DESIGN.md (not verdict green). */
+export const STATUS_OK_CLASS = "text-xs text-info";
+
+/** Form and operation errors — danger semantic (not raw palette utilities). */
+export const STATUS_ERROR_CLASS = "text-xs text-danger";
+
+/** Active configuration state (API key set, URL reachable, feature enabled). */
+export const STATUS_CONFIGURED_CLASS = "text-xs text-info font-medium";
 
 export function matrixCellToneClass(value: number): string {
   if (value >= 0.7) return "text-green-800 bg-green-100 dark:text-green-300 dark:bg-green-900/40";

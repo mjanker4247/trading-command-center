@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { upsertApiKey } from "@/lib/api";
 import { LLM_SERVER_URL_PLACEHOLDERS, type LocalLlmProvider } from "@/lib/llmConfig";
-import { BTN_PRIMARY_SM_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
+import { BTN_PRIMARY_SM_CLASS, FIELD_INPUT_SM_CLASS, STATUS_CONFIGURED_CLASS, STATUS_ERROR_CLASS } from "@/lib/uiClasses";
 
 interface ServerUrlRowProps {
   provider: LocalLlmProvider;
@@ -28,7 +28,7 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
       <div className="w-36 shrink-0">
         <div className="text-fg text-sm">{label}</div>
       </div>
-      <span className={`text-xs w-28 shrink-0 ${isValid ? "text-green-400" : "text-muted"}`}>
+      <span className={`w-28 shrink-0 ${isValid ? STATUS_CONFIGURED_CLASS : "text-xs text-muted"}`}>
         {isValid ? "Connected ✓" : "Not configured"}
       </span>
       <input
@@ -46,7 +46,7 @@ export function ServerUrlRow({ provider, label, isValid, onSaved }: ServerUrlRow
         {mutation.isPending ? "Saving…" : "Save"}
       </button>
       {mutation.isError && (
-        <span className="text-red-400 text-xs">{(mutation.error as Error).message}</span>
+        <span className={STATUS_ERROR_CLASS}>{(mutation.error as Error).message}</span>
       )}
     </div>
   );

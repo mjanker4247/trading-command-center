@@ -2,6 +2,8 @@
 @import 'react-csv-importer/dist/index.css';
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant coarse (@media (pointer: coarse));
+@custom-variant no-hover (@media (hover: none));
 
 /* Theme tokens — :root = light, .dark = existing AgentFloor dark palette */
 :root {
@@ -433,4 +435,19 @@
 
 .chart-quicklook-panel {
   animation: chart-quicklook-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .chart-quicklook-panel {
+    animation: none;
+  }
 }

@@ -5,6 +5,7 @@ import { Check, LoaderCircle, Star, X } from "lucide-react";
 import { addWatchlistItem, getWatchlist } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
 import { IconButton } from "@/components/ui/IconButton";
+import { TOUCH_TARGET_ICON_CLASS } from "@/lib/uiClasses";
 import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
@@ -75,7 +76,7 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
     if (compact) {
       return (
         <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-yellow-400"
+          className={`${TOUCH_TARGET_ICON_CLASS} rounded-sm text-yellow-400`}
           title="Already on watchlist"
           aria-label={`${ticker} is already on watchlist`}
         >
@@ -107,7 +108,7 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-muted hover:text-yellow-400 transition-colors"
+        className="text-xs text-muted hover:text-yellow-400 transition-colors py-2 coarse:py-3 touch-manipulation"
         title="Add to watchlist"
       >
         Watch
@@ -134,27 +135,21 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
       >
         {RESPONSE_LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
-      <button
+      <IconButton
+        icon={addMutation.isPending ? LoaderCircle : Check}
+        label={`Add ${ticker} to watchlist`}
+        title="Add"
+        tone="success"
         onClick={() => addMutation.mutate()}
         disabled={addMutation.isPending}
-        aria-label={`Add ${ticker} to watchlist`}
-        title="Add"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-green-400 hover:text-green-300 hover:bg-green-950/30 disabled:opacity-50"
-      >
-        {addMutation.isPending ? (
-          <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-        ) : (
-          <Check className="h-3.5 w-3.5" aria-hidden="true" />
-        )}
-      </button>
-      <button
-        onClick={() => setOpen(false)}
-        aria-label="Cancel adding to watchlist"
+        iconClassName={addMutation.isPending ? "animate-spin" : undefined}
+      />
+      <IconButton
+        icon={X}
+        label="Cancel adding to watchlist"
         title="Cancel"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted hover:text-fg-secondary hover:bg-muted-surface"
-      >
-        <X className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
+        onClick={() => setOpen(false)}
+      />
     </div>
   );
 }

@@ -47,6 +47,12 @@ describe("formatDateValue", () => {
     expect(formatDateValue("eu", sample)).toBe("30.06.2026");
   });
 
+  it("returns em dash for empty or invalid input", () => {
+    expect(formatDateValue("iso", "")).toBe("—");
+    expect(formatDateValue("iso", "not-a-date")).toBe("—");
+    expect(formatDateTimeValue("iso", "")).toBe("—");
+  });
+
   it("formats uk", () => {
     expect(formatDateValue("uk", sample)).toBe("30 Jun 2026");
   });

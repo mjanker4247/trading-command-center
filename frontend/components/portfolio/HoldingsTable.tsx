@@ -13,6 +13,7 @@ import { WaveBadge } from "@/components/wave/WaveBadge";
 import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason, TickerMetadata } from "@/lib/types";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { useDateFormat } from "@/lib/useDateFormat";
+import { TOUCH_TARGET_INLINE_LINK_CLASS } from "@/lib/uiClasses";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HoldingsMobileCards } from "@/components/portfolio/HoldingsMobileCards";
 import { FIELD_INPUT_SM_CLASS, BTN_SECONDARY_CLASS, ALERT_BANNER_CLASS } from "@/lib/uiClasses";
@@ -968,8 +969,9 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                                   href={`/runs/compare?a=${h.last_run?.previous_run_id}&b=${h.last_run?.run_id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="ml-1 text-amber-400 hover:text-amber-300"
+                                  className={`ml-1 ${TOUCH_TARGET_INLINE_LINK_CLASS} text-amber-400 hover:text-amber-300`}
                                   title={`Verdict changed from ${h.last_run?.previous_verdict} on ${formatDate(h.last_run?.previous_analysis_date ?? "")} → ${h.last_run?.verdict} on ${formatDate(h.last_run?.analysis_date ?? "")}. Click to compare.`}
+                                  aria-label={`Compare runs: verdict changed from ${h.last_run.previous_verdict} to ${h.last_run.verdict ?? entry.verdict}`}
                                 >
                                   ↺ changed
                                 </a>
@@ -979,8 +981,9 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                               </span>
                               <Link
                                 href={`/runs/${entry.run_id}`}
-                                className="text-xs text-blue-400 hover:text-blue-300"
+                                className={`${TOUCH_TARGET_INLINE_LINK_CLASS} text-xs text-blue-400 hover:text-blue-300`}
                                 title="View run"
+                                aria-label={`View analysis run for ${h.ticker}`}
                               >
                                 ↗
                               </Link>

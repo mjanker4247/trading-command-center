@@ -11,13 +11,14 @@ export const metadata: Metadata = { title: "AgentFloor", description: "AI Tradin
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-page text-fg font-sans min-h-screen antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-page text-fg font-sans min-h-screen antialiased pl-[max(0px,env(safe-area-inset-left))] pr-[max(0px,env(safe-area-inset-right))]`}
       >
         <Providers>{children}</Providers>
       </body>

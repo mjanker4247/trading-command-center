@@ -91,10 +91,12 @@ function formatTime12(hours: number, minutes: number): string {
 }
 
 export function formatDateValue(format: DateFormatId, value: string | Date): string {
+  if (typeof value === "string" && value.trim() === "") return "—";
+
   const date = typeof value === "string" && isDateOnlyString(value)
     ? parseDateInput(value)
     : parseDateInput(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  if (Number.isNaN(date.getTime())) return "—";
 
   const { year, month, day } = dateParts(date);
   const monthPadded = pad2(month);
@@ -118,8 +120,10 @@ export function formatDateValue(format: DateFormatId, value: string | Date): str
 }
 
 export function formatDateTimeValue(format: DateFormatId, value: string | Date): string {
+  if (typeof value === "string" && value.trim() === "") return "—";
+
   const date = parseDateInput(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  if (Number.isNaN(date.getTime())) return "—";
 
   const datePart = formatDateValue(format, date);
   const { hours, minutes } = dateParts(date);
