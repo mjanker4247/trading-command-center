@@ -1,3 +1,7 @@
+"use client";
+
+import { useDateFormat } from "@/lib/useDateFormat";
+
 const DAYS = [
   { label: "Mon", value: 1 },
   { label: "Tue", value: 2 },
@@ -18,6 +22,11 @@ export function fmtTime(h: number, m: number) {
   return `${h12}:${pad(m)} ${ampm}`;
 }
 
+function NextRunLabel({ nextRunAt }: { nextRunAt: string }) {
+  const { formatDateTime } = useDateFormat();
+  return <span className="block text-muted whitespace-nowrap">Next: {formatDateTime(nextRunAt)}</span>;
+}
+
 export function CronLabel({
   cron,
   nextRunAt,
@@ -32,9 +41,7 @@ export function CronLabel({
     return (
       <span className="text-fg-secondary text-xs">
         Daily {fmtTime(Number(daily[2]), Number(daily[1]))}
-        {nextRunAt && (
-          <span className="block text-muted">Next: {new Date(nextRunAt).toLocaleString()}</span>
-        )}
+        {nextRunAt && <NextRunLabel nextRunAt={nextRunAt} />}
       </span>
     );
   }
@@ -44,9 +51,7 @@ export function CronLabel({
     return (
       <span className="text-fg-secondary text-xs">
         Weekdays {fmtTime(Number(wdays[2]), Number(wdays[1]))}
-        {nextRunAt && (
-          <span className="block text-muted">Next: {new Date(nextRunAt).toLocaleString()}</span>
-        )}
+        {nextRunAt && <NextRunLabel nextRunAt={nextRunAt} />}
       </span>
     );
   }
@@ -57,9 +62,7 @@ export function CronLabel({
     return (
       <span className="text-fg-secondary text-xs">
         {day?.label ?? `Day ${weekly[3]}`} {fmtTime(Number(weekly[2]), Number(weekly[1]))}
-        {nextRunAt && (
-          <span className="block text-muted">Next: {new Date(nextRunAt).toLocaleString()}</span>
-        )}
+        {nextRunAt && <NextRunLabel nextRunAt={nextRunAt} />}
       </span>
     );
   }
@@ -68,7 +71,9 @@ export function CronLabel({
     <span className="text-fg-secondary text-xs font-mono">
       {cron}
       {nextRunAt && (
-        <span className="block text-muted font-sans">Next: {new Date(nextRunAt).toLocaleString()}</span>
+        <span className="block text-muted font-sans">
+          <NextRunLabel nextRunAt={nextRunAt} />
+        </span>
       )}
     </span>
   );

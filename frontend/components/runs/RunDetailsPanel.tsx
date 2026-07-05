@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Run } from "@/lib/types";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { AnalystIcons, LanguageFlag } from "@/components/runs/RunContextIcons";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,19 +23,20 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 }
 
 export function RunDetailsPanel({ run }: { run: Run }) {
+  const { formatDate, formatDateTime } = useDateFormat();
   return (
     <div className="space-y-1">
       <DetailRow label="Ticker">{run.ticker}</DetailRow>
       <DetailRow label="Status">{STATUS_LABELS[run.status] ?? run.status}</DetailRow>
-      <DetailRow label="Analysis date">{run.analysis_date}</DetailRow>
+      <DetailRow label="Analysis date">{formatDate(run.analysis_date)}</DetailRow>
       {run.started_at && (
         <DetailRow label="Started">
-          {new Date(run.started_at).toLocaleString()}
+          {formatDateTime(run.started_at)}
         </DetailRow>
       )}
       {run.completed_at && (
         <DetailRow label="Completed">
-          {new Date(run.completed_at).toLocaleString()}
+          {formatDateTime(run.completed_at)}
         </DetailRow>
       )}
       <DetailRow label="Provider">{run.llm_provider}</DetailRow>

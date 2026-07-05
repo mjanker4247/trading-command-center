@@ -20,6 +20,7 @@ import { CronLabel } from "@/components/watchlist/CronLabel";
 import { WatchlistItemCard } from "@/components/watchlist/WatchlistItemCard";
 import { AddWatchlistItemForm } from "@/components/watchlist/AddWatchlistItemForm";
 import { WatchlistScheduleEditor } from "@/components/watchlist/WatchlistScheduleEditor";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 import { PageShell } from "@/components/layout/PageShell";
@@ -42,6 +43,7 @@ function ItemRow({
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [draftCron, setDraftCron] = useState<string | null>(item.schedule_cron);
   const [scheduleEditorKey, setScheduleEditorKey] = useState(0);
+  const { formatDate } = useDateFormat();
 
   return (
     <>
@@ -62,10 +64,10 @@ function ItemRow({
         <td className="hidden lg:table-cell px-4 py-3">
           <CronLabel cron={item.schedule_cron} nextRunAt={item.next_run_at} />
         </td>
-        <td className="px-4 py-3 text-xs">
+        <td className="px-4 py-3 text-xs whitespace-nowrap">
           {item.last_run_at && item.last_run_id ? (
             <Link href={`/runs/${item.last_run_id}`} className="text-blue-400 hover:underline">
-              {new Date(item.last_run_at).toLocaleDateString()}
+              {formatDate(item.last_run_at)}
             </Link>
           ) : (
             <span className="text-muted">Never</span>
@@ -248,7 +250,7 @@ export default function WatchlistPage() {
                       <th className="hidden lg:table-cell px-4 py-3 text-left font-semibold">Language</th>
                       <th className="hidden lg:table-cell px-4 py-3 text-left font-semibold">Analysts</th>
                       <th className="hidden lg:table-cell px-4 py-3 text-left font-semibold">Schedule</th>
-                      <th className="px-4 py-3 text-left font-semibold">Last run</th>
+                      <th className="px-4 py-3 text-left font-semibold min-w-[6.75rem] whitespace-nowrap">Last run</th>
                       <th className="px-4 py-3 text-left font-semibold">Status</th>
                       <th className="px-4 py-3 text-left font-semibold">Actions</th>
                     </tr>

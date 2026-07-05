@@ -1,4 +1,7 @@
+"use client";
+
 import type { Portfolio } from "@/lib/types";
+import { useDateFormat } from "@/lib/useDateFormat";
 
 interface PortfolioHeaderProps {
   portfolio: Portfolio;
@@ -17,17 +20,12 @@ export function PortfolioHeader({
   broker,
   totalsUnavailable = false,
 }: PortfolioHeaderProps) {
+  const { formatDate } = useDateFormat();
   const mixedCurrencies =
     portfolioCurrencies.length > 1 ||
     (portfolioCurrencies.length === 1 && portfolioCurrencies[0] !== preferredCurrency);
 
-  const snapshotLabel = snapshotDate
-    ? new Date(snapshotDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
+  const snapshotLabel = snapshotDate ? formatDate(snapshotDate) : null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-input/30 px-4 py-2 text-xs text-muted">

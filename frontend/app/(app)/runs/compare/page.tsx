@@ -11,6 +11,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Breadcrumbs, HISTORY_BREADCRUMB, RESEARCH_BREADCRUMB } from "@/components/layout/Breadcrumbs";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { useDateFormat } from "@/lib/useDateFormat";
 
 const verdictBadge: Record<NonNullable<Run["verdict"]>, string> = {
   buy: "bg-green-900 text-green-300",
@@ -27,12 +28,13 @@ function RunPickerRow({
   metadata?: TickerMetadata;
   onPick: () => void;
 }) {
+  const { formatDate } = useDateFormat();
   return (
     <tr className="border-t border-border hover:bg-input/40">
       <td className="px-4 py-3">
         <TickerLabel ticker={run.ticker} metadata={metadata} />
       </td>
-      <td className="px-4 py-3 text-muted text-xs">{run.analysis_date}</td>
+      <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">{formatDate(run.analysis_date)}</td>
       <td className="px-4 py-3">
         {run.verdict ? (
           <span className={`rounded-lg px-2 py-0.5 text-xs font-medium ${verdictBadge[run.verdict]}`}>
@@ -43,8 +45,8 @@ function RunPickerRow({
         )}
       </td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{run.llm_model}</td>
-      <td className="hidden lg:table-cell px-4 py-3 text-xs text-muted">
-        {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
+      <td className="hidden lg:table-cell px-4 py-3 text-xs text-muted whitespace-nowrap">
+        {run.started_at ? formatDate(run.started_at) : "—"}
       </td>
       <td className="px-4 py-3">
         <button
@@ -82,10 +84,10 @@ function RunPicker({ anchorId }: { anchorId: string }) {
           <thead className="bg-surface text-muted text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-3">Ticker</th>
-              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-left px-4 py-3 min-w-[6.75rem] whitespace-nowrap">Date</th>
               <th className="text-left px-4 py-3">Verdict</th>
               <th className="hidden lg:table-cell text-left px-4 py-3">Model</th>
-              <th className="hidden lg:table-cell text-left px-4 py-3">Started</th>
+              <th className="hidden lg:table-cell text-left px-4 py-3 min-w-[6.75rem] whitespace-nowrap">Started</th>
               <th className="text-left px-4 py-3" />
             </tr>
           </thead>

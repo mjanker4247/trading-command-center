@@ -216,6 +216,7 @@ export async function updateProfile(data: {
   current_password?: string;
   new_password?: string;
   preferred_currency?: string;
+  date_format?: string;
   default_llm_provider?: string;
   default_llm_model?: string | null;
   default_llm_depth?: string;

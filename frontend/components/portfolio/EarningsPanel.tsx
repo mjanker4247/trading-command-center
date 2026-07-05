@@ -10,6 +10,7 @@ import { ALERT_BANNER_CLASS } from "@/lib/uiClasses";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { useDateFormat } from "@/lib/useDateFormat";
 import type { PortfolioHolding } from "@/lib/types";
 
 interface Props {
@@ -49,6 +50,7 @@ function UnavailableMessage({ message }: { message: string }) {
 
 export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }: Props) {
   const noKey = priceUnavailableReason === "no_finnhub_key";
+  const { formatDate } = useDateFormat();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: portfolioQueryKeys.earnings(portfolioId),
@@ -112,7 +114,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
           <thead className="bg-surface text-muted text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-3">Ticker</th>
-              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-left px-4 py-3 min-w-[6.75rem] whitespace-nowrap">Date</th>
               <th className="text-right px-4 py-3">Days Away</th>
               <th className="hidden lg:table-cell text-right px-4 py-3">EPS Est.</th>
               <th className="hidden lg:table-cell text-right px-4 py-3">EPS Actual</th>
@@ -135,7 +137,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
                       metadata={tickerMetadata[e.ticker.toUpperCase()]}
                     />
                   </td>
-                  <td className={`px-4 py-2.5 text-xs ${isStale ? "text-yellow-400" : ""}`}>{e.date}</td>
+                  <td className={`px-4 py-2.5 text-xs whitespace-nowrap ${isStale ? "text-yellow-400" : ""}`}>{formatDate(e.date)}</td>
                   <td className={`px-4 py-2.5 text-right text-xs ${days <= 7 ? "text-orange-400" : ""}`}>
                     {days}
                   </td>

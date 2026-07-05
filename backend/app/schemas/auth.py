@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.utils.date_format import normalize_date_format
 from app.utils.llm_providers import (
     DEFAULT_LLM_DEPTH,
     DEFAULT_LLM_PROVIDER,
@@ -65,9 +66,17 @@ class UpdateMeRequest(BaseModel):
     current_password: str | None = None
     new_password: str | None = Field(default=None, min_length=8)
     preferred_currency: str | None = None
+    date_format: str | None = None
     default_llm_provider: str | None = None
     default_llm_model: str | None = None
     default_llm_depth: str | None = None
+
+    @field_validator("date_format")
+    @classmethod
+    def validate_date_format(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_date_format(v)
 
     @field_validator("default_llm_provider")
     @classmethod

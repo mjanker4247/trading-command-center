@@ -12,6 +12,7 @@ import { TickerLabel } from "@/components/ui/TickerLabel";
 import { WaveBadge } from "@/components/wave/WaveBadge";
 import type { PortfolioHolding, FundamentalsData, RegimeData, WaveSummary, TrimSignalEntry, FinnhubUnavailableReason, TickerMetadata } from "@/lib/types";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HoldingsMobileCards } from "@/components/portfolio/HoldingsMobileCards";
 import { FIELD_INPUT_SM_CLASS, BTN_SECONDARY_CLASS, ALERT_BANNER_CLASS } from "@/lib/uiClasses";
@@ -350,6 +351,7 @@ function RegimeRow({ data, colSpan }: { data: RegimeData; colSpan: number }) {
 
 export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, fundamentalsUnavailableReason, displayCurrency, fundamentals, regime, wave, trimSignals, tickerMetadata = {}, onTickerClick, onUploadClick }: HoldingsTableProps) {
   const queryClient = useQueryClient();
+  const { formatDate } = useDateFormat();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftRow>({ ticker: "", shares: "", avg_cost: "", currency: displayCurrency });
   const [addingNew, setAddingNew] = useState(false);
@@ -967,7 +969,7 @@ export function HoldingsTable({ portfolioId, holdings, priceUnavailableReason, f
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="ml-1 text-amber-400 hover:text-amber-300"
-                                  title={`Verdict changed from ${h.last_run?.previous_verdict} on ${h.last_run?.previous_analysis_date} → ${h.last_run?.verdict} on ${h.last_run?.analysis_date}. Click to compare.`}
+                                  title={`Verdict changed from ${h.last_run?.previous_verdict} on ${formatDate(h.last_run?.previous_analysis_date ?? "")} → ${h.last_run?.verdict} on ${formatDate(h.last_run?.analysis_date ?? "")}. Click to compare.`}
                                 >
                                   ↺ changed
                                 </a>

@@ -5,6 +5,7 @@ import { createThesisCrossRef, getThesisCrossRefs, deleteThesisCrossRef } from "
 import type { ThesisCrossRef, ThesisCrossRefPosition, ThesisCrossRefRecommendation } from "@/lib/types";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
 
 function AlignmentGauge({ score }: { score: number }) {
@@ -152,6 +153,7 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
 export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
   const queryClient = useQueryClient();
   const { provider, model, resolveModel } = useDefaultLlmConfig();
+  const { formatDateTime } = useDateFormat();
   const [thesisText, setThesisText] = useState("");
   const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model });
   const [activeResult, setActiveResult] = useState<ThesisCrossRef | null>(null);
@@ -280,7 +282,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
             <div className="bg-page/50 border border-input-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs text-muted truncate max-w-md">
-                  {new Date(activeResult.created_at).toLocaleString()} · {activeResult.llm_provider} / {activeResult.llm_model}
+                  {formatDateTime(activeResult.created_at)} · {activeResult.llm_provider} / {activeResult.llm_model}
                 </p>
                 <button
                   onClick={() => setActiveResult(null)}

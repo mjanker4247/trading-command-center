@@ -18,6 +18,7 @@ import { TickerLabel } from "@/components/ui/TickerLabel";
 import { RunContextIcons } from "@/components/runs/RunContextIcons";
 import { fmtPriceString, resolveQuoteCurrency } from "@/lib/currency";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
+import { useDateFormat } from "@/lib/useDateFormat";
 import type { Run, TickerMetadata } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -94,6 +95,7 @@ function RunRow({
   metadata?: TickerMetadata;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { formatDate } = useDateFormat();
 
   const archiveMutation = useMutation({
     mutationFn: () => archiveRun(run.id),
@@ -147,8 +149,8 @@ function RunRow({
         <RunContextIcons analysts={run.analysts} responseLanguage={run.response_language} />
       </td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{run.llm_model}</td>
-      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">
-        {run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}
+      <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data whitespace-nowrap">
+        {run.started_at ? formatDate(run.started_at) : "—"}
       </td>
       <td className="hidden lg:table-cell px-4 py-3 text-muted text-xs font-data">{formatDuration(run.started_at, run.completed_at)}</td>
       <td className="px-4 py-3">
@@ -273,7 +275,7 @@ export function RunTable({ runs, archived, onMutate, selectedIds, onSelectionCha
             <th className="text-left px-4 py-3">Prices</th>
             <th className="hidden lg:table-cell text-left px-4 py-3">Analysts</th>
             <th className="hidden lg:table-cell text-left px-4 py-3">Model</th>
-            <th className="hidden lg:table-cell text-left px-4 py-3">Started</th>
+            <th className="hidden lg:table-cell text-left px-4 py-3 min-w-[6.75rem] whitespace-nowrap">Started</th>
             <th className="hidden lg:table-cell text-left px-4 py-3">Duration</th>
             <th className="text-left px-4 py-3">Actions</th>
           </tr>

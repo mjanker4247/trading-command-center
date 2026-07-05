@@ -10,6 +10,7 @@ import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
 import { PageShell } from "@/components/layout/PageShell";
 import { getRuns, bulkAbortRuns, bulkDeleteRuns } from "@/lib/api";
 import { downloadRunsCsv } from "@/lib/export/buildCsv";
+import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_ICON_CLASS, BTN_PRIMARY_CLASS, BTN_PRIMARY_SM_CLASS, BTN_SECONDARY_CLASS } from "@/lib/uiClasses";
 import type { Run } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export default function RunsPage() {
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secondsAgo, setSecondsAgo] = useState(0);
+  const { dateFormat } = useDateFormat();
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["runs", tab, filters],
@@ -120,7 +122,7 @@ export default function RunsPage() {
               </svg>
             </button>
             <button
-              onClick={() => downloadRunsCsv(runs)}
+              onClick={() => downloadRunsCsv(runs, dateFormat)}
               disabled={runs.length === 0}
               title="Export current view to CSV"
               className={BTN_SECONDARY_CLASS}
