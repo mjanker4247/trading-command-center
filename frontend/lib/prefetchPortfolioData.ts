@@ -84,6 +84,12 @@ export async function prefetchPortfolioData(queryClient: QueryClient): Promise<v
   return prefetchInFlight;
 }
 
+/** Post-login warmup: market data first, then portfolio cache when available. */
+export async function prefetchAppData(queryClient: QueryClient): Promise<void> {
+  void prefetchMarketData(queryClient);
+  return prefetchPortfolioData(queryClient);
+}
+
 async function runPrefetch(queryClient: QueryClient): Promise<void> {
   await queryClient.prefetchQuery({
     queryKey: portfolioQueryKeys.list,
