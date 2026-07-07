@@ -9,6 +9,7 @@ from app.utils.llm_providers import (
     normalize_llm_provider,
     resolve_llm_model,
 )
+from app.utils.response_language import normalize_response_language
 
 
 class RegisterRequest(BaseModel):
@@ -36,6 +37,7 @@ class DefaultLlmConfig(BaseModel):
     provider: str = DEFAULT_LLM_PROVIDER
     model: str | None = None
     depth: str = DEFAULT_LLM_DEPTH
+    response_language: str = "en-US"
 
     @field_validator("provider")
     @classmethod
@@ -57,6 +59,11 @@ class DefaultLlmConfig(BaseModel):
     def validate_depth(cls, v: str) -> str:
         return normalize_llm_depth(v)
 
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str) -> str:
+        return normalize_response_language(v)
+
     def resolved_model(self) -> str:
         return resolve_llm_model(self.provider, self.model)
 
@@ -70,6 +77,7 @@ class UpdateMeRequest(BaseModel):
     default_llm_provider: str | None = None
     default_llm_model: str | None = None
     default_llm_depth: str | None = None
+    default_llm_response_language: str | None = None
 
     @field_validator("date_format")
     @classmethod
@@ -101,3 +109,10 @@ class UpdateMeRequest(BaseModel):
         if v is None:
             return None
         return normalize_llm_depth(v)
+
+    @field_validator("default_llm_response_language")
+    @classmethod
+    def validate_default_llm_response_language(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_response_language(v)

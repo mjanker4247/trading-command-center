@@ -156,6 +156,31 @@ async def _fetch_quote(
     return data
 
 
+async def get_big_mover_tickers(
+    client: httpx.AsyncClient,
+    api_key: Optional[str],
+    *,
+    exclude: set[str] | None = None,
+    min_abs_change_pct: float = 3.0,
+    limit: int = 4,
+) -> list[str]:
+    """Return tickers from MARKET_UNIVERSE with |change_pct| above the threshold."""
+    held = exclude or set()
+    quotes_list = await asyncio.gather(
+        *[_fetch_quote(t, api_key, client) for t in MARKET_UNIVERSE]
+    )
+    movers: list[tuple[str, float]] = []
+    for ticker, quote in zip(MARKET_UNIVERSE, quotes_list):
+        if ticker in held or not quote:
+            continue
+        pct = quote.get("change_pct")
+        if pct is None or abs(pct) < min_abs_change_pct:
+            continue
+        movers.append((ticker, float(pct)))
+    movers.sort(key=lambda x: abs(x[1]), reverse=True)
+    return [ticker for ticker, _ in movers[:limit]]
+
+
 async def _get_trending_tickers(client: httpx.AsyncClient) -> list[str]:
     """Fetch trending US tickers from Yahoo Finance. Falls back to a curated list on error."""
     global _trending_cache

@@ -10,6 +10,7 @@ export interface User {
   default_llm_provider: string;
   default_llm_model: string | null;
   default_llm_depth: "quick" | "standard" | "deep";
+  default_llm_response_language: ResponseLanguage;
 }
 
 export interface Run {

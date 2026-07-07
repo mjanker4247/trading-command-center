@@ -14,3 +14,7 @@ export const RESPONSE_LANGUAGE_OPTIONS: Array<{ value: ResponseLanguage; label: 
 export function responseLanguageLabel(value: string | null | undefined): string {
   return RESPONSE_LANGUAGE_OPTIONS.find((option) => option.value === value)?.label ?? value ?? "English (US)";
 }
+
+export function isResponseLanguage(value: string): value is ResponseLanguage {
+  return RESPONSE_LANGUAGE_OPTIONS.some((option) => option.value === value);
+}

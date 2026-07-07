@@ -9,6 +9,7 @@ import {
   resolveLlmModel,
   validateDefaultLlmConfig,
 } from "./llmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "./responseLanguage";
 
 const TEST_DEFAULT_MODELS = {
   openai: "gpt-5.5",
@@ -31,17 +32,20 @@ describe("llmConfig", () => {
       provider: DEFAULT_LLM_PROVIDER,
       model: "",
       depth: DEFAULT_LLM_DEPTH,
+      response_language: DEFAULT_RESPONSE_LANGUAGE,
     });
     expect(
       llmConfigFromUserDefaults({
         default_llm_provider: "groq",
         default_llm_model: "llama-3.3-70b-versatile",
         default_llm_depth: "quick",
+        default_llm_response_language: "de-DE",
       }),
     ).toEqual({
       provider: "groq",
       model: "llama-3.3-70b-versatile",
       depth: "quick",
+      response_language: "de-DE",
     });
   });
 
@@ -55,11 +59,14 @@ describe("llmConfig", () => {
       provider: "anthropic",
       model: "",
       depth: "deep",
+      response_language: DEFAULT_RESPONSE_LANGUAGE,
     });
   });
 
   it("validates default llm config", () => {
     expect(validateDefaultLlmConfig("openai", "gpt-5.5", "standard")).toBeNull();
+    expect(validateDefaultLlmConfig("openai", "gpt-5.5", "standard", "de-DE")).toBeNull();
+    expect(validateDefaultLlmConfig("openai", "gpt-5.5", "standard", "fr-FR")).toMatch(/Unsupported response language/);
     expect(validateDefaultLlmConfig("cohere", "x", "standard")).toMatch(/Unsupported provider/);
     expect(validateDefaultLlmConfig("openai", "x", "turbo")).toMatch(/Depth must be/);
   });

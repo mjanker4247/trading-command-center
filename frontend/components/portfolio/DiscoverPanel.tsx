@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   getSectorGaps,
   discoverStocks,
+  type DiscoverResponse,
   type SectorGap,
   type StockRecommendation,
 } from "@/lib/api";
@@ -40,16 +41,19 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
 
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [emptyReason, setEmptyReason] = useState<DiscoverResponse["empty_reason"]>(null);
 
   const discoverMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (forceRefresh: boolean) =>
       discoverStocks(
         portfolioId,
         llmConfig.provider,
         resolveModel(llmConfig),
+        { forceRefresh },
       ),
     onSuccess: (data) => {
       setRecommendations(data.recommendations);
+      setEmptyReason(data.empty_reason);
       setHasLoaded(true);
     },
   });
@@ -101,7 +105,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
               modelClassName="bg-page border border-input-border rounded-sm px-2 py-1 text-fg text-xs focus:outline-hidden focus:border-blue-600 w-36"
             />
             <button
-              onClick={() => discoverMutation.mutate()}
+              onClick={() => discoverMutation.mutate(hasLoaded)}
               disabled={discoverMutation.isPending}
               className="text-xs font-semibold px-3 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-fg transition-colors"
             >
@@ -130,13 +134,23 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
 
         {discoverMutation.isError && (
           <p className="text-xs text-red-400">
-            Failed to generate recommendations. Check your LLM key in Settings.
+            {discoverMutation.error instanceof Error
+              ? discoverMutation.error.message
+              : "Failed to generate recommendations."}
           </p>
         )}
 
         {!hasLoaded && !discoverMutation.isPending && (
           <p className="text-xs text-muted italic">
             Click Generate to get AI-curated stock recommendations based on your portfolio gaps and today&apos;s market activity.
+          </p>
+        )}
+
+        {hasLoaded && !discoverMutation.isPending && recommendations.length === 0 && (
+          <p className="text-xs text-muted italic">
+            {emptyReason === "no_candidates" || gaps.length === 0
+              ? "No candidates found. Upload holdings and add a Finnhub key in Settings for sector gaps, then try again."
+              : "No recommendations matched your portfolio context. Try Refresh when markets are more active."}
           </p>
         )}
 

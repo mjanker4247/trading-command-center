@@ -19,6 +19,7 @@ async def test_me_includes_default_llm_config():
         assert body["default_llm_provider"] == "openai"
         assert body["default_llm_model"] is None
         assert body["default_llm_depth"] == "standard"
+        assert body["default_llm_response_language"] == "en-US"
 
 
 @pytest.mark.asyncio
@@ -58,6 +59,32 @@ async def test_update_default_llm_model_can_be_cleared():
         r = await client.patch("/auth/me", headers=headers, json={"default_llm_model": None})
         assert r.status_code == 200
         assert (await client.get("/auth/me", headers=headers)).json()["default_llm_model"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_default_llm_response_language():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "llm-default-lang@test.com")
+        headers = {"Authorization": f"Bearer {token}"}
+        r = await client.patch(
+            "/auth/me",
+            headers=headers,
+            json={"default_llm_response_language": "de-DE"},
+        )
+        assert r.status_code == 200
+        assert (await client.get("/auth/me", headers=headers)).json()["default_llm_response_language"] == "de-DE"
+
+
+@pytest.mark.asyncio
+async def test_update_default_llm_rejects_invalid_response_language():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "llm-default-lang2@test.com")
+        r = await client.patch(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"default_llm_response_language": "fr-FR"},
+        )
+        assert r.status_code == 422
 
 
 @pytest.mark.asyncio

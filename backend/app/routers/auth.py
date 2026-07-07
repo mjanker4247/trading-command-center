@@ -77,6 +77,7 @@ async def me(user: User = Depends(get_current_user)):
         "default_llm_provider": user.default_llm_provider,
         "default_llm_model": user.default_llm_model,
         "default_llm_depth": user.default_llm_depth,
+        "default_llm_response_language": user.default_llm_response_language,
     }
 
 
@@ -109,6 +110,8 @@ async def update_me(req: UpdateMeRequest, user: User = Depends(get_current_user)
         user.default_llm_model = req.default_llm_model
     if req.default_llm_depth is not None:
         user.default_llm_depth = req.default_llm_depth
+    if req.default_llm_response_language is not None:
+        user.default_llm_response_language = req.default_llm_response_language
     db.add(user)
     await db.commit()
     return {"message": "Profile updated"}

@@ -6,7 +6,7 @@ import { addWatchlistItem, getWatchlist } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
 import { IconButton } from "@/components/ui/IconButton";
 import { TOUCH_TARGET_ICON_CLASS } from "@/lib/uiClasses";
-import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
@@ -23,18 +23,19 @@ export type { WatchDraft };
 
 export function WatchButton({ ticker, compact = false }: { ticker: string; compact?: boolean }) {
   const queryClient = useQueryClient();
-  const { provider, model, depth, resolveModel } = useDefaultLlmConfig();
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<WatchDraft>({
     llm_provider: provider,
     llm_model: model,
     depth,
-    response_language: DEFAULT_RESPONSE_LANGUAGE,
+    response_language: responseLanguage,
   });
   const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
     provider,
     model,
     depth,
+    response_language: responseLanguage,
   });
   const [success, setSuccess] = useState(false);
 
@@ -43,14 +44,15 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
 
   useEffect(() => {
     if (!open) return;
-    setLlmConfig({ provider, model, depth });
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
     setDraft((d) => ({
       ...d,
       llm_provider: provider,
       llm_model: model,
       depth,
+      response_language: responseLanguage,
     }));
-  }, [open, provider, model, depth]);
+  }, [open, provider, model, depth, responseLanguage]);
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -59,7 +61,7 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
         llm_provider: llmConfig.provider,
         llm_model: resolveModel(llmConfig),
         depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
-        response_language: draft.response_language,
+        response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
         analysts: isCrypto(ticker)
           ? ["market", "social", "news"]
           : ["market", "social", "news", "fundamentals"],
@@ -125,16 +127,10 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
         providerClassName="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
         modelClassName="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden max-w-[140px]"
         depthClassName="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
+        languageClassName="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
         showDepth
+        showLanguage
       />
-      <select
-        value={draft.response_language}
-        onChange={(e) => setDraft((d) => ({ ...d, response_language: e.target.value as ResponseLanguage }))}
-        className="bg-input border border-input-border rounded-sm px-1.5 py-0.5 text-xs text-fg focus:outline-hidden"
-        title="Response language"
-      >
-        {RESPONSE_LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
       <IconButton
         icon={addMutation.isPending ? LoaderCircle : Check}
         label={`Add ${ticker} to watchlist`}

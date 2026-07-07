@@ -1,3 +1,6 @@
+import type { ResponseLanguage } from "./responseLanguage";
+import { DEFAULT_RESPONSE_LANGUAGE, isResponseLanguage } from "./responseLanguage";
+
 export const LLM_PROVIDERS = [
   "openai",
   "anthropic",
@@ -79,12 +82,14 @@ export interface LlmConfig {
   provider: LlmProvider;
   model: string;
   depth?: LlmDepth;
+  response_language?: ResponseLanguage;
 }
 
 export interface UserDefaultLlmConfig {
   default_llm_provider: string;
   default_llm_model: string | null;
   default_llm_depth: string;
+  default_llm_response_language?: string;
 }
 
 export function isLlmProvider(value: string): value is LlmProvider {
@@ -120,13 +125,18 @@ export function llmConfigFromUserDefaults(
     : system?.default_depth && isLlmDepth(system.default_depth)
       ? system.default_depth
       : DEFAULT_LLM_DEPTH;
-  return { provider, model, depth };
+  const response_language = defaults?.default_llm_response_language
+    && isResponseLanguage(defaults.default_llm_response_language)
+    ? defaults.default_llm_response_language
+    : DEFAULT_RESPONSE_LANGUAGE;
+  return { provider, model, depth, response_language };
 }
 
 export function validateDefaultLlmConfig(
   provider: string,
   model: string,
   depth: string,
+  responseLanguage?: string,
 ): string | null {
   if (!isLlmProvider(provider)) {
     return `Unsupported provider: ${provider}`;
@@ -136,6 +146,9 @@ export function validateDefaultLlmConfig(
   }
   if (model.trim().length > 128) {
     return "Model name must be at most 128 characters";
+  }
+  if (responseLanguage !== undefined && !isResponseLanguage(responseLanguage)) {
+    return "Unsupported response language";
   }
   return null;
 }

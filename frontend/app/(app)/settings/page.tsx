@@ -16,13 +16,8 @@ import {
 } from "@/lib/api";
 import { DEFAULT_DATE_FORMAT, type DateFormatId } from "@/lib/dateFormat";
 import { useDateFormat } from "@/lib/useDateFormat";
-import {
-  DEFAULT_LLM_DEPTH,
-  DEFAULT_LLM_PROVIDER,
-  validateDefaultLlmConfig,
-  type LlmDepth,
-  type LlmProvider,
-} from "@/lib/llmConfig";
+import { DEFAULT_LLM_DEPTH, DEFAULT_LLM_PROVIDER, validateDefaultLlmConfig, type LlmDepth, type LlmProvider } from "@/lib/llmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import type { LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader, PageTitle } from "@/components/layout/PageHeader";
@@ -82,6 +77,7 @@ export default function SettingsPage() {
     provider: DEFAULT_LLM_PROVIDER,
     model: "",
     depth: DEFAULT_LLM_DEPTH,
+    response_language: DEFAULT_RESPONSE_LANGUAGE,
   });
   const [profileStatus, setProfileStatus] = useState<"idle" | "success" | "error">("idle");
   const [profileError, setProfileError] = useState("");
@@ -94,9 +90,10 @@ export default function SettingsPage() {
         provider: (me.default_llm_provider as LlmProvider) ?? DEFAULT_LLM_PROVIDER,
         model: me.default_llm_model ?? "",
         depth: (me.default_llm_depth as LlmDepth) ?? DEFAULT_LLM_DEPTH,
+        response_language: me.default_llm_response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       });
     }
-  }, [me?.preferred_currency, me?.date_format, me?.default_llm_provider, me?.default_llm_model, me?.default_llm_depth, me]);
+  }, [me?.preferred_currency, me?.date_format, me?.default_llm_provider, me?.default_llm_model, me?.default_llm_depth, me?.default_llm_response_language, me]);
 
   const profileMutation = useMutation({
     mutationFn: () => {
@@ -104,6 +101,7 @@ export default function SettingsPage() {
         defaultLlmConfig.provider,
         defaultLlmConfig.model,
         defaultLlmConfig.depth ?? DEFAULT_LLM_DEPTH,
+        defaultLlmConfig.response_language,
       );
       if (validationError) throw new Error(validationError);
       return updateProfile({
@@ -114,6 +112,7 @@ export default function SettingsPage() {
         default_llm_provider: defaultLlmConfig.provider,
         default_llm_model: defaultLlmConfig.model.trim() || null,
         default_llm_depth: defaultLlmConfig.depth ?? DEFAULT_LLM_DEPTH,
+        default_llm_response_language: defaultLlmConfig.response_language,
       });
     },
     onSuccess: () => {

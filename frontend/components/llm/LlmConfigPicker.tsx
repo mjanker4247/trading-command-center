@@ -11,6 +11,8 @@ import {
   type LlmDepth,
   type LlmProvider,
 } from "@/lib/llmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { useLlmProviderDefaults } from "@/lib/useDefaultLlmConfig";
 import { FIELD_INPUT_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
 
@@ -18,18 +20,21 @@ export interface LlmConfigValue {
   provider: LlmProvider;
   model: string;
   depth?: LlmDepth;
+  response_language?: ResponseLanguage;
 }
 
 interface Props {
   value: LlmConfigValue;
   onChange: (value: LlmConfigValue) => void;
   showDepth?: boolean;
+  showLanguage?: boolean;
   layout?: "stacked" | "inline" | "compact";
   enabled?: boolean;
   className?: string;
   providerClassName?: string;
   modelClassName?: string;
   depthClassName?: string;
+  languageClassName?: string;
   idPrefix?: string;
 }
 
@@ -40,12 +45,14 @@ export function LlmConfigPicker({
   value,
   onChange,
   showDepth = false,
+  showLanguage = false,
   layout = "stacked",
   enabled = true,
   className = "",
   providerClassName,
   modelClassName,
   depthClassName,
+  languageClassName,
   idPrefix,
 }: Props) {
   const isLocal = isLocalLlmProvider(value.provider);
@@ -73,6 +80,7 @@ export function LlmConfigPicker({
   const providerId = idPrefix ? `${idPrefix}-provider` : undefined;
   const modelId = idPrefix ? `${idPrefix}-model` : undefined;
   const depthId = idPrefix ? `${idPrefix}-depth` : undefined;
+  const languageId = idPrefix ? `${idPrefix}-language` : undefined;
 
   const providerSelect = (
     <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
@@ -162,12 +170,32 @@ export function LlmConfigPicker({
     </div>
   );
 
+  const languageField = showLanguage && (
+    <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
+      {layout !== "compact" && (
+        <label htmlFor={languageId} className="block text-muted text-xs mb-1">Response Language</label>
+      )}
+      <select
+        id={languageId}
+        value={value.response_language ?? DEFAULT_RESPONSE_LANGUAGE}
+        onChange={(e) => onChange({ ...value, response_language: e.target.value as ResponseLanguage })}
+        disabled={!enabled}
+        className={languageClassName ?? `${inputClass} w-full`}
+      >
+        {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   if (layout === "inline") {
     return (
       <div className={`flex flex-wrap items-end gap-3 ${className}`}>
         {providerSelect}
         {modelField}
         {depthField}
+        {languageField}
       </div>
     );
   }
@@ -178,6 +206,7 @@ export function LlmConfigPicker({
         {providerSelect}
         {modelField}
         {depthField}
+        {languageField}
       </div>
     );
   }
@@ -187,6 +216,7 @@ export function LlmConfigPicker({
       {providerSelect}
       {modelField}
       {depthField}
+      {languageField}
     </div>
   );
 }

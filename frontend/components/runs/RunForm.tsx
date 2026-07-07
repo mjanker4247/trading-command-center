@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createRun } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
-import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
-import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_LLM_DEPTH, DEFAULT_LLM_PROVIDER, type LlmDepth, type LlmProvider } from "@/lib/llmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS, selectionPillClass } from "@/lib/uiClasses";
 
 const ANALYSTS = ANALYST_OPTIONS;
@@ -44,7 +44,13 @@ interface Props {
 }
 
 export function RunForm({ onSuccess, initialValues }: Props) {
-  const { provider: defaultProvider, model: defaultModel, depth: defaultDepth, resolveModel } = useDefaultLlmConfig();
+  const {
+    provider: defaultProvider,
+    model: defaultModel,
+    depth: defaultDepth,
+    responseLanguage: defaultResponseLanguage,
+    resolveModel,
+  } = useDefaultLlmConfig();
   const [ticker, setTicker] = useState(initialValues?.ticker ?? "");
   const [label, setLabel] = useState(initialValues?.label ?? "");
   const [analysisDate, setAnalysisDate] = useState(new Date().toISOString().slice(0, 10));
@@ -55,19 +61,18 @@ export function RunForm({ onSuccess, initialValues }: Props) {
     provider: (initialValues?.provider as LlmProvider) ?? DEFAULT_LLM_PROVIDER,
     model: initialValues?.model ?? "",
     depth: (initialValues?.depth as LlmDepth) ?? DEFAULT_LLM_DEPTH,
+    response_language: initialValues?.response_language ?? defaultResponseLanguage,
   });
-  const [responseLanguage, setResponseLanguage] = useState<ResponseLanguage>(
-    initialValues?.response_language ?? DEFAULT_RESPONSE_LANGUAGE
-  );
 
   useEffect(() => {
-    if (initialValues?.provider || initialValues?.model || initialValues?.depth) return;
+    if (initialValues?.provider || initialValues?.model || initialValues?.depth || initialValues?.response_language) return;
     setLlmConfig({
       provider: defaultProvider,
       model: defaultModel,
       depth: defaultDepth,
+      response_language: defaultResponseLanguage,
     });
-  }, [defaultProvider, defaultModel, defaultDepth, initialValues]);
+  }, [defaultProvider, defaultModel, defaultDepth, defaultResponseLanguage, initialValues]);
 
   const mutation = useMutation({
     mutationFn: createRun,
@@ -99,7 +104,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
       llm_provider: llmConfig.provider,
       llm_model: resolveModel(llmConfig),
       depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
-      response_language: responseLanguage,
+      response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       ...(label ? { label } : {}),
     });
   }
@@ -171,20 +176,8 @@ export function RunForm({ onSuccess, initialValues }: Props) {
           value={llmConfig}
           onChange={setLlmConfig}
           showDepth
+          showLanguage
         />
-      </div>
-
-      <div className="mb-6">
-        <label className={FIELD_LABEL_CLASS}>Response Language</label>
-        <select
-          value={responseLanguage}
-          onChange={(e) => setResponseLanguage(e.target.value as ResponseLanguage)}
-          className={FIELD_INPUT_CLASS}
-        >
-          {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
       </div>
 
       <button

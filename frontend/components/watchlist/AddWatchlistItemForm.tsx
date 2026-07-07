@@ -5,8 +5,7 @@ import { isCrypto } from "@/lib/asset";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
-import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
-import type { ResponseLanguage } from "@/lib/responseLanguage";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
 import type { AddWatchlistItemRequest } from "@/lib/types";
 import {
@@ -28,16 +27,15 @@ type AddWatchlistItemFormProps = {
 };
 
 export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormProps) {
-  const { provider, model, depth, resolveModel } = useDefaultLlmConfig();
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [ticker, setTicker] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth });
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth, response_language: responseLanguage });
   const [analysts, setAnalysts] = useState<string[]>(DEFAULT_ANALYSTS);
-  const [responseLanguage, setResponseLanguage] = useState<ResponseLanguage>(DEFAULT_RESPONSE_LANGUAGE);
   const [cron, setCron] = useState<string | null>(DEFAULT_WATCHLIST_CRON);
 
   useEffect(() => {
-    setLlmConfig({ provider, model, depth });
-  }, [provider, model, depth]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   const cryptoTicker = isCrypto(ticker);
 
@@ -63,7 +61,7 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
       llm_model: resolveModel(llmConfig),
       depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
       analysts,
-      response_language: responseLanguage,
+      response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       schedule_cron: cron,
     });
     setTicker("");
@@ -89,9 +87,9 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
         </div>
       </div>
 
-      {/* Right: LLM → analysts → language (matches New Run field order) */}
+      {/* Right: LLM → analysts (matches New Run field order) */}
       <div className="space-y-4">
-        <LlmConfigPicker value={llmConfig} onChange={setLlmConfig} showDepth layout="stacked" />
+        <LlmConfigPicker value={llmConfig} onChange={setLlmConfig} showDepth showLanguage layout="stacked" />
 
         <div>
           <label className={WATCHLIST_FIELD_LABEL_CLASS}>Analysts</label>
@@ -115,21 +113,6 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
           {analysts.length === 0 && (
             <p className="mt-1 text-xs text-red-400">Select at least one analyst.</p>
           )}
-        </div>
-
-        <div>
-          <label className={WATCHLIST_FIELD_LABEL_CLASS}>Response language</label>
-          <select
-            value={responseLanguage}
-            onChange={(e) => setResponseLanguage(e.target.value as ResponseLanguage)}
-            className={WATCHLIST_FIELD_INPUT_CLASS}
-          >
-            {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 pt-1">

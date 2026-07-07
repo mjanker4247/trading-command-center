@@ -146,7 +146,7 @@ export function ProfileSection({
           <div>
             <p className="text-muted text-xs font-medium uppercase tracking-wide">Default LLM Configuration</p>
             <p className="text-xs text-muted mt-0.5">
-              Pre-fills provider, model, and depth on new runs, watchlist schedules, portfolio insights, and recommendations.
+              Pre-fills provider, model, depth, and response language on new runs, watchlist schedules, portfolio insights, and recommendations.
             </p>
           </div>
           <LlmConfigPicker
@@ -154,9 +154,11 @@ export function ProfileSection({
             value={defaultLlmConfig}
             onChange={(value) => { onDefaultLlmConfigChange(value); onEdit(); }}
             showDepth
+            showLanguage
             providerClassName={SETTINGS_INPUT_CLASS}
             modelClassName={SETTINGS_INPUT_MD_CLASS}
             depthClassName={SETTINGS_INPUT_CLASS}
+            languageClassName={SETTINGS_INPUT_CLASS}
           />
         </div>
         <div className="flex items-center gap-3 pt-1">

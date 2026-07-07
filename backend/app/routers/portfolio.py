@@ -1589,6 +1589,7 @@ async def get_sector_gaps(
 class DiscoverRequest(BaseModel):
     llm_provider: str | None = None
     llm_model: str | None = None
+    force_refresh: bool = False
 
     @field_validator("llm_provider")
     @classmethod
@@ -1639,17 +1640,18 @@ async def discover_stocks(
 
     cache_key = f"{portfolio_id}:{llm_provider}:{llm_model}"
     now = time.time()
-    if cache_key in _discover_cache:
-        cached, expiry = _discover_cache[cache_key]
-        if now < expiry:
-            return {"recommendations": cached, "cached": True}
+    if not body.force_refresh:
+        if cache_key in _discover_cache:
+            cached, expiry = _discover_cache[cache_key]
+            if now < expiry:
+                return {"recommendations": cached, "cached": True, "empty_reason": None}
 
-    # Return last cached result if a request is already in-flight for this portfolio
-    if cache_key in _discover_in_flight:
-        cached_entry = _discover_cache.get(cache_key)
-        if cached_entry:
-            return {"recommendations": cached_entry[0], "cached": True}
-        return {"recommendations": [], "cached": False}
+        # Return last cached result if a request is already in-flight for this portfolio
+        if cache_key in _discover_in_flight:
+            cached_entry = _discover_cache.get(cache_key)
+            if cached_entry:
+                return {"recommendations": cached_entry[0], "cached": True, "empty_reason": None}
+            return {"recommendations": [], "cached": False, "empty_reason": "no_candidates"}
 
     _discover_in_flight.add(cache_key)
 
@@ -1667,27 +1669,21 @@ async def discover_stocks(
     # Fetch sector gaps
     gaps = await get_sector_gaps(portfolio_id, db, user)
 
-    # Read trending tickers from shared market cache
-    trending_tickers, _trending_expiry = _market_module._trending_cache
+    finnhub_key = await get_finnhub_key(db)
+    async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        trending_tickers = await _market_module._get_trending_tickers(client)
+        mover_tickers = await _market_module.get_big_mover_tickers(
+            client, finnhub_key, exclude=held_tickers,
+        )
+
     trending_candidates = [
         {"ticker": t, "tag": "Trending", "sector": ""}
         for t in trending_tickers if t.upper() not in held_tickers
     ][:5]
-
-    # Read movers from shared quote cache — tickers with |change_pct| >= 3%
-    mover_candidates = []
-    for ticker in _market_module.MARKET_UNIVERSE:
-        if ticker in held_tickers:
-            continue
-        cached_quote = _market_module._quote_cache.get(ticker)
-        if cached_quote:
-            quote_data, q_expiry = cached_quote
-            if time.time() < q_expiry:
-                pct = quote_data.get("change_pct") or 0
-                if abs(pct) >= 3.0:
-                    mover_candidates.append({"ticker": ticker, "tag": "Mover", "sector": "", "_pct": pct})
-    mover_candidates.sort(key=lambda x: abs(x["_pct"]), reverse=True)
-    mover_candidates = [{"ticker": m["ticker"], "tag": m["tag"], "sector": m["sector"]} for m in mover_candidates[:4]]
+    mover_candidates = [
+        {"ticker": t, "tag": "Mover", "sector": ""}
+        for t in mover_tickers
+    ]
 
     # Assemble gap fill candidates from underweight sectors
     underweight = [g["sector"] for g in gaps if g["delta"] < -0.05]
@@ -1701,7 +1697,7 @@ async def discover_stocks(
 
     if not candidates:
         _discover_in_flight.discard(cache_key)
-        return {"recommendations": [], "cached": False}
+        return {"recommendations": [], "cached": False, "empty_reason": "no_candidates"}
 
     # Build prompt
     held_summary = ", ".join(list(held_tickers)[:15])
@@ -1736,7 +1732,7 @@ Candidates:
         _discover_in_flight.discard(cache_key)
 
     _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
-    return {"recommendations": recommendations, "cached": False}
+    return {"recommendations": recommendations, "cached": False, "empty_reason": None}
 
 
 @router.get("/portfolio/{portfolio_id}/behavioral-alerts")

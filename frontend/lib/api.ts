@@ -220,6 +220,7 @@ export async function updateProfile(data: {
   default_llm_provider?: string;
   default_llm_model?: string | null;
   default_llm_depth?: string;
+  default_llm_response_language?: string;
 }): Promise<void> {
   const r = await fetchWithAuth("/auth/me", { method: "PATCH", body: JSON.stringify(data) });
   if (!r.ok) {
@@ -673,6 +674,7 @@ export interface StockRecommendation {
 export interface DiscoverResponse {
   recommendations: StockRecommendation[];
   cached: boolean;
+  empty_reason: "no_candidates" | null;
 }
 
 export async function getSectorGaps(portfolioId: string): Promise<SectorGap[]> {
@@ -685,12 +687,21 @@ export async function discoverStocks(
   portfolioId: string,
   llmProvider: string,
   llmModel: string,
+  options?: { forceRefresh?: boolean },
 ): Promise<DiscoverResponse> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/discover`, {
     method: "POST",
-    body: JSON.stringify({ llm_provider: llmProvider, llm_model: llmModel }),
+    body: JSON.stringify({
+      llm_provider: llmProvider,
+      llm_model: llmModel,
+      force_refresh: options?.forceRefresh ?? false,
+    }),
   });
-  if (!r.ok) throw new Error("Failed to discover stocks");
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    const detail = typeof body?.detail === "string" ? body.detail : "Failed to discover stocks";
+    throw new Error(detail);
+  }
   return r.json();
 }
 

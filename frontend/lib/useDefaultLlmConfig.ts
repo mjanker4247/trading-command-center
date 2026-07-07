@@ -12,6 +12,8 @@ import {
   type LlmDepth,
   type LlmProvider,
 } from "@/lib/llmConfig";
+import type { ResponseLanguage } from "@/lib/responseLanguage";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 
 export const LLM_PROVIDER_DEFAULTS_QUERY_KEY = ["llm-provider-defaults"] as const;
 
@@ -45,6 +47,7 @@ export function useDefaultLlmConfig() {
     provider: config.provider as LlmProvider,
     model: config.model,
     depth: (config.depth ?? DEFAULT_LLM_DEPTH) as LlmDepth,
+    responseLanguage: (config.response_language ?? DEFAULT_RESPONSE_LANGUAGE) as ResponseLanguage,
     config: config as LlmConfig,
     me,
     defaultModels,

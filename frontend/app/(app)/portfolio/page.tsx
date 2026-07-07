@@ -62,8 +62,6 @@ import { MorningBriefStrip } from "@/components/portfolio/MorningBriefStrip";
 import { PortfolioTotalsSummary } from "@/components/portfolio/PortfolioTotalsSummary";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Briefcase } from "lucide-react";
-import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
-import type { ResponseLanguage } from "@/lib/responseLanguage";
 import {
   ALERT_BANNER_CLASS,
   BTN_AI_CLASS,
@@ -92,15 +90,14 @@ function BatchAnalyzeModal({
   portfolioId: string;
   onClose: () => void;
 }) {
-  const { provider, model, depth, resolveModel } = useDefaultLlmConfig();
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth });
-  const [responseLanguage, setResponseLanguage] = useState<ResponseLanguage>(DEFAULT_RESPONSE_LANGUAGE);
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth, response_language: responseLanguage });
   const [stalenessDays, setStalenessDays] = useState(7);
   const [result, setResult] = useState<{ queued: { ticker: string; run_id: string }[]; skipped: string[] } | null>(null);
 
   useEffect(() => {
-    setLlmConfig({ provider, model, depth });
-  }, [provider, model, depth]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   const analyzeMutation = useMutation({
     mutationFn: () =>
@@ -108,7 +105,7 @@ function BatchAnalyzeModal({
         llm_provider: llmConfig.provider,
         llm_model: resolveModel(llmConfig),
         depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
-        response_language: responseLanguage,
+        response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
         staleness_days: stalenessDays,
       }),
     onSuccess: (data) => setResult({ queued: data.queued, skipped: data.skipped }),
@@ -132,22 +129,12 @@ function BatchAnalyzeModal({
                 value={llmConfig}
                 onChange={setLlmConfig}
                 showDepth
+                showLanguage
                 providerClassName={BATCH_MODAL_INPUT}
                 modelClassName={BATCH_MODAL_INPUT}
                 depthClassName={BATCH_MODAL_INPUT}
+                languageClassName={BATCH_MODAL_INPUT}
               />
-              <div className="space-y-1">
-                <label className="text-xs text-muted">Response Language</label>
-                <select
-                  value={responseLanguage}
-                  onChange={(e) => setResponseLanguage(e.target.value as ResponseLanguage)}
-                  className={BATCH_MODAL_INPUT}
-                >
-                  {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted">
                   Staleness threshold (days) — skip if analyzed within this many days
