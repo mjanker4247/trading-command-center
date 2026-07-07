@@ -26,6 +26,7 @@ import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfig
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import type { Portfolio, PortfolioHolding, BehavioralAlertsResponse, RegimeData, WaveSummary, TrimSignalEntry, TrimSignalsResponse } from "@/lib/types";
 import { isCrypto } from "@/lib/asset";
 import {
