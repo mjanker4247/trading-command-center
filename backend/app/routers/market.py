@@ -28,6 +28,7 @@ import app.services.yfinance_service as _yf
 router = APIRouter()
 
 _MARKET_TTL = 1800   # 30 min — quote cache
+_YFINANCE_QUOTE_TIMEOUT = 4.0
 
 # Limit concurrent outgoing Finnhub requests to avoid bursting the free-tier
 # rate limit (60 req/min). Semaphore(10) keeps peak concurrency well below
@@ -149,7 +150,13 @@ async def _fetch_quote(
                         "prev_close": float(pc) if pc else None,
                     }
     if data is None:
-        data = await _yf.fetch_quote(ticker)
+        try:
+            data = await asyncio.wait_for(
+                _yf.fetch_quote(ticker),
+                timeout=_YFINANCE_QUOTE_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            data = None
     if data is None:
         return None
     _quote_cache[ticker] = (data, now + _MARKET_TTL)

@@ -21,8 +21,6 @@ from app.models.portfolio_insight import PortfolioInsight, InsightStatus, Insigh
 from app.models.user import User
 from app.models.run import Run, RunStatus
 from app.models.report import Report
-from app.models.api_key import ApiKey
-from app.services.encryption import decrypt_key
 from app.services.finnhub_client import (
     FinnhubCapability,
     FinnhubError,
@@ -1692,67 +1690,65 @@ async def discover_stocks(
             return {"recommendations": [], "cached": False, "empty_reason": "no_candidates", "candidate_count": 0}
 
     _discover_in_flight.add(cache_key)
-
-    # Get current portfolio tickers to exclude
     try:
-        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
-    except HTTPException:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
-    holdings = (await db.execute(
-        select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
-    )).scalars().all()
-    held_tickers = {h.ticker.upper() for h in holdings}
+        # Get current portfolio tickers to exclude
+        try:
+            snap = await _get_latest_snapshot(portfolio_id, user.id, db)
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
+        holdings = (await db.execute(
+            select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
+        )).scalars().all()
+        held_tickers = {h.ticker.upper() for h in holdings}
 
-    # Fetch sector gaps
-    gaps = await get_sector_gaps(portfolio_id, db, user)
+        # Fetch sector gaps
+        gaps = await get_sector_gaps(portfolio_id, db, user)
 
-    finnhub_key = await get_finnhub_key(db)
-    async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0"}) as client:
-        trending_tickers = await _market_module._get_trending_tickers(client)
-        mover_tickers = await _market_module.get_big_mover_tickers(
-            client, finnhub_key, exclude=held_tickers,
+        finnhub_key = await get_finnhub_key(db)
+        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            trending_tickers = await _market_module._get_trending_tickers(client)
+            mover_tickers = await _market_module.get_big_mover_tickers(
+                client, finnhub_key, exclude=held_tickers,
+            )
+
+        trending_candidates = [
+            {"ticker": t, "tag": "Trending", "sector": ""}
+            for t in trending_tickers if t.upper() not in held_tickers
+        ][:5]
+        if len(trending_candidates) < 3:
+            seen = held_tickers | {c["ticker"] for c in trending_candidates}
+            for t in _market_module.MARKET_UNIVERSE:
+                if t in seen:
+                    continue
+                trending_candidates.append({"ticker": t, "tag": "Trending", "sector": ""})
+                seen.add(t)
+                if len(trending_candidates) >= 3:
+                    break
+        mover_candidates = [
+            {"ticker": t, "tag": "Mover", "sector": ""}
+            for t in mover_tickers
+        ]
+
+        # Assemble gap fill candidates from underweight sectors
+        underweight = [g["sector"] for g in gaps if g["delta"] < -0.05]
+        gap_candidates = []
+        for sector in underweight:
+            for t in SECTOR_LEADERS.get(sector, []):
+                if t not in held_tickers:
+                    gap_candidates.append({"ticker": t, "tag": "Gap Fill", "sector": sector})
+
+        candidates = (gap_candidates + trending_candidates + mover_candidates)[:12]
+
+        if not candidates:
+            return {"recommendations": [], "cached": False, "empty_reason": "no_candidates", "candidate_count": 0}
+
+        # Build prompt
+        held_summary = ", ".join(list(held_tickers)[:15])
+        underweight_summary = ", ".join(underweight[:5]) if underweight else "none"
+        candidate_lines = "\n".join(
+            f"- {c['ticker']} ({c['tag']}, {c['sector']})" for c in candidates
         )
-
-    trending_candidates = [
-        {"ticker": t, "tag": "Trending", "sector": ""}
-        for t in trending_tickers if t.upper() not in held_tickers
-    ][:5]
-    if len(trending_candidates) < 3:
-        seen = held_tickers | {c["ticker"] for c in trending_candidates}
-        for t in _market_module.MARKET_UNIVERSE:
-            if t in seen:
-                continue
-            trending_candidates.append({"ticker": t, "tag": "Trending", "sector": ""})
-            seen.add(t)
-            if len(trending_candidates) >= 3:
-                break
-    mover_candidates = [
-        {"ticker": t, "tag": "Mover", "sector": ""}
-        for t in mover_tickers
-    ]
-
-    # Assemble gap fill candidates from underweight sectors
-    underweight = [g["sector"] for g in gaps if g["delta"] < -0.05]
-    gap_candidates = []
-    for sector in underweight:
-        for t in SECTOR_LEADERS.get(sector, []):
-            if t not in held_tickers:
-                gap_candidates.append({"ticker": t, "tag": "Gap Fill", "sector": sector})
-
-    candidates = (gap_candidates + trending_candidates + mover_candidates)[:12]
-
-    if not candidates:
-        _discover_in_flight.discard(cache_key)
-        return {"recommendations": [], "cached": False, "empty_reason": "no_candidates", "candidate_count": 0}
-
-    # Build prompt
-    held_summary = ", ".join(list(held_tickers)[:15])
-    underweight_summary = ", ".join(underweight[:5]) if underweight else "none"
-    candidate_lines = "\n".join(
-        f"- {c['ticker']} ({c['tag']}, {c['sector']})" for c in candidates
-    )
-    prompt = f"""You are a portfolio research assistant. The user holds: {held_summary}.
+        prompt = f"""You are a portfolio research assistant. The user holds: {held_summary}.
 Their portfolio is underweight vs S&P 500 in these sectors: {underweight_summary}.
 
 Below are candidate stocks to consider. For each selected candidate, write one concise sentence (max 20 words) explaining why it is relevant given the portfolio context.
@@ -1764,29 +1760,29 @@ Candidates:
 
 {response_language_instruction(body.response_language, json_values=True)}"""
 
-    try:
-        raw = await _call_llm(llm_provider, llm_model, api_key, prompt)
-        import json as _json
-        # Strip markdown fences if present
-        cleaned = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        recommendations = _json.loads(cleaned)
-        if not isinstance(recommendations, list):
-            recommendations = []
-        if not recommendations:
+        try:
+            raw = await _call_llm(llm_provider, llm_model, api_key, prompt)
+            import json as _json
+            # Strip markdown fences if present
+            cleaned = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+            recommendations = _json.loads(cleaned)
+            if not isinstance(recommendations, list):
+                recommendations = []
+            if not recommendations:
+                recommendations = _discover_fallback_recommendations(candidates)
+        except Exception:
             recommendations = _discover_fallback_recommendations(candidates)
-    except Exception:
-        recommendations = _discover_fallback_recommendations(candidates)
+
+        if recommendations:
+            _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
+        return {
+            "recommendations": recommendations,
+            "cached": False,
+            "empty_reason": None if recommendations else "no_candidates",
+            "candidate_count": len(candidates),
+        }
     finally:
         _discover_in_flight.discard(cache_key)
-
-    if recommendations:
-        _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
-    return {
-        "recommendations": recommendations,
-        "cached": False,
-        "empty_reason": None if recommendations else "no_candidates",
-        "candidate_count": len(candidates),
-    }
 
 
 @router.get("/portfolio/{portfolio_id}/behavioral-alerts")

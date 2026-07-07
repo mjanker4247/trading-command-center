@@ -1,6 +1,8 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 from unittest.mock import patch, AsyncMock
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -239,6 +241,58 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_market_error():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    class _Scalars:
+        def all(self):
+            return [SimpleNamespace(ticker="AAPL")]
+
+    class _ExecuteResult:
+        def scalars(self):
+            return _Scalars()
+
+    class _Db:
+        async def execute(self, _stmt):
+            return _ExecuteResult()
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    user = SimpleNamespace(id=uuid4(), preferred_currency="USD")
+    db = _Db()
+
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id=uuid4()))),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
+        patch.object(market_module, "_get_trending_tickers", new=AsyncMock(return_value=["XYZ"])),
+        patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(side_effect=RuntimeError("market down"))),
+    ):
+        with pytest.raises(RuntimeError):
+            await portfolio_module.discover_stocks(portfolio_id, body, db, user)
+
+    assert portfolio_module._discover_in_flight == set()
+
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id=uuid4()))),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
+        _market_patches(),
+    ):
+        result = await portfolio_module.discover_stocks(portfolio_id, body, db, user)
+
+    assert result["recommendations"][0]["ticker"] == "XYZ"
 
 
 @pytest.mark.asyncio
