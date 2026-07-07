@@ -161,7 +161,7 @@ async def get_big_mover_tickers(
     api_key: Optional[str],
     *,
     exclude: set[str] | None = None,
-    min_abs_change_pct: float = 3.0,
+    min_abs_change_pct: float = 2.0,
     limit: int = 4,
 ) -> list[str]:
     """Return tickers from MARKET_UNIVERSE with |change_pct| above the threshold."""
@@ -169,16 +169,20 @@ async def get_big_mover_tickers(
     quotes_list = await asyncio.gather(
         *[_fetch_quote(t, api_key, client) for t in MARKET_UNIVERSE]
     )
-    movers: list[tuple[str, float]] = []
+    ranked: list[tuple[str, float]] = []
     for ticker, quote in zip(MARKET_UNIVERSE, quotes_list):
         if ticker in held or not quote:
             continue
         pct = quote.get("change_pct")
-        if pct is None or abs(pct) < min_abs_change_pct:
+        if pct is None:
             continue
-        movers.append((ticker, float(pct)))
-    movers.sort(key=lambda x: abs(x[1]), reverse=True)
-    return [ticker for ticker, _ in movers[:limit]]
+        ranked.append((ticker, float(pct)))
+    ranked.sort(key=lambda x: abs(x[1]), reverse=True)
+    movers = [t for t, pct in ranked if abs(pct) >= min_abs_change_pct]
+    if movers:
+        return movers[:limit]
+    # Quiet session — still surface the biggest moves in the curated universe.
+    return [t for t, _ in ranked[:limit]]
 
 
 async def _get_trending_tickers(client: httpx.AsyncClient) -> list[str]:

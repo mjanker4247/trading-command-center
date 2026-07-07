@@ -675,6 +675,7 @@ export interface DiscoverResponse {
   recommendations: StockRecommendation[];
   cached: boolean;
   empty_reason: "no_candidates" | null;
+  candidate_count?: number | null;
 }
 
 export async function getSectorGaps(portfolioId: string): Promise<SectorGap[]> {

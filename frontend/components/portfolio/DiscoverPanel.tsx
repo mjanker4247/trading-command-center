@@ -48,6 +48,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [emptyReason, setEmptyReason] = useState<DiscoverResponse["empty_reason"]>(null);
+  const [candidateCount, setCandidateCount] = useState<number | null>(null);
 
   const discoverMutation = useMutation({
     mutationFn: (forceRefresh: boolean) =>
@@ -63,6 +64,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
     onSuccess: (data) => {
       setRecommendations(data.recommendations);
       setEmptyReason(data.empty_reason);
+      setCandidateCount(data.candidate_count ?? null);
       setHasLoaded(true);
     },
   });
@@ -158,8 +160,10 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
 
         {hasLoaded && !discoverMutation.isPending && recommendations.length === 0 && (
           <p className="text-xs text-muted italic">
-            {emptyReason === "no_candidates" || gaps.length === 0
-              ? "No candidates found. Upload holdings and add a Finnhub key in Settings for sector gaps, then try again."
+            {emptyReason === "no_candidates"
+              ? candidateCount === 0 || gaps.length === 0
+                ? "No candidates found. Upload holdings and add a Finnhub key in Settings for sector gaps, then try again."
+                : "Could not build recommendations from current market data. Try Refresh in a few minutes."
               : "No recommendations matched your portfolio context. Try Refresh when markets are more active."}
           </p>
         )}

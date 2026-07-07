@@ -29,3 +29,21 @@ SECTOR_LEADERS: dict[str, list[str]] = {
     "Consumer Discretionary": ["AMZN", "TSLA", "HD", "MCD", "NKE"],
     "Technology": ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL"],
 }
+
+# yfinance / Finnhub label → GICS sector keys used above.
+SECTOR_ALIASES: dict[str, str] = {
+    "Financial Services": "Financials",
+    "Consumer Cyclical": "Consumer Discretionary",
+    "Consumer Defensive": "Consumer Staples",
+    "Basic Materials": "Materials",
+    "Communication": "Communication Services",
+}
+
+
+def normalize_sector(sector: str | None) -> str | None:
+    if not sector:
+        return None
+    cleaned = sector.strip()
+    if not cleaned:
+        return None
+    return SECTOR_ALIASES.get(cleaned, cleaned)

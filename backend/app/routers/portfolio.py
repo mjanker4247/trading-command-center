@@ -1552,7 +1552,7 @@ async def get_sector_gaps(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[dict]:
-    from app.services.sp500_sectors import SP500_SECTOR_WEIGHTS
+    from app.services.sp500_sectors import SP500_SECTOR_WEIGHTS, normalize_sector
 
     finnhub_key = await _get_finnhub_key(db)
 
@@ -1571,9 +1571,9 @@ async def get_sector_gaps(
     tickers = [h.ticker for h in holdings]
     metadata = await get_many_ticker_metadata(tickers, db, finnhub_key)
     sector_by_ticker = {
-        ticker: row.sector
+        ticker: normalize_sector(row.sector)
         for ticker, row in metadata.items()
-        if row.sector
+        if normalize_sector(row.sector)
     }
     if not sector_by_ticker:
         return []
@@ -1643,6 +1643,13 @@ _DISCOVER_TTL = 1800  # 30 minutes
 _discover_in_flight: set[str] = set()
 
 
+def _discover_fallback_recommendations(candidates: list[dict], limit: int = 6) -> list[dict]:
+    return [
+        {"ticker": c["ticker"], "tag": c["tag"], "sector": c["sector"], "reason": c.get("reason", "")}
+        for c in candidates[:limit]
+    ]
+
+
 @router.post("/portfolio/{portfolio_id}/discover")
 async def discover_stocks(
     portfolio_id: UUID,
@@ -1675,14 +1682,14 @@ async def discover_stocks(
         if cache_key in _discover_cache:
             cached, expiry = _discover_cache[cache_key]
             if now < expiry:
-                return {"recommendations": cached, "cached": True, "empty_reason": None}
+                return {"recommendations": cached, "cached": True, "empty_reason": None, "candidate_count": None}
 
         # Return last cached result if a request is already in-flight for this portfolio
         if cache_key in _discover_in_flight:
             cached_entry = _discover_cache.get(cache_key)
             if cached_entry:
-                return {"recommendations": cached_entry[0], "cached": True, "empty_reason": None}
-            return {"recommendations": [], "cached": False, "empty_reason": "no_candidates"}
+                return {"recommendations": cached_entry[0], "cached": True, "empty_reason": None, "candidate_count": None}
+            return {"recommendations": [], "cached": False, "empty_reason": "no_candidates", "candidate_count": 0}
 
     _discover_in_flight.add(cache_key)
 
@@ -1711,6 +1718,15 @@ async def discover_stocks(
         {"ticker": t, "tag": "Trending", "sector": ""}
         for t in trending_tickers if t.upper() not in held_tickers
     ][:5]
+    if len(trending_candidates) < 3:
+        seen = held_tickers | {c["ticker"] for c in trending_candidates}
+        for t in _market_module.MARKET_UNIVERSE:
+            if t in seen:
+                continue
+            trending_candidates.append({"ticker": t, "tag": "Trending", "sector": ""})
+            seen.add(t)
+            if len(trending_candidates) >= 3:
+                break
     mover_candidates = [
         {"ticker": t, "tag": "Mover", "sector": ""}
         for t in mover_tickers
@@ -1728,7 +1744,7 @@ async def discover_stocks(
 
     if not candidates:
         _discover_in_flight.discard(cache_key)
-        return {"recommendations": [], "cached": False, "empty_reason": "no_candidates"}
+        return {"recommendations": [], "cached": False, "empty_reason": "no_candidates", "candidate_count": 0}
 
     # Build prompt
     held_summary = ", ".join(list(held_tickers)[:15])
@@ -1739,9 +1755,9 @@ async def discover_stocks(
     prompt = f"""You are a portfolio research assistant. The user holds: {held_summary}.
 Their portfolio is underweight vs S&P 500 in these sectors: {underweight_summary}.
 
-Below are candidate stocks to consider. For each, write one concise sentence (max 20 words) explaining why it is relevant given the portfolio context.
+Below are candidate stocks to consider. For each selected candidate, write one concise sentence (max 20 words) explaining why it is relevant given the portfolio context.
 Return a JSON array: [{{"ticker": "XYZ", "tag": "Gap Fill", "sector": "Healthcare", "reason": "..."}}]
-Only include candidates you have a meaningful reason for. Return at most 8.
+Include at least 4 candidates from the list below (up to 8). Use the exact ticker, tag, and sector from each candidate line.
 
 Candidates:
 {candidate_lines}
@@ -1756,16 +1772,21 @@ Candidates:
         recommendations = _json.loads(cleaned)
         if not isinstance(recommendations, list):
             recommendations = []
+        if not recommendations:
+            recommendations = _discover_fallback_recommendations(candidates)
     except Exception:
-        recommendations = [
-            {"ticker": c["ticker"], "tag": c["tag"], "sector": c["sector"], "reason": ""}
-            for c in candidates[:6]
-        ]
+        recommendations = _discover_fallback_recommendations(candidates)
     finally:
         _discover_in_flight.discard(cache_key)
 
-    _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
-    return {"recommendations": recommendations, "cached": False, "empty_reason": None}
+    if recommendations:
+        _discover_cache[cache_key] = (recommendations, now + _DISCOVER_TTL)
+    return {
+        "recommendations": recommendations,
+        "cached": False,
+        "empty_reason": None if recommendations else "no_candidates",
+        "candidate_count": len(candidates),
+    }
 
 
 @router.get("/portfolio/{portfolio_id}/behavioral-alerts")
