@@ -152,15 +152,20 @@ function CrossRefResult({ result }: { result: ThesisCrossRef }) {
 
 export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
   const queryClient = useQueryClient();
-  const { provider, model, resolveModel } = useDefaultLlmConfig();
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const { formatDateTime } = useDateFormat();
   const [thesisText, setThesisText] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model });
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
+    provider,
+    model,
+    depth,
+    response_language: responseLanguage,
+  });
   const [activeResult, setActiveResult] = useState<ThesisCrossRef | null>(null);
 
   useEffect(() => {
-    setLlmConfig({ provider, model });
-  }, [provider, model]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   const { data: history = [] } = useQuery({
     queryKey: ["thesisCrossRefs", portfolioId],
@@ -264,6 +269,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
                 onChange={setLlmConfig}
                 providerClassName={FIELD_INPUT_SM_CLASS}
                 modelClassName={`${FIELD_INPUT_SM_CLASS} w-40`}
+                languageClassName={FIELD_INPUT_SM_CLASS}
               />
               <button
                 onClick={() => analyzeMutation.mutate()}

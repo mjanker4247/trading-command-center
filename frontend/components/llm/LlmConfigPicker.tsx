@@ -45,7 +45,7 @@ export function LlmConfigPicker({
   value,
   onChange,
   showDepth = false,
-  showLanguage = false,
+  showLanguage = true,
   layout = "stacked",
   enabled = true,
   className = "",

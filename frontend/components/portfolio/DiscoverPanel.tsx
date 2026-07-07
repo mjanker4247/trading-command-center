@@ -25,13 +25,18 @@ const TAG_COLORS: Record<string, string> = {
 
 export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
   const router = useRouter();
-  const { provider, model, resolveModel } = useDefaultLlmConfig();
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [filter, setFilter] = useState<TagFilter>("All");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model });
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
+    provider,
+    model,
+    depth,
+    response_language: responseLanguage,
+  });
 
   useEffect(() => {
-    setLlmConfig({ provider, model });
-  }, [provider, model]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   const { data: gaps = [], isLoading: gapsLoading } = useQuery({
     queryKey: ["sector-gaps", portfolioId],
@@ -103,6 +108,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
               onChange={setLlmConfig}
               providerClassName="bg-page border border-input-border rounded-sm px-2 py-1 text-fg text-xs focus:outline-hidden focus:border-blue-600"
               modelClassName="bg-page border border-input-border rounded-sm px-2 py-1 text-fg text-xs focus:outline-hidden focus:border-blue-600 w-36"
+              languageClassName="bg-page border border-input-border rounded-sm px-2 py-1 text-fg text-xs focus:outline-hidden focus:border-blue-600"
             />
             <button
               onClick={() => discoverMutation.mutate(hasLoaded)}

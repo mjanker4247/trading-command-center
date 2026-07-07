@@ -232,12 +232,17 @@ function GenerateForm({
   portfolioId: string;
   onGenerated: (insight: PortfolioInsight) => void;
 }) {
-  const { provider, model, resolveModel } = useDefaultLlmConfig();
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model });
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
+    provider,
+    model,
+    depth,
+    response_language: responseLanguage,
+  });
 
   useEffect(() => {
-    setLlmConfig({ provider, model });
-  }, [provider, model]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   const mutation = useMutation({
     mutationFn: () =>

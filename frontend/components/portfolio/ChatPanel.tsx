@@ -15,15 +15,20 @@ const SUGGESTED = [
 ];
 
 export function ChatPanel({ portfolioId }: { portfolioId: string }) {
-  const { provider, model, resolveModel } = useDefaultLlmConfig();
+  const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model });
+  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
+    provider,
+    model,
+    depth,
+    response_language: responseLanguage,
+  });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setLlmConfig({ provider, model });
-  }, [provider, model]);
+    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
+  }, [provider, model, depth, responseLanguage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
