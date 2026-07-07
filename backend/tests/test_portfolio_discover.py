@@ -242,6 +242,41 @@ async def test_discover_force_refresh_bypasses_cache():
 
 
 @pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_market_error():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-market-error@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch.object(market_module, "_get_trending_tickers", new=AsyncMock(return_value=["XYZ"])),
+            patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(side_effect=RuntimeError("market down"))),
+        ):
+            with pytest.raises(RuntimeError):
+                await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        assert portfolio_module._discover_in_flight == set()
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            r = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        assert r.status_code == 200
+        assert r.json()["recommendations"][0]["ticker"] == "XYZ"
+
+
+@pytest.mark.asyncio
 async def test_discover_falls_back_when_llm_returns_empty_array():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         token = await _register_and_token(c, "discover-llm-empty@test.com")
