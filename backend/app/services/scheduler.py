@@ -188,6 +188,7 @@ async def _fire_daily_portfolio_insights() -> None:
     from app.models.user import User
     from app.services.portfolio_insight_runner import generate_portfolio_insight
     from app.services.llm_selection import pick_llm_for_user
+    from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE
 
     async with AsyncSessionLocal() as db:
         all_portfolios = (
@@ -255,6 +256,7 @@ async def _fire_daily_portfolio_insights() -> None:
                 trigger=InsightTrigger.scheduled,
                 llm_provider=llm_provider,
                 llm_model=llm_model,
+                response_language=owner.default_llm_response_language if owner else DEFAULT_RESPONSE_LANGUAGE,
             )
             db.add(insight)
             await db.flush()

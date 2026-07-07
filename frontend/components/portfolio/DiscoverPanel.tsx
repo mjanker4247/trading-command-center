@@ -15,6 +15,7 @@ import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 
 type TagFilter = "All" | "Gap Fill" | "Trending" | "Mover";
 const TAG_COLORS: Record<string, string> = {
@@ -54,7 +55,10 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
         portfolioId,
         llmConfig.provider,
         resolveModel(llmConfig),
-        { forceRefresh },
+        {
+          forceRefresh,
+          response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
+        },
       ),
     onSuccess: (data) => {
       setRecommendations(data.recommendations);

@@ -2,7 +2,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.run import RunCreateRequest
-from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
+from app.utils.response_language import (
+    DEFAULT_RESPONSE_LANGUAGE,
+    normalize_response_language,
+    response_language_instruction,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -44,3 +48,9 @@ def test_run_create_request_rejects_invalid_response_language():
             depth="standard",
             response_language="fr-FR",
         )
+
+
+def test_response_language_instruction_for_prose():
+    assert "German" in response_language_instruction("de-DE")
+    assert "JSON" in response_language_instruction("de-DE", json_values=True)
+    assert "enum values" in response_language_instruction("de-DE", json_values=True)

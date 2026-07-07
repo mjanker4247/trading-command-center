@@ -26,6 +26,7 @@ from app.services.llm_provider_registry import (
 )
 from app.utils.asset_type import is_crypto
 import app.services.crypto_data_service as _crypto
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, response_language_instruction
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +325,7 @@ def _build_prompt(
     holdings: list[dict],
     investor_profile=None,
     regime_map: Optional[dict] = None,
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE,
 ) -> str:
     rows = []
     for h in holdings:
@@ -471,7 +473,9 @@ Rules:
 - Sort action_items by priority (high first), only include tickers needing attention
 - health_score: 8-10 = healthy portfolio, 5-7 = moderate concerns, 1-4 = significant issues
 - If prices are unavailable, base analysis on cost basis and analysis verdicts only
-- sector_analysis percentages must sum to ~100"""
+- sector_analysis percentages must sum to ~100
+
+{response_language_instruction(response_language, json_values=True)}"""
 
 
 def _parse_insight_json(raw: str) -> dict:
@@ -652,6 +656,7 @@ async def generate_portfolio_insight(insight_id: str) -> None:
                 holdings=enriched,
                 investor_profile=investor_profile,
                 regime_map=regime_map,
+                response_language=insight.response_language,
             )
 
             raw_response = await _call_llm(llm_provider, llm_model, llm_key, prompt)

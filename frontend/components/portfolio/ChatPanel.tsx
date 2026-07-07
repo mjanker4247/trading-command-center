@@ -5,6 +5,7 @@ import { sendPortfolioChat } from "@/lib/api";
 import type { ChatMessage } from "@/lib/api";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { BTN_AI_CLASS, FIELD_INPUT_CLASS } from "@/lib/uiClasses";
 
 const SUGGESTED = [
@@ -42,6 +43,7 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
         messages,
         llmConfig.provider,
         resolveModel(llmConfig),
+        llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       ),
     onSuccess: (data) => {
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);

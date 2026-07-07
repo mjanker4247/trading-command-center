@@ -95,6 +95,34 @@ async def test_thesis_crossref_happy_path():
 
 
 @pytest.mark.asyncio
+async def test_thesis_crossref_passes_response_language_to_prompt():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "thesislang@example.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        captured_prompts: list[str] = []
+
+        async def _capture(provider, model, api_key, prompt):
+            captured_prompts.append(prompt)
+            return MOCK_LLM_RESPONSE
+
+        with patch("app.services.portfolio_thesis_runner._call_llm", new=AsyncMock(side_effect=_capture)):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/thesis-crossref",
+                json={
+                    "thesis_text": "Bearish on technology sector due to rising interest rates. " * 5,
+                    "llm_provider": "openai",
+                    "llm_model": "gpt-4o-mini",
+                    "response_language": "ko-KR",
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert r.status_code == 200
+        assert captured_prompts
+        assert "Korean" in captured_prompts[0]
+
+
+@pytest.mark.asyncio
 async def test_list_thesis_crossrefs():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         token = await _register_and_token(c, "thesislist@example.com")

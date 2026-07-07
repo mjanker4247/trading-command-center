@@ -39,7 +39,11 @@ from app.services.settings_service import get_app_settings
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
 from app.utils.quote_currency import quote_currency_from_ticker
-from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE, normalize_response_language
+from app.utils.response_language import (
+    DEFAULT_RESPONSE_LANGUAGE,
+    normalize_response_language,
+    response_language_instruction,
+)
 from app.schemas.money import PriceQuote
 from app.services.fx_service import SUPPORTED_CURRENCIES
 from app.utils.llm_providers import (
@@ -822,11 +826,17 @@ async def delete_holding(
 class InsightGenerateRequest(BaseModel):
     llm_provider: str
     llm_model: str
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
 
     @field_validator("llm_provider")
     @classmethod
     def validate_llm_provider(cls, v: str) -> str:
         return normalize_llm_provider(v)
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
     @model_validator(mode="after")
     def resolve_model(self) -> "InsightGenerateRequest":
@@ -839,11 +849,17 @@ class ChatRequest(BaseModel):
     conversation_history: list[dict] = []
     llm_provider: str
     llm_model: str
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
 
     @field_validator("llm_provider")
     @classmethod
     def validate_llm_provider(cls, v: str) -> str:
         return normalize_llm_provider(v)
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
     @model_validator(mode="after")
     def resolve_model(self) -> "ChatRequest":
@@ -861,11 +877,17 @@ class ThesisCrossRefRequest(BaseModel):
     thesis_text: str
     llm_provider: str
     llm_model: str
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
 
     @field_validator("llm_provider")
     @classmethod
     def validate_llm_provider(cls, v: str) -> str:
         return normalize_llm_provider(v)
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
     @model_validator(mode="after")
     def resolve_model(self) -> "ThesisCrossRefRequest":
@@ -968,6 +990,7 @@ async def generate_insight(
         trigger=InsightTrigger.manual,
         llm_provider=body.llm_provider,
         llm_model=body.llm_model,
+        response_language=body.response_language,
     )
     db.add(insight)
     await db.commit()
@@ -1049,6 +1072,7 @@ async def portfolio_chat(
             conversation_history=body.conversation_history,
             llm_provider=body.llm_provider,
             llm_model=body.llm_model,
+            response_language=body.response_language,
             db=db,
         )
     except ValueError as exc:
@@ -1073,6 +1097,7 @@ async def create_thesis_crossref(
             thesis_text=body.thesis_text,
             llm_provider=body.llm_provider,
             llm_model=body.llm_model,
+            response_language=body.response_language,
             db=db,
         )
     except ValueError as exc:
@@ -1590,6 +1615,7 @@ class DiscoverRequest(BaseModel):
     llm_provider: str | None = None
     llm_model: str | None = None
     force_refresh: bool = False
+    response_language: str = DEFAULT_RESPONSE_LANGUAGE
 
     @field_validator("llm_provider")
     @classmethod
@@ -1597,6 +1623,11 @@ class DiscoverRequest(BaseModel):
         if v is None:
             return None
         return normalize_llm_provider(v)
+
+    @field_validator("response_language")
+    @classmethod
+    def validate_response_language(cls, v: str | None) -> str:
+        return normalize_response_language(v)
 
     @model_validator(mode="after")
     def resolve_model(self) -> "DiscoverRequest":
@@ -1638,7 +1669,7 @@ async def discover_stocks(
     if llm_provider not in LOCAL_LLM_PROVIDERS and not api_key:
         raise HTTPException(status_code=422, detail="LLM provider key not found.")
 
-    cache_key = f"{portfolio_id}:{llm_provider}:{llm_model}"
+    cache_key = f"{portfolio_id}:{llm_provider}:{llm_model}:{body.response_language}"
     now = time.time()
     if not body.force_refresh:
         if cache_key in _discover_cache:
@@ -1713,7 +1744,9 @@ Return a JSON array: [{{"ticker": "XYZ", "tag": "Gap Fill", "sector": "Healthcar
 Only include candidates you have a meaningful reason for. Return at most 8.
 
 Candidates:
-{candidate_lines}"""
+{candidate_lines}
+
+{response_language_instruction(body.response_language, json_values=True)}"""
 
     try:
         raw = await _call_llm(llm_provider, llm_model, api_key, prompt)

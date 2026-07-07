@@ -115,3 +115,34 @@ async def test_chat_passes_conversation_history():
         assert any("Where am I most overexposed?" in c for c in contents)
         assert any("You are overexposed to tech." in c for c in contents)
         assert any("What about my tech exposure?" in c for c in contents)
+
+
+@pytest.mark.asyncio
+async def test_chat_passes_response_language_to_system_prompt():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "chatlang@example.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        captured_system: list[str] = []
+
+        async def _capture(provider, model, api_key, system, messages):
+            captured_system.append(system)
+            return "OK"
+
+        with patch(
+            "app.services.portfolio_chat_service._call_llm_chat",
+            new=AsyncMock(side_effect=_capture),
+        ):
+            await c.post(
+                f"/portfolio/{portfolio_id}/chat",
+                json={
+                    "message": "Summarize risk",
+                    "conversation_history": [],
+                    "llm_provider": "openai",
+                    "llm_model": "gpt-4o-mini",
+                    "response_language": "de-DE",
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert captured_system
+        assert "German" in captured_system[0]

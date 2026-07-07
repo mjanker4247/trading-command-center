@@ -113,6 +113,37 @@ async def test_discover_uses_request_llm_provider():
 
 
 @pytest.mark.asyncio
+async def test_discover_passes_response_language_to_prompt():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-lang@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        captured_prompts: list[str] = []
+
+        async def _capture(provider, model, api_key, prompt):
+            captured_prompts.append(prompt)
+            return MOCK_RECOMMENDATIONS
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(side_effect=_capture)),
+            _market_patches(),
+        ):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={
+                    "llm_provider": "openai",
+                    "llm_model": "gpt-4o-mini",
+                    "response_language": "ja-JP",
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert r.status_code == 200
+        assert captured_prompts
+        assert "Japanese" in captured_prompts[0]
+
+
+@pytest.mark.asyncio
 async def test_discover_fetches_api_key_for_requested_provider():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         token = await _register_and_token(c, "discover-vllm-key@test.com")

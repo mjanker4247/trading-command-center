@@ -36,6 +36,7 @@ class PortfolioInsight(Base):
     trigger: Mapped[InsightTrigger] = mapped_column(SAEnum(InsightTrigger), default=InsightTrigger.manual)
     llm_provider: Mapped[str] = mapped_column(String)
     llm_model: Mapped[str] = mapped_column(String)
+    response_language: Mapped[str] = mapped_column(String(16), server_default="en-US")
 
     # Populated after completion
     health_score: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -687,7 +687,7 @@ export async function discoverStocks(
   portfolioId: string,
   llmProvider: string,
   llmModel: string,
-  options?: { forceRefresh?: boolean },
+  options?: { forceRefresh?: boolean; response_language?: ResponseLanguage },
 ): Promise<DiscoverResponse> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/discover`, {
     method: "POST",
@@ -695,6 +695,7 @@ export async function discoverStocks(
       llm_provider: llmProvider,
       llm_model: llmModel,
       force_refresh: options?.forceRefresh ?? false,
+      response_language: options?.response_language,
     }),
   });
   if (!r.ok) {
@@ -727,7 +728,7 @@ export async function deleteInvestorProfile(): Promise<void> {
 
 export async function createThesisCrossRef(
   portfolioId: string,
-  data: { thesis_text: string; llm_provider: string; llm_model: string }
+  data: { thesis_text: string; llm_provider: string; llm_model: string; response_language?: ResponseLanguage }
 ): Promise<ThesisCrossRef> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/thesis-crossref`, {
     method: "POST",
@@ -770,6 +771,7 @@ export async function sendPortfolioChat(
   conversationHistory: ChatMessage[],
   llmProvider: string,
   llmModel: string,
+  responseLanguage?: ResponseLanguage,
 ): Promise<PortfolioChatResponse> {
   const r = await fetchWithAuth(`/portfolio/${portfolioId}/chat`, {
     method: "POST",
@@ -778,6 +780,7 @@ export async function sendPortfolioChat(
       conversation_history: conversationHistory,
       llm_provider: llmProvider,
       llm_model: llmModel,
+      response_language: responseLanguage,
     }),
   });
   if (!r.ok) {

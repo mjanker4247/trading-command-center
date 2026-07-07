@@ -16,6 +16,7 @@ from app.services.portfolio_insight_runner import (
     _get_api_key,
     _serialize_investor_profile,
 )
+from app.utils.response_language import response_language_instruction
 
 _FINNHUB_CONCURRENCY = asyncio.Semaphore(5)
 
@@ -53,7 +54,9 @@ Respond ONLY with valid JSON matching this exact schema (no markdown, no explana
 
 Rules:
 - Respect the investor's anti-portfolio rules — never recommend adding excluded sectors/assets in the recommendations field
-- Tailor alignment score and recommendations to the investor's stated risk tolerance, time horizon, and investment style when provided"""
+- Tailor alignment score and recommendations to the investor's stated risk tolerance, time horizon, and investment style when provided
+
+{language_instruction}"""
 
 
 def _format_holdings_for_thesis(enriched: list[dict]) -> str:
@@ -87,6 +90,7 @@ async def run_thesis_crossref(
     llm_provider: str,
     llm_model: str,
     db: AsyncSession,
+    response_language: str | None = None,
 ) -> PortfolioThesisCrossRef:
     """Assemble portfolio context, call LLM, parse result, persist and return the crossref row."""
     portfolio = await db.get(Portfolio, portfolio_id)
@@ -170,6 +174,7 @@ async def run_thesis_crossref(
         sector_text=_format_sectors_for_thesis(enriched, total_market_value),
         profile_block=profile_block,
         thesis_text=thesis_text[:10000],
+        language_instruction=response_language_instruction(response_language, json_values=True),
     )
 
     holdings_snapshot = {h["ticker"]: h for h in enriched}

@@ -17,6 +17,7 @@ from app.services.portfolio_insight_runner import (
     _get_api_key,
     _serialize_investor_profile,
 )
+from app.utils.response_language import response_language_instruction
 
 _FINNHUB_CONCURRENCY = asyncio.Semaphore(5)
 
@@ -39,7 +40,7 @@ Sector breakdown:
 {insight_block}
 
 Rules:
-- Respond in plain English prose — no JSON, no bullet arrays, no structured objects
+- Respond in plain conversational prose — no JSON, no bullet arrays, no structured objects
 - Only analyze the portfolio shown above — do not hallucinate positions they don't hold
 - When uncertain about external market data, say so — don't fabricate prices or news
 - Be direct and opinionated, not wishy-washy
@@ -108,6 +109,7 @@ async def generate_chat_response(
     llm_provider: str,
     llm_model: str,
     db: AsyncSession,
+    response_language: str | None = None,
 ) -> str:
     portfolio = await db.get(Portfolio, portfolio_id)
     if not portfolio:
@@ -243,7 +245,7 @@ async def generate_chat_response(
         holdings_text=_format_holdings(enriched),
         sector_text=_format_sectors(enriched, total_market_value),
         insight_block=_format_insight_block(latest_insight),
-    )
+    ) + "\n\n" + response_language_instruction(response_language)
 
     max_msgs = _MAX_HISTORY_TURNS * 2
     capped = conversation_history[-max_msgs:] if len(conversation_history) > max_msgs else conversation_history

@@ -380,6 +380,7 @@ export interface PortfolioInsight {
 export interface GenerateInsightRequest {
   llm_provider: string;
   llm_model: string;
+  response_language?: ResponseLanguage;
 }
 
 export interface PortfolioEarningsResponse {

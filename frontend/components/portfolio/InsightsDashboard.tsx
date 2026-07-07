@@ -10,6 +10,7 @@ import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { BehavioralAlerts } from "@/components/portfolio/BehavioralAlerts";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, BTN_AI_SM_CLASS, BTN_SECONDARY_CLASS, FIELD_INPUT_CLASS } from "@/lib/uiClasses";
 
@@ -249,6 +250,7 @@ function GenerateForm({
       generateInsight(portfolioId, {
         llm_provider: llmConfig.provider,
         llm_model: resolveModel(llmConfig),
+        response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       }),
     onSuccess: (insight) => onGenerated(insight),
   });

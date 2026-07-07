@@ -5,6 +5,7 @@ import { createThesisCrossRef, getThesisCrossRefs, deleteThesisCrossRef } from "
 import type { ThesisCrossRef, ThesisCrossRefPosition, ThesisCrossRefRecommendation } from "@/lib/types";
 import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
 import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
 
@@ -178,6 +179,7 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
         thesis_text: thesisText,
         llm_provider: llmConfig.provider,
         llm_model: resolveModel(llmConfig),
+        response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       }),
     onSuccess: (data) => {
       setActiveResult(data);
