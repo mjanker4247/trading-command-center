@@ -399,7 +399,7 @@ export interface PortfolioNewsResponse {
 }
 
 export interface EarningsEvent {
-  date: string;
+  date: string | null;
   ticker: string;
   eps_estimate: number | null;
   eps_actual: number | null;

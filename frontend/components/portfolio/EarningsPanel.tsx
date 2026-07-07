@@ -25,10 +25,12 @@ function daysAgo(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-function daysUntil(dateStr: string): number {
+function daysUntil(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const target = new Date(dateStr);
+  if (Number.isNaN(target.getTime())) return null;
   return Math.round((target.getTime() - now.getTime()) / 86400000);
 }
 
@@ -138,8 +140,8 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
                     />
                   </td>
                   <td className={`px-4 py-2.5 text-xs whitespace-nowrap ${isStale ? "text-yellow-400" : ""}`}>{formatDate(e.date)}</td>
-                  <td className={`px-4 py-2.5 text-right text-xs ${days <= 7 ? "text-orange-400" : ""}`}>
-                    {days}
+                  <td className={`px-4 py-2.5 text-right text-xs ${days != null && days <= 7 ? "text-orange-400" : ""}`}>
+                    {days ?? "—"}
                   </td>
                   <td className="hidden lg:table-cell px-4 py-2.5 text-right text-xs font-mono">
                     {fmtNum(e.eps_estimate)}
