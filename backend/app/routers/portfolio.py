@@ -21,8 +21,6 @@ from app.models.portfolio_insight import PortfolioInsight, InsightStatus, Insigh
 from app.models.user import User
 from app.models.run import Run, RunStatus
 from app.models.report import Report
-from app.models.api_key import ApiKey
-from app.services.encryption import decrypt_key
 from app.services.finnhub_client import (
     FinnhubCapability,
     FinnhubError,
@@ -1661,6 +1659,8 @@ async def discover_stocks(
     import app.routers.market as _market_module
     from app.services.llm_selection import pick_llm_for_user
     from app.services.portfolio_insight_runner import _call_llm, _get_api_key
+
+    await _verify_portfolio_access(portfolio_id, user.id, db)
 
     # Determine LLM provider/model
     if body.llm_provider:
