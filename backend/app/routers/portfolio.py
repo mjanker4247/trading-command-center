@@ -1662,6 +1662,8 @@ async def discover_stocks(
     from app.services.llm_selection import pick_llm_for_user
     from app.services.portfolio_insight_runner import _call_llm, _get_api_key
 
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
     # Determine LLM provider/model
     if body.llm_provider:
         llm_provider = body.llm_provider
