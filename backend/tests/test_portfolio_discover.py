@@ -294,3 +294,41 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_when_market_fetch_fails():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-market-fails@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=RuntimeError("market down"))),
+            patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
+        ):
+            with pytest.raises(RuntimeError, match="market down"):
+                await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+        assert cache_key not in portfolio_module._discover_in_flight
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            r = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        assert r.status_code == 200
+        data = r.json()
+        assert data["cached"] is False
+        assert data["recommendations"][0]["ticker"] == "XYZ"
