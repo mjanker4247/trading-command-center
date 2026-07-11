@@ -1,7 +1,10 @@
 import json
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
+from fastapi import HTTPException
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -48,6 +51,83 @@ def _market_patches():
         patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
     ):
         yield
+
+
+class _FakeHoldingResult:
+    def scalars(self):
+        return self
+
+    def all(self):
+        return [SimpleNamespace(ticker="AAPL")]
+
+
+class _FakeDb:
+    async def execute(self, _statement):
+        return _FakeHoldingResult()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_cache_authorizes_before_returning_unit():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    owner = SimpleNamespace(id=uuid.uuid4())
+    intruder = SimpleNamespace(id=uuid.uuid4())
+    llm_calls = {"n": 0}
+
+    async def _llm(*_a, **_k):
+        llm_calls["n"] += 1
+        return MOCK_RECOMMENDATIONS
+
+    with (
+        patch(
+            "app.routers.portfolio._get_latest_snapshot",
+            new=AsyncMock(
+                side_effect=[
+                    SimpleNamespace(id=uuid.uuid4()),
+                    HTTPException(status_code=404, detail="Portfolio not found"),
+                ]
+            ),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(side_effect=_llm)),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        _market_patches(),
+    ):
+        owner_response = await portfolio_module.discover_stocks(portfolio_id, body, _FakeDb(), owner)
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(portfolio_id, body, _FakeDb(), intruder)
+
+    assert owner_response["cached"] is False
+    assert exc.value.status_code == 404
+    assert llm_calls["n"] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_candidate_error_unit():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    user = SimpleNamespace(id=uuid.uuid4())
+
+    with (
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4()))),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
+    ):
+        with pytest.raises(RuntimeError):
+            await portfolio_module.discover_stocks(portfolio_id, body, _FakeDb(), user)
+
+    assert not portfolio_module._discover_in_flight
 
 
 @pytest.mark.asyncio
