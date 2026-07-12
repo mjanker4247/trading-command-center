@@ -1,3 +1,4 @@
+import asyncio
 import json
 from contextlib import contextmanager
 from pathlib import Path
@@ -239,6 +240,74 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_duplicate_in_flight_without_false_empty_result():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    llm_started = asyncio.Event()
+    release_llm = asyncio.Event()
+
+    async def _slow_llm(*_a, **_k):
+        llm_started.set()
+        await release_llm.wait()
+        return MOCK_RECOMMENDATIONS
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-dupe@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(side_effect=_slow_llm)),
+            _market_patches(),
+        ):
+            first = asyncio.create_task(c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers))
+            await llm_started.wait()
+            duplicate = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+            release_llm.set()
+            first_response = await first
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "Stock discovery is already in progress"
+    assert first_response.status_code == 200
+    assert first_response.json()["recommendations"][0]["ticker"] == "XYZ"
+
+
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_pre_llm_failure():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-failure-cleanup@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+        ):
+            with pytest.raises(RuntimeError, match="sector failure"):
+                await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            recovered = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+    assert recovered.status_code == 200
+    assert recovered.json()["recommendations"][0]["ticker"] == "XYZ"
 
 
 @pytest.mark.asyncio
