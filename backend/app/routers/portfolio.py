@@ -1684,12 +1684,13 @@ async def discover_stocks(
             if now < expiry:
                 return {"recommendations": cached, "cached": True, "empty_reason": None, "candidate_count": None}
 
-        # Return last cached result if a request is already in-flight for this portfolio
-        if cache_key in _discover_in_flight:
-            cached_entry = _discover_cache.get(cache_key)
-            if cached_entry:
-                return {"recommendations": cached_entry[0], "cached": True, "empty_reason": None, "candidate_count": None}
-            raise HTTPException(status_code=409, detail="Stock discovery is already in progress")
+    # Do not start a second same-key discovery; the set is a marker, not a
+    # reference count, so concurrent force refreshes would race cleanup.
+    if cache_key in _discover_in_flight:
+        cached_entry = _discover_cache.get(cache_key)
+        if cached_entry and not body.force_refresh:
+            return {"recommendations": cached_entry[0], "cached": True, "empty_reason": None, "candidate_count": None}
+        raise HTTPException(status_code=409, detail="Stock discovery is already in progress")
 
     _discover_in_flight.add(cache_key)
 

@@ -270,11 +270,17 @@ async def test_discover_rejects_duplicate_in_flight_without_false_empty_result()
             first = asyncio.create_task(c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers))
             await llm_started.wait()
             duplicate = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+            force_duplicate = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={**body, "force_refresh": True},
+                headers=headers,
+            )
             release_llm.set()
             first_response = await first
 
     assert duplicate.status_code == 409
     assert duplicate.json()["detail"] == "Stock discovery is already in progress"
+    assert force_duplicate.status_code == 409
     assert first_response.status_code == 200
     assert first_response.json()["recommendations"][0]["ticker"] == "XYZ"
 
