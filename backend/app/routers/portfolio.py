@@ -21,8 +21,6 @@ from app.models.portfolio_insight import PortfolioInsight, InsightStatus, Insigh
 from app.models.user import User
 from app.models.run import Run, RunStatus
 from app.models.report import Report
-from app.models.api_key import ApiKey
-from app.services.encryption import decrypt_key
 from app.services.finnhub_client import (
     FinnhubCapability,
     FinnhubError,
