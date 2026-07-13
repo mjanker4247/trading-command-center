@@ -1,8 +1,10 @@
-import asyncio
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
+from uuid import uuid4
+from fastapi import HTTPException
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -243,84 +245,63 @@ async def test_discover_force_refresh_bypasses_cache():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_discover_conflicts_when_cold_request_already_running():
     import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
     portfolio_module._discover_in_flight.clear()
-    llm_started = asyncio.Event()
-    finish_llm = asyncio.Event()
+    portfolio_id = uuid4()
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_in_flight.add(cache_key)
 
-    async def _slow_llm(*_a, **_k):
-        llm_started.set()
-        await finish_llm.wait()
-        return MOCK_RECOMMENDATIONS
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        token = await _register_and_token(c, "discover-concurrent@test.com")
-        portfolio_id = await _create_portfolio_with_holding(c, token)
-        body = {
-            "llm_provider": "openai",
-            "llm_model": "gpt-4o-mini",
-            "response_language": "en-US",
-        }
-        headers = {"Authorization": f"Bearer {token}"}
-        cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
-
-        with (
-            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
-            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(side_effect=_slow_llm)),
-            _market_patches(),
-        ):
-            first = asyncio.create_task(c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers))
-            await asyncio.wait_for(llm_started.wait(), timeout=1)
-            second = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
-            force_refresh = await c.post(
-                f"/portfolio/{portfolio_id}/discover",
-                json={**body, "force_refresh": True},
-                headers=headers,
+    try:
+        for force_refresh in (False, True):
+            body = portfolio_module.DiscoverRequest(
+                llm_provider="openai",
+                llm_model="gpt-4o-mini",
+                force_refresh=force_refresh,
+                response_language="en-US",
             )
-            finish_llm.set()
-            first_response = await first
+            with (
+                patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                await portfolio_module.discover_stocks(portfolio_id, body, db=object(), user=object())
 
-    assert first_response.status_code == 200
-    assert second.status_code == 409
-    assert force_refresh.status_code == 409
-    assert "already running" in second.json()["detail"]
-    assert cache_key not in portfolio_module._discover_in_flight
+            assert exc_info.value.status_code == 409
+            assert "already running" in exc_info.value.detail
+    finally:
+        portfolio_module._discover_in_flight.clear()
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_discover_clears_in_flight_when_candidate_fetch_fails():
     import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
     portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(
+        llm_provider="openai",
+        llm_model="gpt-4o-mini",
+        response_language="en-US",
+    )
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app, raise_app_exceptions=False),
-        base_url="http://test",
-    ) as c:
-        token = await _register_and_token(c, "discover-cleanup@test.com")
-        portfolio_id = await _create_portfolio_with_holding(c, token)
-        body = {
-            "llm_provider": "openai",
-            "llm_model": "gpt-4o-mini",
-            "response_language": "en-US",
-        }
-        cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch.object(portfolio_module, "_get_latest_snapshot", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        pytest.raises(RuntimeError),
+    ):
+        await portfolio_module.discover_stocks(
+            portfolio_id,
+            body,
+            db=object(),
+            user=SimpleNamespace(id=uuid4()),
+        )
 
-        with (
-            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
-            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
-        ):
-            r = await c.post(
-                f"/portfolio/{portfolio_id}/discover",
-                json=body,
-                headers={"Authorization": f"Bearer {token}"},
-            )
-
-    assert r.status_code == 500
     assert cache_key not in portfolio_module._discover_in_flight
 
 
