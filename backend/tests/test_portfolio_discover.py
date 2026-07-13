@@ -1,7 +1,10 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
+from uuid import uuid4
+from fastapi import HTTPException
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -239,6 +242,67 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_discover_conflicts_when_cold_request_already_running():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_in_flight.add(cache_key)
+
+    try:
+        for force_refresh in (False, True):
+            body = portfolio_module.DiscoverRequest(
+                llm_provider="openai",
+                llm_model="gpt-4o-mini",
+                force_refresh=force_refresh,
+                response_language="en-US",
+            )
+            with (
+                patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                await portfolio_module.discover_stocks(portfolio_id, body, db=object(), user=object())
+
+            assert exc_info.value.status_code == 409
+            assert "already running" in exc_info.value.detail
+    finally:
+        portfolio_module._discover_in_flight.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_discover_clears_in_flight_when_candidate_fetch_fails():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(
+        llm_provider="openai",
+        llm_model="gpt-4o-mini",
+        response_language="en-US",
+    )
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch.object(portfolio_module, "_get_latest_snapshot", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        pytest.raises(RuntimeError),
+    ):
+        await portfolio_module.discover_stocks(
+            portfolio_id,
+            body,
+            db=object(),
+            user=SimpleNamespace(id=uuid4()),
+        )
+
+    assert cache_key not in portfolio_module._discover_in_flight
 
 
 @pytest.mark.asyncio
