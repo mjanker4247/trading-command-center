@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -47,7 +48,10 @@ export function useDefaultLlmConfig() {
   });
   const { data: systemDefaults, isLoading: defaultsLoading } = useLlmProviderDefaults();
 
-  const defaultModels = (systemDefaults?.default_models ?? {}) as Partial<Record<LlmProvider, string>>;
+  const defaultModels = useMemo(
+    () => (systemDefaults?.default_models ?? {}) as Partial<Record<LlmProvider, string>>,
+    [systemDefaults?.default_models],
+  );
   const config = llmConfigFromUserDefaults(me, systemDefaults);
 
   const resolveModel = useCallback(
