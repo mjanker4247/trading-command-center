@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { isCrypto } from "@/lib/asset";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
@@ -29,13 +29,9 @@ type AddWatchlistItemFormProps = {
 export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormProps) {
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [ticker, setTicker] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth, response_language: responseLanguage });
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
   const [analysts, setAnalysts] = useState<string[]>(DEFAULT_ANALYSTS);
   const [cron, setCron] = useState<string | null>(DEFAULT_WATCHLIST_CRON);
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
 
   const cryptoTicker = isCrypto(ticker);
 

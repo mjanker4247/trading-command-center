@@ -8,8 +8,8 @@ import type { PortfolioInsight, InsightActionItem, InsightRiskAlert, TickerMetad
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { BehavioralAlerts } from "@/components/portfolio/BehavioralAlerts";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, BTN_AI_SM_CLASS, BTN_SECONDARY_CLASS, FIELD_INPUT_CLASS } from "@/lib/uiClasses";
@@ -234,16 +234,7 @@ function GenerateForm({
   onGenerated: (insight: PortfolioInsight) => void;
 }) {
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider,
-    model,
-    depth,
-    response_language: responseLanguage,
-  });
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
 
   const mutation = useMutation({
     mutationFn: () =>

@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { sendPortfolioChat } from "@/lib/api";
 import type { ChatMessage } from "@/lib/api";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { BTN_AI_CLASS, FIELD_INPUT_CLASS } from "@/lib/uiClasses";
 
@@ -19,17 +19,8 @@ export function ChatPanel({ portfolioId }: { portfolioId: string }) {
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider,
-    model,
-    depth,
-    response_language: responseLanguage,
-  });
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

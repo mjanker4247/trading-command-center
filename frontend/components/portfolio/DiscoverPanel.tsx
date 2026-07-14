@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -13,8 +13,8 @@ import type { TickerMetadata } from "@/lib/types";
 import { WatchButton } from "@/components/portfolio/WatchButton";
 import { TickerLabel } from "@/components/ui/TickerLabel";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 
 type TagFilter = "All" | "Gap Fill" | "Trending" | "Mover";
@@ -28,16 +28,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
   const router = useRouter();
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [filter, setFilter] = useState<TagFilter>("All");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider,
-    model,
-    depth,
-    response_language: responseLanguage,
-  });
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
 
   const { data: gaps = [], isLoading: gapsLoading } = useQuery({
     queryKey: ["sector-gaps", portfolioId],

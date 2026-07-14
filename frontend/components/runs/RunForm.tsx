@@ -4,8 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { createRun } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
 import { ANALYST_OPTIONS, DEFAULT_ANALYSTS } from "@/lib/analystReports";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_LLM_DEPTH, DEFAULT_LLM_PROVIDER, type LlmDepth, type LlmProvider } from "@/lib/llmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
@@ -57,22 +57,27 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   const [analysts, setAnalysts] = useState<string[]>(
     initialValues?.analysts ?? DEFAULT_ANALYSTS
   );
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider: (initialValues?.provider as LlmProvider) ?? DEFAULT_LLM_PROVIDER,
-    model: initialValues?.model ?? "",
-    depth: (initialValues?.depth as LlmDepth) ?? DEFAULT_LLM_DEPTH,
-    response_language: initialValues?.response_language ?? defaultResponseLanguage,
-  });
-
-  useEffect(() => {
-    if (initialValues?.provider || initialValues?.model || initialValues?.depth || initialValues?.response_language) return;
-    setLlmConfig({
-      provider: defaultProvider,
-      model: defaultModel,
-      depth: defaultDepth,
-      response_language: defaultResponseLanguage,
-    });
-  }, [defaultProvider, defaultModel, defaultDepth, defaultResponseLanguage, initialValues]);
+  const hasInitialLlmConfig = Boolean(
+    initialValues?.provider ||
+    initialValues?.model ||
+    initialValues?.depth ||
+    initialValues?.response_language,
+  );
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(
+    defaultProvider,
+    defaultModel,
+    defaultDepth,
+    defaultResponseLanguage,
+    {
+      hydrate: !hasInitialLlmConfig,
+      initialValue: hasInitialLlmConfig ? {
+        provider: (initialValues?.provider as LlmProvider) ?? DEFAULT_LLM_PROVIDER,
+        model: initialValues?.model ?? "",
+        depth: (initialValues?.depth as LlmDepth) ?? DEFAULT_LLM_DEPTH,
+        response_language: initialValues?.response_language ?? defaultResponseLanguage,
+      } : undefined,
+    },
+  );
 
   const mutation = useMutation({
     mutationFn: createRun,
