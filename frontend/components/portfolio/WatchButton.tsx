@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, LoaderCircle, Star, X } from "lucide-react";
 import { addWatchlistItem, getWatchlist } from "@/lib/api";
@@ -7,52 +7,25 @@ import { isCrypto } from "@/lib/asset";
 import { IconButton } from "@/components/ui/IconButton";
 import { TOUCH_TARGET_ICON_CLASS } from "@/lib/uiClasses";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
-import type { ResponseLanguage } from "@/lib/responseLanguage";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
-
-interface WatchDraft {
-  llm_provider: string;
-  llm_model: string;
-  depth: string;
-  response_language: ResponseLanguage;
-}
-
-export type { WatchDraft };
 
 export function WatchButton({ ticker, compact = false }: { ticker: string; compact?: boolean }) {
   const queryClient = useQueryClient();
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<WatchDraft>({
-    llm_provider: provider,
-    llm_model: model,
-    depth,
-    response_language: responseLanguage,
-  });
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider,
-    model,
-    depth,
-    response_language: responseLanguage,
-  });
+  const [llmConfig, setLlmConfig, resetLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
   const [success, setSuccess] = useState(false);
 
   const { data: watchlist } = useQuery({ queryKey: ["watchlist"], queryFn: getWatchlist });
   const watched = watchlist?.items.some((i) => i.ticker.toUpperCase() === ticker.toUpperCase()) ?? false;
 
-  useEffect(() => {
-    if (!open) return;
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-    setDraft((d) => ({
-      ...d,
-      llm_provider: provider,
-      llm_model: model,
-      depth,
-      response_language: responseLanguage,
-    }));
-  }, [open, provider, model, depth, responseLanguage]);
+  function openPicker() {
+    resetLlmConfig();
+    setOpen(true);
+  }
+
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -102,14 +75,14 @@ export function WatchButton({ ticker, compact = false }: { ticker: string; compa
           label={`Add ${ticker} to watchlist`}
           title="Add to watchlist"
           tone="warning"
-          onClick={() => setOpen(true)}
+          onClick={openPicker}
         />
       );
     }
 
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={openPicker}
         className="text-xs text-muted hover:text-yellow-400 transition-colors py-2 coarse:py-3 touch-manipulation"
         title="Add to watchlist"
       >

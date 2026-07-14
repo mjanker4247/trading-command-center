@@ -22,8 +22,8 @@ import {
   getMarketMovers,
   getMarketSectors,
 } from "@/lib/api";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { DEFAULT_LLM_DEPTH } from "@/lib/llmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
@@ -92,13 +92,9 @@ function BatchAnalyzeModal({
   onClose: () => void;
 }) {
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({ provider, model, depth, response_language: responseLanguage });
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
   const [stalenessDays, setStalenessDays] = useState(7);
   const [result, setResult] = useState<{ queued: { ticker: string; run_id: string }[]; skipped: string[] } | null>(null);
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
 
   const analyzeMutation = useMutation({
     mutationFn: () =>

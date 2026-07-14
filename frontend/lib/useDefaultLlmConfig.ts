@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getLlmProviderDefaults, getMe } from "@/lib/api";
 import {
@@ -16,6 +23,13 @@ import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 
 export const LLM_PROVIDER_DEFAULTS_QUERY_KEY = ["llm-provider-defaults"] as const;
+
+export interface HydratedLlmConfigValue {
+  provider: LlmProvider;
+  model: string;
+  depth?: LlmDepth;
+  response_language?: ResponseLanguage;
+}
 
 export function useLlmProviderDefaults() {
   return useQuery({
@@ -56,3 +70,50 @@ export function useDefaultLlmConfig() {
 }
 
 export { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_DEPTH };
+
+function llmConfigValue(
+  provider: LlmProvider,
+  model: string,
+  depth: LlmDepth,
+  responseLanguage: ResponseLanguage,
+): HydratedLlmConfigValue {
+  return { provider, model, depth, response_language: responseLanguage };
+}
+
+export function useHydratedLlmConfig(
+  provider: LlmProvider,
+  model: string,
+  depth: LlmDepth,
+  responseLanguage: ResponseLanguage,
+  options: {
+    initialValue?: HydratedLlmConfigValue;
+    hydrate?: boolean;
+  } = {},
+): [
+  HydratedLlmConfigValue,
+  Dispatch<SetStateAction<HydratedLlmConfigValue>>,
+  () => void,
+] {
+  const hydrate = options.hydrate ?? true;
+  const dirtyRef = useRef(false);
+  const [llmConfig, setLlmConfigState] = useState<HydratedLlmConfigValue>(
+    () => options.initialValue ?? llmConfigValue(provider, model, depth, responseLanguage),
+  );
+
+  useEffect(() => {
+    if (!hydrate || dirtyRef.current) return;
+    setLlmConfigState(llmConfigValue(provider, model, depth, responseLanguage));
+  }, [hydrate, provider, model, depth, responseLanguage]);
+
+  const setLlmConfig: Dispatch<SetStateAction<HydratedLlmConfigValue>> = useCallback((value) => {
+    dirtyRef.current = true;
+    setLlmConfigState(value);
+  }, []);
+
+  const resetLlmConfig = useCallback(() => {
+    dirtyRef.current = false;
+    setLlmConfigState(llmConfigValue(provider, model, depth, responseLanguage));
+  }, [provider, model, depth, responseLanguage]);
+
+  return [llmConfig, setLlmConfig, resetLlmConfig];
+}

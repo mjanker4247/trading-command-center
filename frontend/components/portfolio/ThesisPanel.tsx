@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createThesisCrossRef, getThesisCrossRefs, deleteThesisCrossRef } from "@/lib/api";
 import type { ThesisCrossRef, ThesisCrossRefPosition, ThesisCrossRefRecommendation } from "@/lib/types";
-import { LlmConfigPicker, type LlmConfigValue } from "@/components/llm/LlmConfigPicker";
-import { useDefaultLlmConfig } from "@/lib/useDefaultLlmConfig";
+import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
+import { useDefaultLlmConfig, useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
 import { DEFAULT_RESPONSE_LANGUAGE } from "@/lib/responseLanguage";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { BTN_AI_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
@@ -156,17 +156,8 @@ export function ThesisPanel({ portfolioId }: { portfolioId: string }) {
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
   const { formatDateTime } = useDateFormat();
   const [thesisText, setThesisText] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfigValue>({
-    provider,
-    model,
-    depth,
-    response_language: responseLanguage,
-  });
+  const [llmConfig, setLlmConfig] = useHydratedLlmConfig(provider, model, depth, responseLanguage);
   const [activeResult, setActiveResult] = useState<ThesisCrossRef | null>(null);
-
-  useEffect(() => {
-    setLlmConfig({ provider, model, depth, response_language: responseLanguage });
-  }, [provider, model, depth, responseLanguage]);
 
   const { data: history = [] } = useQuery({
     queryKey: ["thesisCrossRefs", portfolioId],
