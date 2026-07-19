@@ -9,6 +9,7 @@ from main import app
 from app.database import AsyncSessionLocal
 from app.models.api_key import ApiKey
 from app.models.user import User
+from app.services.auth import create_invite_token
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
 
@@ -19,8 +20,22 @@ MOCK_RECOMMENDATIONS = json.dumps([
 ])
 
 
-async def _register_and_token(client: AsyncClient, email: str) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "pass1234", "name": "Test"})
+@pytest.fixture(autouse=True)
+def _clear_discover_state():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    yield
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+
+async def _register_and_token(client: AsyncClient, email: str, invite_token: str | None = None) -> str:
+    payload = {"email": email, "password": "pass1234", "name": "Test"}
+    if invite_token:
+        payload["invite_token"] = invite_token
+    r = await client.post("/auth/register", json=payload)
     return r.json()["access_token"]
 
 
@@ -294,3 +309,79 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_discover_cache_requires_portfolio_owner():
+    body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+    llm = AsyncMock(return_value=MOCK_RECOMMENDATIONS)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+        intruder_email = "discover-intruder@test.com"
+        intruder_token = await _register_and_token(
+            c,
+            intruder_email,
+            create_invite_token(intruder_email),
+        )
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=llm),
+            _market_patches(),
+        ):
+            owner_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+            intruder_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {intruder_token}"},
+            )
+
+    assert owner_response.status_code == 200
+    assert intruder_response.status_code == 404
+    assert llm.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_pre_llm_failure():
+    import app.routers.portfolio as portfolio_module
+
+    body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as c:
+        token = await _register_and_token(c, "discover-cleanup@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector outage"))),
+            _market_patches(),
+        ):
+            failed = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        assert failed.status_code == 500
+        assert portfolio_module._discover_in_flight == set()
+
+        llm = AsyncMock(return_value=MOCK_RECOMMENDATIONS)
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=llm),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+            _market_patches(),
+        ):
+            retried = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+    assert retried.status_code == 200
+    data = retried.json()
+    assert data["empty_reason"] is None
+    assert data["recommendations"]
+    assert llm.await_count == 1
