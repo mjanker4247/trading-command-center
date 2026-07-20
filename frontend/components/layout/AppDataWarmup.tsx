@@ -6,15 +6,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { prefetchAppData } from "@/lib/prefetchPortfolioData";
 
 export function AppDataWarmup() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const queryClient = useQueryClient();
-  const warmed = useRef(false);
+  const warmedSessionKey = useRef<string | null>(null);
+  const sessionKey = status === "authenticated" ? session?.user?.email ?? "authenticated" : null;
 
   useEffect(() => {
-    if (status !== "authenticated" || warmed.current) return;
-    warmed.current = true;
+    if (!sessionKey) {
+      warmedSessionKey.current = null;
+      return;
+    }
+    if (warmedSessionKey.current === sessionKey) return;
+    warmedSessionKey.current = sessionKey;
     void prefetchAppData(queryClient);
-  }, [status, queryClient]);
+  }, [sessionKey, queryClient]);
 
   return null;
 }
