@@ -1,7 +1,11 @@
 import json
+import time
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 from unittest.mock import patch, AsyncMock
+from fastapi import HTTPException
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -18,6 +22,23 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 MOCK_RECOMMENDATIONS = json.dumps([
     {"ticker": "XYZ", "tag": "Trending", "sector": "", "reason": "Strong momentum today."},
 ])
+
+
+class _FakeScalarResult:
+    def scalars(self):
+        return self
+
+    def all(self):
+        return []
+
+
+class _FakeDb:
+    async def execute(self, *_args, **_kwargs):
+        return _FakeScalarResult()
+
+
+class _FakeUser:
+    id = uuid4()
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
@@ -49,6 +70,78 @@ def _market_patches():
         patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
     ):
         yield
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_cache_fast_path_checks_portfolio_access(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_id = uuid4()
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_module._discover_cache[cache_key] = (
+        [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "private"}],
+        time.time() + 60,
+    )
+
+    async def _deny_access(*_args, **_kwargs):
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _deny_access)
+
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await portfolio_module.discover_stocks(
+            portfolio_id=portfolio_id,
+            body=portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+            db=_FakeDb(),
+            user=_FakeUser(),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Portfolio not found"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_in_flight_is_cleared_after_market_exception(monkeypatch):
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_id = uuid4()
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async def _raise_market_error(_client):
+        raise RuntimeError("market unavailable")
+
+    monkeypatch.setattr(
+        portfolio_module,
+        "_get_latest_snapshot",
+        AsyncMock(return_value=SimpleNamespace(id=uuid4())),
+    )
+    monkeypatch.setattr(portfolio_module, "get_sector_gaps", AsyncMock(return_value=[]))
+    monkeypatch.setattr(portfolio_module, "get_finnhub_key", AsyncMock(return_value=None))
+
+    with (
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=_raise_market_error)),
+        patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
+        pytest.raises(RuntimeError, match="market unavailable"),
+    ):
+        await portfolio_module.discover_stocks(
+            portfolio_id=portfolio_id,
+            body=portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+            db=_FakeDb(),
+            user=_FakeUser(),
+        )
+
+    cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    assert cache_key not in portfolio_module._discover_in_flight
 
 
 @pytest.mark.asyncio
