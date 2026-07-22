@@ -1676,6 +1676,13 @@ async def discover_stocks(
     if llm_provider not in LOCAL_LLM_PROVIDERS and not api_key:
         raise HTTPException(status_code=422, detail="LLM provider key not found.")
 
+    # Get current portfolio tickers to exclude. This also enforces ownership before
+    # any process-local cache or in-flight short-circuit can return portfolio data.
+    try:
+        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
+
     cache_key = f"{portfolio_id}:{llm_provider}:{llm_model}:{body.response_language}"
     now = time.time()
     if not body.force_refresh:
@@ -1693,12 +1700,6 @@ async def discover_stocks(
 
     _discover_in_flight.add(cache_key)
 
-    # Get current portfolio tickers to exclude
-    try:
-        snap = await _get_latest_snapshot(portfolio_id, user.id, db)
-    except HTTPException:
-        _discover_in_flight.discard(cache_key)
-        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
     holdings = (await db.execute(
         select(PortfolioHolding).where(PortfolioHolding.snapshot_id == snap.id)
     )).scalars().all()
