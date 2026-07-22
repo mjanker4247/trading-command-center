@@ -1,14 +1,18 @@
 "use client";
 import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthCard } from "@/components/layout/AuthCard";
+import { resetUserScopedClientState } from "@/lib/userScopedCache";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS } from "@/lib/uiClasses";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function RegisterForm() {
   const params = useSearchParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +31,13 @@ function RegisterForm() {
       setError(body.detail ?? "Registration failed.");
       return;
     }
-    await signIn("credentials", { email, password, callbackUrl: "/runs" });
+    const res = await signIn("credentials", { email, password, redirect: false });
+    if (res?.error) {
+      setError("Account created, but automatic sign-in failed.");
+      return;
+    }
+    await resetUserScopedClientState(queryClient);
+    router.push("/runs");
   }
 
   return (

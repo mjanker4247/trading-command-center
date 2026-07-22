@@ -27,6 +27,10 @@ import type { Portfolio } from "@/lib/types";
 
 let prefetchInFlight: Promise<void> | null = null;
 
+export function resetPortfolioPrefetchState(): void {
+  prefetchInFlight = null;
+}
+
 export async function prefetchMarketData(queryClient: QueryClient): Promise<void> {
   await Promise.all([
     queryClient.prefetchQuery({
