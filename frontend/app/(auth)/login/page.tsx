@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthCard } from "@/components/layout/AuthCard";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS } from "@/lib/uiClasses";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +17,10 @@ export default function LoginPage() {
     e.preventDefault();
     const res = await signIn("credentials", { email, password, redirect: false });
     if (res?.error) setError("Invalid email or password");
-    else router.push("/runs");
+    else {
+      await resetUserScopedClientState();
+      router.push("/runs");
+    }
   }
 
   return (

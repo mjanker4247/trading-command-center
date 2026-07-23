@@ -3,6 +3,7 @@ import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Repo
 import type { AnalyzeResponse } from "./wave/types";
 import type { ResponseLanguage } from "./responseLanguage";
 import type { AppSettings } from "./appSettings";
+import { resetUserScopedClientState } from "./userScopedClientState";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -19,6 +20,7 @@ async function fetchWithAuth(path: string, init: RequestInit = {}): Promise<Resp
   });
   if (r.status === 401) {
     // Token expired or invalid — clear the stale session and send to login
+    await resetUserScopedClientState();
     signOut({ callbackUrl: "/login" });
   }
   return r;

@@ -2,7 +2,8 @@
 import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { registerUserScopedQueryClient } from "@/lib/userScopedClientState";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(
@@ -16,6 +17,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    registerUserScopedQueryClient(qc);
+  }, [qc]);
+
   return (
     <SessionProvider>
       <QueryClientProvider client={qc}>
