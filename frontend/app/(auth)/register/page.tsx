@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { AuthCard } from "@/components/layout/AuthCard";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS } from "@/lib/uiClasses";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -27,6 +28,7 @@ function RegisterForm() {
       setError(body.detail ?? "Registration failed.");
       return;
     }
+    await resetUserScopedClientState();
     await signIn("credentials", { email, password, callbackUrl: "/runs" });
   }
 

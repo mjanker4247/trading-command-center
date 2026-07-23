@@ -9,6 +9,7 @@ import { NavDropdown } from "./NavDropdown";
 import { ThemeToggle } from "./ThemeToggle";
 import { TOP_NAV_OFFSET_PX, APP_CONTENT_CONTAINER_CLASS, APP_PAGE_PADDING_X_CLASS } from "./constants";
 import { usePortfolioPrefetch } from "@/lib/usePortfolioPrefetch";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 import {
   isNavItemActive,
   isResearchActive,
@@ -77,6 +78,10 @@ export function TopNav() {
   }, [menuOpen]);
 
   const closeMobileMenu = () => setMenuOpen(false);
+  const handleSignOut = async () => {
+    await resetUserScopedClientState();
+    await signOut();
+  };
 
   return (
     <>
@@ -119,7 +124,7 @@ export function TopNav() {
             </span>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               className="hidden sm:inline text-subtle text-xs hover:text-muted"
             >
               Sign out
@@ -196,7 +201,7 @@ export function TopNav() {
               )}
               <button
                 type="button"
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 className="text-left text-subtle hover:text-muted text-xs py-2 touch-manipulation"
               >
                 Sign out
