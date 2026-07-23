@@ -74,9 +74,6 @@ export async function prefetchPortfolioTabData(
   }
 
   await Promise.all(prefetches);
-  if (isStalePrefetch(version)) {
-    queryClient.clear();
-  }
 }
 
 export async function prefetchPortfolioData(queryClient: QueryClient): Promise<void> {
@@ -178,4 +175,7 @@ async function runPrefetch(queryClient: QueryClient, version: number): Promise<v
   }
 
   await Promise.all(prefetches);
+  if (isStalePrefetch(version)) {
+    queryClient.clear();
+  }
 }
