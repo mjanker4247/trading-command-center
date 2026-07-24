@@ -25,7 +25,13 @@ import {
 import { getLastPortfolioId, resolvePortfolioId } from "@/lib/portfolioSelection";
 import type { Portfolio } from "@/lib/types";
 
-let prefetchInFlight: Promise<void> | null = null;
+let prefetchInFlight: { generation: number; promise: Promise<void> } | null = null;
+let prefetchGeneration = 0;
+
+export function resetPortfolioPrefetchState(): void {
+  prefetchGeneration += 1;
+  prefetchInFlight = null;
+}
 
 export async function prefetchMarketData(queryClient: QueryClient): Promise<void> {
   await Promise.all([
@@ -76,12 +82,16 @@ export async function prefetchPortfolioTabData(
 }
 
 export async function prefetchPortfolioData(queryClient: QueryClient): Promise<void> {
-  if (prefetchInFlight) return prefetchInFlight;
+  const generation = prefetchGeneration;
+  if (prefetchInFlight?.generation === generation) return prefetchInFlight.promise;
 
-  prefetchInFlight = runPrefetch(queryClient).finally(() => {
-    prefetchInFlight = null;
+  const promise = runPrefetch(queryClient, generation).finally(() => {
+    if (prefetchInFlight?.generation === generation) {
+      prefetchInFlight = null;
+    }
   });
-  return prefetchInFlight;
+  prefetchInFlight = { generation, promise };
+  return promise;
 }
 
 /** Post-login warmup: market data first, then portfolio cache when available. */
@@ -90,11 +100,19 @@ export async function prefetchAppData(queryClient: QueryClient): Promise<void> {
   return prefetchPortfolioData(queryClient);
 }
 
-async function runPrefetch(queryClient: QueryClient): Promise<void> {
+function isStalePrefetch(generation: number): boolean {
+  return generation !== prefetchGeneration;
+}
+
+async function runPrefetch(queryClient: QueryClient, generation: number): Promise<void> {
   await queryClient.prefetchQuery({
     queryKey: portfolioQueryKeys.list,
     queryFn: listPortfolios,
   });
+  if (isStalePrefetch(generation)) {
+    queryClient.removeQueries({ queryKey: portfolioQueryKeys.list, exact: true });
+    return;
+  }
 
   const portfolios = queryClient.getQueryData<Portfolio[]>(portfolioQueryKeys.list) ?? [];
   const portfolioId = resolvePortfolioId(portfolios, getLastPortfolioId());
@@ -162,4 +180,18 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
   }
 
   await Promise.all(prefetches);
+  if (isStalePrefetch(generation)) {
+    for (const queryKey of [
+      portfolioQueryKeys.current(portfolioId),
+      portfolioQueryKeys.fundamentals(portfolioId),
+      portfolioQueryKeys.behavioralAlerts(portfolioId),
+      portfolioQueryKeys.regime(portfolioId),
+      portfolioQueryKeys.trimSignals(portfolioId),
+      portfolioQueryKeys.wave(portfolioId),
+      portfolioQueryKeys.news(portfolioId),
+      portfolioQueryKeys.earnings(portfolioId),
+    ]) {
+      queryClient.removeQueries({ queryKey, exact: true });
+    }
+  }
 }
