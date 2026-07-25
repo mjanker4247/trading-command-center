@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getLlmProviderDefaults, getMe } from "@/lib/api";
 import {
@@ -33,7 +33,10 @@ export function useDefaultLlmConfig() {
   });
   const { data: systemDefaults, isLoading: defaultsLoading } = useLlmProviderDefaults();
 
-  const defaultModels = (systemDefaults?.default_models ?? {}) as Partial<Record<LlmProvider, string>>;
+  const defaultModels = useMemo(
+    () => (systemDefaults?.default_models ?? {}) as Partial<Record<LlmProvider, string>>,
+    [systemDefaults?.default_models],
+  );
   const config = llmConfigFromUserDefaults(me, systemDefaults);
 
   const resolveModel = useCallback(
@@ -57,15 +60,13 @@ export function useDefaultLlmConfig() {
 
 export function useHydratedLlmConfig(initialConfig?: Partial<LlmConfig>) {
   const defaults = useDefaultLlmConfig();
-  const hasInitialConfig = useRef(
-    Boolean(
-      initialConfig?.provider
-      || initialConfig?.model
-      || initialConfig?.depth
-      || initialConfig?.response_language,
-    ),
+  const hasInitialConfig = Boolean(
+    initialConfig?.provider
+    || initialConfig?.model
+    || initialConfig?.depth
+    || initialConfig?.response_language,
   );
-  const dirty = useRef(hasInitialConfig.current);
+  const dirty = useRef(hasInitialConfig);
 
   const defaultConfig = useCallback(
     (): LlmConfig => ({

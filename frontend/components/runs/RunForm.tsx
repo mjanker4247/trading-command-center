@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createRun } from "@/lib/api";
 import { isCrypto } from "@/lib/asset";
@@ -67,6 +67,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
   });
 
   const cryptoTicker = isCrypto(ticker);
+  const selectedAnalysts = cryptoTicker ? analysts.filter((a) => a !== "fundamentals") : analysts;
 
   function toggleAnalyst(name: string) {
     if (name === "fundamentals" && cryptoTicker) return;
@@ -75,19 +76,13 @@ export function RunForm({ onSuccess, initialValues }: Props) {
     );
   }
 
-  useEffect(() => {
-    if (cryptoTicker) {
-      setAnalysts((prev) => prev.filter((a) => a !== "fundamentals"));
-    }
-  }, [cryptoTicker]);
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (analysts.length === 0) return;
+    if (selectedAnalysts.length === 0) return;
     mutation.mutate({
       ticker,
       analysis_date: analysisDate,
-      analysts,
+      analysts: selectedAnalysts,
       llm_provider: llmConfig.provider,
       llm_model: resolveModel(llmConfig),
       depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
@@ -140,20 +135,21 @@ export function RunForm({ onSuccess, initialValues }: Props) {
         <label className={FIELD_LABEL_CLASS}>Analysts</label>
         <div className="flex flex-wrap gap-2">
           {ANALYSTS.map((a) => {
-            const selected = analysts.includes(a);
+            const selected = selectedAnalysts.includes(a);
             return (
               <button
                 key={a}
                 type="button"
+                disabled={a === "fundamentals" && cryptoTicker}
                 onClick={() => toggleAnalyst(a)}
-                className={selectionPillClass(selected)}
+                className={`${selectionPillClass(selected)} ${a === "fundamentals" && cryptoTicker ? "opacity-40 cursor-not-allowed" : ""}`}
               >
                 {a}
               </button>
             );
           })}
         </div>
-        {analysts.length === 0 && (
+        {selectedAnalysts.length === 0 && (
           <p className="text-red-400 text-xs mt-1">Select at least one analyst.</p>
         )}
       </div>
@@ -169,7 +165,7 @@ export function RunForm({ onSuccess, initialValues }: Props) {
 
       <button
         type="submit"
-        disabled={mutation.isPending || analysts.length === 0}
+        disabled={mutation.isPending || selectedAnalysts.length === 0}
         className={BTN_PRIMARY_CLASS}
       >
         {mutation.isPending ? "Launching…" : "Launch Run"}

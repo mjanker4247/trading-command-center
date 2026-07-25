@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { isCrypto } from "@/lib/asset";
 import { LlmConfigPicker } from "@/components/llm/LlmConfigPicker";
 import { useHydratedLlmConfig } from "@/lib/useDefaultLlmConfig";
@@ -33,6 +33,7 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
   const [cron, setCron] = useState<string | null>(DEFAULT_WATCHLIST_CRON);
 
   const cryptoTicker = isCrypto(ticker);
+  const selectedAnalysts = cryptoTicker ? analysts.filter((a) => a !== "fundamentals") : analysts;
 
   function toggleAnalyst(name: string) {
     if (name === "fundamentals" && cryptoTicker) return;
@@ -41,21 +42,15 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
     );
   }
 
-  useEffect(() => {
-    if (cryptoTicker) {
-      setAnalysts((prev) => prev.filter((a) => a !== "fundamentals"));
-    }
-  }, [cryptoTicker]);
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!ticker || analysts.length === 0) return;
+    if (!ticker || selectedAnalysts.length === 0) return;
     onAdd({
       ticker,
       llm_provider: llmConfig.provider,
       llm_model: resolveModel(llmConfig),
       depth: llmConfig.depth ?? DEFAULT_LLM_DEPTH,
-      analysts,
+      analysts: selectedAnalysts,
       response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
       schedule_cron: cron,
     });
@@ -90,7 +85,7 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
           <label className={WATCHLIST_FIELD_LABEL_CLASS}>Analysts</label>
           <div className="flex flex-wrap gap-2">
             {ANALYSTS.map((analyst) => {
-              const selected = analysts.includes(analyst);
+              const selected = selectedAnalysts.includes(analyst);
               const disabled = analyst === "fundamentals" && cryptoTicker;
               return (
                 <button
@@ -105,7 +100,7 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
               );
             })}
           </div>
-          {analysts.length === 0 && (
+          {selectedAnalysts.length === 0 && (
             <p className="mt-1 text-xs text-red-400">Select at least one analyst.</p>
           )}
         </div>
@@ -113,7 +108,7 @@ export function AddWatchlistItemForm({ onAdd, isPending }: AddWatchlistItemFormP
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             type="submit"
-            disabled={!ticker || analysts.length === 0 || isPending}
+            disabled={!ticker || selectedAnalysts.length === 0 || isPending}
             className={BTN_PRIMARY_CLASS}
           >
             {isPending ? "Adding…" : "Add to watchlist"}
