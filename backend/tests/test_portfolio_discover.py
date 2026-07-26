@@ -1,8 +1,11 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -288,6 +291,39 @@ async def test_discover_cached_result_requires_portfolio_owner():
     assert owner_response.json()["cached"] is False
     assert intruder_response.status_code == 404
     assert llm_calls["n"] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_checks_snapshot_access_before_cached_return(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    portfolio_module._discover_cache[
+        f"{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    ] = ([{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "private"}], portfolio_module.time.time() + 60)
+
+    async def _deny_snapshot(*_args, **_kwargs):
+        raise HTTPException(status_code=404, detail="No portfolio snapshot found.")
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _deny_snapshot)
+    monkeypatch.setattr(
+        "app.services.portfolio_insight_runner._get_api_key",
+        AsyncMock(return_value="sk-test"),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await portfolio_module.discover_stocks(
+            portfolio_id,
+            body=body,
+            db=object(),
+            user=SimpleNamespace(id=uuid4()),
+        )
+
+    assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
