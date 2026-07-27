@@ -242,6 +242,88 @@ async def test_discover_force_refresh_bypasses_cache():
         assert llm_calls["n"] == 2
 
 
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_returning_cached_results(monkeypatch):
+    import time
+    import uuid
+    from types import SimpleNamespace
+    from fastapi import HTTPException
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_id = uuid.uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_module._discover_cache[
+        f"{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    ] = ([{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "cached"}], time.time() + 60)
+
+    async def _deny_snapshot(*_args, **_kwargs):
+        raise HTTPException(status_code=404, detail="not found")
+
+    async def _unexpected_api_key(*_args, **_kwargs):
+        raise AssertionError("provider lookup must not run before portfolio authorization")
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _deny_snapshot)
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", _unexpected_api_key)
+
+    with pytest.raises(HTTPException) as exc:
+        await portfolio_module.discover_stocks(
+            portfolio_id=portfolio_id,
+            body=body,
+            db=object(),
+            user=SimpleNamespace(id=uuid.uuid4()),
+        )
+
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_unit_cleans_in_flight_marker_after_pre_llm_failure(monkeypatch):
+    import uuid
+    from types import SimpleNamespace
+    import app.routers.portfolio as portfolio_module
+
+    class _Scalars:
+        def all(self):
+            return [SimpleNamespace(ticker="AAPL")]
+
+    class _Result:
+        def scalars(self):
+            return _Scalars()
+
+    class _Db:
+        async def execute(self, *_args, **_kwargs):
+            return _Result()
+
+    async def _snapshot(*_args, **_kwargs):
+        return SimpleNamespace(id=uuid.uuid4())
+
+    async def _api_key(*_args, **_kwargs):
+        return "sk-test"
+
+    async def _raise_sector_gaps(*_args, **_kwargs):
+        raise RuntimeError("boom")
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _snapshot)
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", _api_key)
+    monkeypatch.setattr(portfolio_module, "get_sector_gaps", _raise_sector_gaps)
+
+    with pytest.raises(RuntimeError):
+        await portfolio_module.discover_stocks(
+            portfolio_id=uuid.uuid4(),
+            body=portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+            db=_Db(),
+            user=SimpleNamespace(id=uuid.uuid4()),
+        )
+
+    assert portfolio_module._discover_in_flight == set()
+
+
 @pytest.mark.asyncio
 async def test_discover_cached_results_are_authorized_per_user():
     import app.routers.portfolio as portfolio_module
