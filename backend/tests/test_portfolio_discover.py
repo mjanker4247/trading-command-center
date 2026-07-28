@@ -1,4 +1,5 @@
 import json
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch, AsyncMock
@@ -8,7 +9,8 @@ from sqlalchemy import select
 from main import app
 from app.database import AsyncSessionLocal
 from app.models.api_key import ApiKey
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.services.auth import create_access_token, hash_password
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
 
@@ -294,3 +296,70 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_discover_denies_other_user_before_cached_return():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+
+        async with AsyncSessionLocal() as db:
+            other = User(
+                email="discover-other@test.com",
+                hashed_password=hash_password("pass1234"),
+                name="Other",
+                role=UserRole.member,
+            )
+            db.add(other)
+            await db.commit()
+            await db.refresh(other)
+            other_token = create_access_token(str(other.id), other.role.value)
+
+        stale_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+        portfolio_module._discover_cache[stale_key] = (
+            [{"ticker": "LEAK", "tag": "Cached", "sector": "", "reason": "Should not return"}],
+            time.time() + 60,
+        )
+
+        with patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {other_token}"},
+            )
+
+        assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_when_candidate_fetch_fails():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as c:
+        token = await _register_and_token(c, "discover-inflight@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        ):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert r.status_code == 500
+        assert all(portfolio_id not in key for key in portfolio_module._discover_in_flight)
