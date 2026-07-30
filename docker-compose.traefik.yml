@@ -16,11 +16,24 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - tcc-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - tcc-network
@@ -35,6 +48,37 @@ services:
       SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
       SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: redis
+      JOB_BACKEND: procrastinate
+      SCHEDULER_ENABLED: "true"
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tcc-network
+    environment:
+      DATABASE_URL: postgresql+asyncpg://agentfloor:agentfloor@db:5432/agentfloor
+      JWT_SECRET: "${JWT_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
+      FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: redis
+      JOB_BACKEND: procrastinate
+      SCHEDULER_ENABLED: "false"
 
   frontend:
     build: ./frontend

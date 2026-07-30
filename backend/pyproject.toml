@@ -26,6 +26,9 @@ dependencies = [
     "scipy>=1.13.1",
     "yfinance>=0.2.54",
     "pykalman>=0.11.2",
+    "redis>=5.0",
+    "procrastinate>=3.0",
+    "psycopg[binary]>=3.1",
 ]
 
 [project.optional-dependencies]

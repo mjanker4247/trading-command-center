@@ -97,12 +97,17 @@ async def _get_stored_key(provider: str) -> str | None:
     return decrypt_key(row.encrypted_key)
 
 
-async def execute_run(run_id: str, config: dict) -> None:
+async def execute_run(run_id: str, config: dict, abort_check=None) -> None:
+    """Run TradingAgents for a single Run row.
+
+    abort_check: optional async callable returning True when the run should abort
+    (Redis abort key and/or Procrastinate JobContext.should_abort).
+    """
     from app.database import AsyncSessionLocal
     from app.models.run import Run, RunStatus, RunVerdict
     from app.models.agent_event import AgentEvent, EventType
     from app.models.report import Report
-    from app.services.websocket_manager import ws_manager
+    from app.services.event_bus import publish_run_event
     from app.utils.asset_type import is_crypto as _is_crypto
     from app.utils.response_language import normalize_response_language
     from app.utils.tradingagents_analysts import normalize_analysts
@@ -122,7 +127,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             event = await async_q.get()
             if event is None:
                 break
-            await ws_manager.broadcast(run_id, event)
+            await publish_run_event(run_id, event)
             # Token events are streamed live; skip persisting them to avoid
             # thousands of rows per run. Full output lives in Report.raw_report.
             if event.get("type") == "token":
@@ -151,10 +156,27 @@ async def execute_run(run_id: str, config: dict) -> None:
                 run.completed_at = datetime.now(timezone.utc)
             await db.commit()
 
+    async def _watch_abort(stop: asyncio.Event):
+        if abort_check is None:
+            await stop.wait()
+            return
+        while not stop.is_set():
+            try:
+                if await abort_check():
+                    return
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                pass
+
     await _set_status(RunStatus.running)
     emitter = _SyncEmitter(sync_q)
     drain_task = asyncio.create_task(_drain())
     process_task = asyncio.create_task(_process())
+    abort_stop = asyncio.Event()
+    abort_watch = asyncio.create_task(_watch_abort(abort_stop))
 
     try:
         from app.services.tradingagents_grounding import (
@@ -219,14 +241,29 @@ async def execute_run(run_id: str, config: dict) -> None:
                     callbacks=[emitter],
                 )
                 from app.config import settings as _settings
-                final_state, recommendation = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        graph.propagate,
-                        ticker,
-                        config["analysis_date"],
-                    ),
-                    timeout=_settings.run_timeout_seconds,
+
+                propagate_task = asyncio.create_task(
+                    asyncio.wait_for(
+                        asyncio.to_thread(
+                            graph.propagate,
+                            ticker,
+                            config["analysis_date"],
+                        ),
+                        timeout=_settings.run_timeout_seconds,
+                    )
                 )
+                done, _pending = await asyncio.wait(
+                    {propagate_task, abort_watch},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if abort_watch in done and not propagate_task.done():
+                    propagate_task.cancel()
+                    try:
+                        await propagate_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+                    raise asyncio.CancelledError()
+                final_state, recommendation = await propagate_task
             finally:
                 for k in env_patch:
                     prev = prev_env[k]
@@ -265,7 +302,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             await db.commit()
 
         await _set_status(RunStatus.completed, verdict)
-        await ws_manager.broadcast(run_id, {"type": "run_completed", "run_id": run_id})
+        await publish_run_event(run_id, {"type": "run_completed", "run_id": run_id})
 
         # Fire-and-forget completion email; failure never affects run status
         try:
@@ -293,13 +330,16 @@ async def execute_run(run_id: str, config: dict) -> None:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
-        await ws_manager.broadcast(run_id, {"type": "error", "message": f"Run timed out after {_cfg.run_timeout_seconds}s"})
+        await publish_run_event(
+            run_id,
+            {"type": "error", "message": f"Run timed out after {_cfg.run_timeout_seconds}s"},
+        )
 
     except asyncio.CancelledError:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.aborted)
-        await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
+        await publish_run_event(run_id, {"type": "run_aborted", "run_id": run_id})
 
     except Exception as exc:
         import traceback, logging
@@ -307,9 +347,10 @@ async def execute_run(run_id: str, config: dict) -> None:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
-        await ws_manager.broadcast(run_id, {"type": "error", "message": str(exc)})
-
+        await publish_run_event(run_id, {"type": "error", "message": str(exc)})
     finally:
+        abort_stop.set()
+        abort_watch.cancel()
         drain_task.cancel()
 
 
