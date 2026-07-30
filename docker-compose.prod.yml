@@ -45,8 +45,36 @@ services:
       LOGO_CACHE_DIR: /data/logos
       REDIS_URL: redis://redis:6379/0
       EVENT_BUS_BACKEND: redis
-      JOB_BACKEND: memory
+      JOB_BACKEND: procrastinate
       SCHEDULER_ENABLED: "true"
+    volumes:
+      - logo_cache:/data/logos
+
+  worker:
+    image: ghcr.io/saketnayak/agentfloor-backend:latest
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://agentfloor:agentfloor@db:5432/agentfloor
+      JWT_SECRET: "${JWT_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
+      FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
+      LOGO_CACHE_DIR: /data/logos
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: redis
+      JOB_BACKEND: procrastinate
+      SCHEDULER_ENABLED: "false"
     volumes:
       - logo_cache:/data/logos
 

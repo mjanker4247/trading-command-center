@@ -97,7 +97,12 @@ async def _get_stored_key(provider: str) -> str | None:
     return decrypt_key(row.encrypted_key)
 
 
-async def execute_run(run_id: str, config: dict) -> None:
+async def execute_run(run_id: str, config: dict, abort_check=None) -> None:
+    """Run TradingAgents for a single Run row.
+
+    abort_check: optional async callable returning True when the run should abort
+    (Redis abort key and/or Procrastinate JobContext.should_abort).
+    """
     from app.database import AsyncSessionLocal
     from app.models.run import Run, RunStatus, RunVerdict
     from app.models.agent_event import AgentEvent, EventType
@@ -151,10 +156,27 @@ async def execute_run(run_id: str, config: dict) -> None:
                 run.completed_at = datetime.now(timezone.utc)
             await db.commit()
 
+    async def _watch_abort(stop: asyncio.Event):
+        if abort_check is None:
+            await stop.wait()
+            return
+        while not stop.is_set():
+            try:
+                if await abort_check():
+                    return
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                pass
+
     await _set_status(RunStatus.running)
     emitter = _SyncEmitter(sync_q)
     drain_task = asyncio.create_task(_drain())
     process_task = asyncio.create_task(_process())
+    abort_stop = asyncio.Event()
+    abort_watch = asyncio.create_task(_watch_abort(abort_stop))
 
     try:
         from app.services.tradingagents_grounding import (
@@ -219,14 +241,29 @@ async def execute_run(run_id: str, config: dict) -> None:
                     callbacks=[emitter],
                 )
                 from app.config import settings as _settings
-                final_state, recommendation = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        graph.propagate,
-                        ticker,
-                        config["analysis_date"],
-                    ),
-                    timeout=_settings.run_timeout_seconds,
+
+                propagate_task = asyncio.create_task(
+                    asyncio.wait_for(
+                        asyncio.to_thread(
+                            graph.propagate,
+                            ticker,
+                            config["analysis_date"],
+                        ),
+                        timeout=_settings.run_timeout_seconds,
+                    )
                 )
+                done, _pending = await asyncio.wait(
+                    {propagate_task, abort_watch},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if abort_watch in done and not propagate_task.done():
+                    propagate_task.cancel()
+                    try:
+                        await propagate_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+                    raise asyncio.CancelledError()
+                final_state, recommendation = await propagate_task
             finally:
                 for k in env_patch:
                     prev = prev_env[k]
@@ -312,6 +349,8 @@ async def execute_run(run_id: str, config: dict) -> None:
         await _set_status(RunStatus.failed)
         await publish_run_event(run_id, {"type": "error", "message": str(exc)})
     finally:
+        abort_stop.set()
+        abort_watch.cancel()
         drain_task.cancel()
 
 

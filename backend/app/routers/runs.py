@@ -328,7 +328,7 @@ async def abort_run_endpoint(run_id: UUID, db: AsyncSession = Depends(get_db), u
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
     if str(run.created_by) != str(user.id) and user.role.value != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
-    abort_run(str(run_id))
+    await abort_run(str(run_id))
 
 
 @router.post("/runs/{run_id}/archive", response_model=RunResponse)
@@ -383,7 +383,7 @@ async def bulk_abort_runs(
         if str(run.created_by) != str(user.id) and user.role.value != "admin":
             continue
         if run.status in (RunStatus.running, RunStatus.pending):
-            abort_run(str(run_id))
+            await abort_run(str(run_id))
             aborted.append(str(run_id))
     return {"aborted": aborted}
 

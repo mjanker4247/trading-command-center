@@ -1,6 +1,6 @@
 # Python Hardening Plan
 
-**Status:** in progress (Phase 0–1 implemented on `cursor/python-hardening-plan-6bf5`)  
+**Status:** in progress (Phases 0–2 on `cursor/python-hardening-plan-6bf5`)  
 **Decision:** Stay on FastAPI + Next.js. Skip Elixir/Ash.  
 **Goals:** Extract an analysis worker, add a durable job queue (Oban-equivalent), fan out WebSocket events via Redis so multi-instance abort and live streams work.
 

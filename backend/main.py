@@ -14,7 +14,7 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # In-memory jobs die with the process; mark orphans failed.
-    # When JOB_BACKEND=procrastinate, worker owns in-flight runs — skip blanket fail (Phase 2).
+    # When JOB_BACKEND=procrastinate, worker owns in-flight runs — skip blanket fail.
     if settings.job_backend == "memory":
         async with AsyncSessionLocal() as db:
             await db.execute(
@@ -23,12 +23,22 @@ async def lifespan(_app: FastAPI):
                 .values(status=RunStatus.failed, completed_at=datetime.now(timezone.utc))
             )
             await db.commit()
+    elif settings.job_backend == "procrastinate":
+        from app.services import job_queue
+
+        await job_queue.open_app()
     await start_event_subscriber()
     if settings.scheduler_enabled:
         await start_scheduler()
-    yield
-    await stop_scheduler()
-    await stop_event_subscriber()
+    try:
+        yield
+    finally:
+        await stop_scheduler()
+        await stop_event_subscriber()
+        if settings.job_backend == "procrastinate":
+            from app.services import job_queue
+
+            await job_queue.close_app()
 
 
 app = FastAPI(title="AgentFloor API", lifespan=lifespan)
