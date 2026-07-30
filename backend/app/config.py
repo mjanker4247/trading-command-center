@@ -1,4 +1,6 @@
-from pydantic import model_validator
+from typing import Literal
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_JWT = "dev-secret-change-in-production"
@@ -23,6 +25,19 @@ class Settings(BaseSettings):
     trim_concentration_threshold_pct: float = 15.0
     trim_regime_signal_weak_threshold: float = -0.1
     logo_cache_dir: str = "data/logos"
+    # Phase 0/1 hardening: Redis + event bus (default memory keeps unit tests Redis-free)
+    redis_url: str = "redis://localhost:6379/0"
+    event_bus_backend: Literal["memory", "redis"] = "memory"
+    # Phase 2+: job queue backend (memory = in-process asyncio tasks)
+    job_backend: Literal["memory", "procrastinate"] = "memory"
+    scheduler_enabled: bool = True
+
+    @field_validator("event_bus_backend", "job_backend", mode="before")
+    @classmethod
+    def normalize_backend_name(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
 
     @model_validator(mode="after")
     def validate_secrets(self) -> "Settings":

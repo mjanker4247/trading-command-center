@@ -14,11 +14,22 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     image: ghcr.io/saketnayak/agentfloor-backend:latest
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://agentfloor:agentfloor@db:5432/agentfloor
@@ -32,6 +43,10 @@ services:
       SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
       LOGO_CACHE_DIR: /data/logos
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: redis
+      JOB_BACKEND: memory
+      SCHEDULER_ENABLED: "true"
     volumes:
       - logo_cache:/data/logos
 

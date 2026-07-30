@@ -1,6 +1,6 @@
 # Python Hardening Plan
 
-**Status:** planning  
+**Status:** in progress (Phase 0–1 implemented on `cursor/python-hardening-plan-6bf5`)  
 **Decision:** Stay on FastAPI + Next.js. Skip Elixir/Ash.  
 **Goals:** Extract an analysis worker, add a durable job queue (Oban-equivalent), fan out WebSocket events via Redis so multi-instance abort and live streams work.
 
@@ -36,7 +36,7 @@ Frontend contract stays stable: REST + `ws://…/ws/runs/{id}?token=…` with th
               ▼                         ▼
      ┌─────────────────┐       ┌─────────────────┐
      │  api (N replicas)│       │  worker (M)     │
-     │  FastAPI HTTP/WS │       │  ARQ consumer   │
+     │  FastAPI HTTP/WS │       │  job worker     │
      │  WS ↔ Redis sub  │       │  execute_run    │
      │  enqueue jobs    │       │  insights/etc   │
      │  APScheduler*    │       │  publish events │
@@ -74,23 +74,24 @@ Wave / regime / kalman stay **request-path on `api`** initially (already `asynci
 
 ## 3. Technology choices
 
-### 3.1 Job queue → **ARQ** (Redis + asyncio)
+### 3.1 Job queue → **Procrastinate** (Postgres; Oban-like)
+
+> **Note (implementation):** ARQ and taskiq-redis pin `redis<6`, but `tradingagents` requires `redis>=7.4`. Do **not** add ARQ. Use a Postgres-backed queue instead so Redis stays free for pub/sub + abort signals only.
 
 | Option | Verdict |
 |---|---|
-| **ARQ** | **Choose.** Native asyncio, Redis, small API, fits FastAPI/uvicorn. Retries, job IDs, deferred jobs, cron available. |
-| Taskiq | Fine alternative; more moving parts. Use if ARQ abort/long-job limits bite. |
+| **Procrastinate** | **Choose.** Postgres job queue (retries, defer, cron-friendly). Closest Oban analogue; no Redis version conflict. |
+| Thin custom Redis list worker | Acceptable fallback if Procrastinate feels heavy; use redis-py 7 directly. |
+| ARQ / taskiq-redis | **Reject** — incompatible with TradingAgents' Redis 7 pin. |
 | Celery | Reject — sync-first, heavy for this app. |
-| Dramatiq | OK if team prefers sync workers; TradingAgents is sync-in-thread anyway, but ARQ keeps one concurrency model. |
-| Procrastinate / Postgres queue | True Oban twin, but we still need Redis for WS — one broker (Redis) is simpler. |
 
-**Long runs:** set ARQ job timeout ≥ `settings.run_timeout_seconds` (default 3600) + buffer. Keep cooperative cancel via Redis abort flag (below), not only ARQ kill.
+**Long runs:** set job timeout / `lock` ≥ `settings.run_timeout_seconds` (default 3600) + buffer. Keep cooperative cancel via Redis abort flag (below), not only worker kill.
 
-**Queues (names)**
+**Queues (names / queues in Procrastinate)**
 
 | Queue | Jobs | Concurrency notes |
 |---|---|---|
-| `runs` | `execute_trading_run` | Cloud: parallel workers OK. Local providers (`ollama`/`vllm`/`litellm`): dedicated queue `runs_local` with `max_jobs=1` (preserve today’s serial batch behavior). |
+| `runs` | `execute_trading_run` | Cloud: parallel workers OK. Local providers (`ollama`/`vllm`/`litellm`): dedicated queue `runs_local` with concurrency 1 (preserve today’s serial batch behavior). |
 | `insights` | `generate_portfolio_insight_job` | One in-flight per portfolio still enforced in DB (existing 409 / status guard). |
 | `delivery` | `deliver_insight_job` | After insight completes. |
 | `maintenance` (optional later) | outcome price fetch, cache warm | |
@@ -109,14 +110,14 @@ SET af:abort:{run_id} 1 EX <timeout+skew>
 ```
 
 Worker loop (already draining queues in `execute_run`) checks the key periodically / between phases and raises `CancelledError` / sets `aborted`.  
-`DELETE /runs/{id}` on any API replica sets the key and (best-effort) calls ARQ abort for the job id stored on the run or in Redis `af:job:{run_id}`.
+`DELETE /runs/{id}` on any API replica sets the key and (best-effort) cancels the Procrastinate job id stored on the run or in Redis `af:job:{run_id}`.
 
 Do **not** rely on in-process `task.cancel()` alone.
 
 ### 3.4 Redis client
 
-- `redis.asyncio` (redis-py) for pub/sub + abort keys.
-- ARQ brings its own Redis usage; share one Redis URL setting: `REDIS_URL`.
+- `redis.asyncio` (redis-py 7.x, already pulled by TradingAgents) for pub/sub + abort keys.
+- Job durability lives in Postgres via Procrastinate (Phase 2); Redis is not the job broker.
 
 ---
 
@@ -126,8 +127,8 @@ Do **not** rely on in-process `task.cancel()` alone.
 
 1. Add `redis:7-alpine` to `docker-compose.dev.yml` / `prod.yml` with healthcheck.
 2. Add `REDIS_URL` to `app/config.py` (default `redis://localhost:6379/0`) and `.env.example`.
-3. Add deps: `arq`, `redis`.
-4. Document: single-node still works; Redis required for multi-replica.
+3. Add deps: `redis` (explicit; TradingAgents already needs 7.x). Job library (`procrastinate`) lands in Phase 2 — **not ARQ** (Redis pin conflict).
+4. Document: single-node still works; Redis required for multi-replica event fanout.
 
 **Exit:** compose up includes healthy Redis; backend still uses in-memory jobs (feature flag off).
 
@@ -152,14 +153,14 @@ Do **not** rely on in-process `task.cancel()` alone.
 ### Phase 2 — Durable run queue + worker process
 
 1. **Job API wrapper** — replace guts of `job_manager.py`:
-   - `start_run` → enqueue ARQ job; store `job_id` in Redis `af:job:{run_id}` (or nullable `runs.job_id` column if you prefer DB visibility).
-   - `abort_run` → set abort key + ARQ abort.
+   - `start_run` → defer Procrastinate job; store job id in Redis `af:job:{run_id}` (or nullable `runs.job_id` column if you prefer DB visibility).
+   - `abort_run` → set abort key + cancel/abort Procrastinate job when supported.
    - `start_runs_batch` → enqueue to `runs` or `runs_local` based on provider (same split as today).
    - Keep function signatures so routers/scheduler call sites stay thin.
-2. **Worker entrypoint** — e.g. `python -m app.worker` / `arq app.worker.WorkerSettings`.
+2. **Worker entrypoint** — e.g. `python -m app.worker` / `procrastinate worker`.
 3. **Docker** — new `worker` service: same image as backend, different command; `depends_on: redis, db`. Scale with `docker compose up --scale worker=2`.
 4. **Lifespan change** — stop blanket-failing all `pending`/`running` on API boot.
-   - On API boot: do nothing to in-flight rows (worker owns them), **or** only fail runs with no matching ARQ job / stale heartbeat.
+   - On API boot: do nothing to in-flight rows (worker owns them), **or** only fail runs with no matching job / stale heartbeat.
    - On worker boot: reclaim or fail jobs older than timeout with no heartbeat (define once).
 5. **Heartbeat (minimal)** — worker sets `af:running:{run_id}` with TTL 60s and refreshes while `execute_run` runs; API abort/UI can show liveness; stale keys → mark failed via maintenance job.
 6. **Scheduler** — `_fire_watchlist_item` keeps creating `Run` rows then calls `start_run` (now enqueue). `_fire_daily_portfolio_insights` enqueues insight jobs instead of `create_task`.
@@ -173,7 +174,7 @@ Do **not** rely on in-process `task.cancel()` alone.
 
 **Tests**
 
-- `job_manager` enqueue/abort with fake ARQ or redis mock.
+- `job_manager` enqueue/abort with fake Procrastinate or redis mock.
 - Integration: enqueue → worker executes mocked `execute_run` → status `completed`.
 - Abort: enqueue long mock job → abort from “other” client → status `aborted`.
 - Update scheduler tests that patch `start_run`.
@@ -185,7 +186,7 @@ Do **not** rely on in-process `task.cancel()` alone.
 1. Replace `asyncio.create_task(generate_portfolio_insight…)` in `portfolio.py` and `scheduler.py` with enqueue on `insights`.
 2. Replace `create_task(deliver_insight_if_configured…)` with `delivery` queue.
 3. Preserve DB concurrency guard (one `pending`/`running` insight per portfolio).
-4. Retries: transient LLM/network errors → ARQ retry with backoff; mark `failed` after max tries (align with current failure persistence).
+4. Retries: transient LLM/network errors → Procrastinate retry with backoff; mark `failed` after max tries (align with current failure persistence).
 
 **Exit:** Kill worker mid-insight → job retries or fails cleanly in DB; no silent loss.
 
@@ -213,8 +214,8 @@ Do **not** rely on in-process `task.cancel()` alone.
 
 ```
 backend/app/
-  config.py                 # + redis_url, event_bus_backend, scheduler_enabled, arq settings
-  worker.py                 # ARQ WorkerSettings, task functions
+  config.py                 # + redis_url, event_bus_backend, scheduler_enabled, job settings
+  worker.py                 # Procrastinate app + task functions
   services/
     job_manager.py          # enqueue/abort façade (keep public API)
     event_bus.py            # NEW memory|redis publish/subscribe
@@ -252,7 +253,7 @@ Compose services: `db`, `redis`, `api` (rename from `backend` or keep name), `wo
 
 | Risk | Mitigation |
 |---|---|
-| Dual-write confusion during migration | Feature flag `JOB_BACKEND=memory|arq`; default memory in tests; redis/arq in compose |
+| Dual-write confusion during migration | Feature flag `JOB_BACKEND=memory|procrastinate`; default memory in tests; redis + procrastinate in compose |
 | Lifespan fails durable jobs | Change fail-on-boot **in same PR** as worker cutover |
 | Local LLM overload | Separate `runs_local` queue, `max_jobs=1` |
 | Redis outage | Healthcheck; API `/health` can report redis; fail enqueue loudly (502/503) rather than silent `create_task` |
@@ -275,7 +276,7 @@ Compose services: `db`, `redis`, `api` (rename from `backend` or keep name), `wo
 |---|---|
 | **A** | Redis compose + settings + deps; no behavior change |
 | **B** | Event bus + runner publish + WS subscriber (`EVENT_BUS_BACKEND`) |
-| **C** | ARQ worker + `job_manager` enqueue/abort + lifespan fix + `worker` service |
+| **C** | Procrastinate worker + `job_manager` enqueue/abort + lifespan fix + `worker` service |
 | **D** | Insights + delivery queues |
 | **E** | `SCHEDULER_ENABLED` + multi-api compose notes / optional scale example |
 
@@ -289,7 +290,7 @@ Each PR should be shippable alone with flags defaulting to legacy behavior until
 - [ ] Unit: abort signal set/clear  
 - [ ] Unit: job_manager selects `runs` vs `runs_local`  
 - [ ] Integration: Redis pub/sub → WS (TestClient)  
-- [ ] Integration: ARQ worker completes mocked run  
+- [ ] Integration: Procrastinate worker completes mocked run  
 - [ ] Integration: abort across “api” vs “worker” roles  
 - [ ] Scheduler: still skips in-flight ticker; enqueues `start_run`  
 - [ ] Regression: runs CRUD, watchlist manual run, portfolio batch  
@@ -299,7 +300,7 @@ Each PR should be shippable alone with flags defaulting to legacy behavior until
 
 ## 10. Recommendation
 
-Execute **Phases 0→4** on the current stack. Treat Redis + ARQ + worker as the Oban/Channels equivalent without a platform rewrite. Defer cache extraction and quant offload until metrics demand them.
+Execute **Phases 0→4** on the current stack. Treat Redis (WS/abort) + Procrastinate (jobs) + worker as the Oban/Channels equivalent without a platform rewrite. Defer cache extraction and quant offload until metrics demand them.
 
 Default compose after cutover:
 
@@ -309,7 +310,7 @@ services:
   db: …
   redis: …
   api:      # uvicorn — SCHEDULER_ENABLED=true (one replica)
-  worker:   # arq app.worker.WorkerSettings
+  worker:   # procrastinate worker (python -m app.worker)
   frontend: …
   nginx: …
 ```

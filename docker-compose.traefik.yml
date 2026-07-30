@@ -16,11 +16,24 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - tcc-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - tcc-network
@@ -35,6 +48,10 @@ services:
       SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
       SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: redis
+      JOB_BACKEND: memory
+      SCHEDULER_ENABLED: "true"
 
   frontend:
     build: ./frontend

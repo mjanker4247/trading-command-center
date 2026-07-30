@@ -102,7 +102,7 @@ async def execute_run(run_id: str, config: dict) -> None:
     from app.models.run import Run, RunStatus, RunVerdict
     from app.models.agent_event import AgentEvent, EventType
     from app.models.report import Report
-    from app.services.websocket_manager import ws_manager
+    from app.services.event_bus import publish_run_event
     from app.utils.asset_type import is_crypto as _is_crypto
     from app.utils.response_language import normalize_response_language
     from app.utils.tradingagents_analysts import normalize_analysts
@@ -122,7 +122,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             event = await async_q.get()
             if event is None:
                 break
-            await ws_manager.broadcast(run_id, event)
+            await publish_run_event(run_id, event)
             # Token events are streamed live; skip persisting them to avoid
             # thousands of rows per run. Full output lives in Report.raw_report.
             if event.get("type") == "token":
@@ -265,7 +265,7 @@ async def execute_run(run_id: str, config: dict) -> None:
             await db.commit()
 
         await _set_status(RunStatus.completed, verdict)
-        await ws_manager.broadcast(run_id, {"type": "run_completed", "run_id": run_id})
+        await publish_run_event(run_id, {"type": "run_completed", "run_id": run_id})
 
         # Fire-and-forget completion email; failure never affects run status
         try:
@@ -293,13 +293,16 @@ async def execute_run(run_id: str, config: dict) -> None:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
-        await ws_manager.broadcast(run_id, {"type": "error", "message": f"Run timed out after {_cfg.run_timeout_seconds}s"})
+        await publish_run_event(
+            run_id,
+            {"type": "error", "message": f"Run timed out after {_cfg.run_timeout_seconds}s"},
+        )
 
     except asyncio.CancelledError:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.aborted)
-        await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
+        await publish_run_event(run_id, {"type": "run_aborted", "run_id": run_id})
 
     except Exception as exc:
         import traceback, logging
@@ -307,8 +310,7 @@ async def execute_run(run_id: str, config: dict) -> None:
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
-        await ws_manager.broadcast(run_id, {"type": "error", "message": str(exc)})
-
+        await publish_run_event(run_id, {"type": "error", "message": str(exc)})
     finally:
         drain_task.cancel()
 
