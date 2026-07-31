@@ -3,6 +3,7 @@ import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
+import { UserScopedQueryReset } from "@/components/layout/UserScopedQueryReset";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <QueryClientProvider client={qc}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <UserScopedQueryReset />
           {children}
         </ThemeProvider>
       </QueryClientProvider>
