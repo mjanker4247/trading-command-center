@@ -26,6 +26,12 @@ import { getLastPortfolioId, resolvePortfolioId } from "@/lib/portfolioSelection
 import type { Portfolio } from "@/lib/types";
 
 let prefetchInFlight: Promise<void> | null = null;
+let prefetchGeneration = 0;
+
+export function resetPortfolioPrefetchState(): void {
+  prefetchGeneration += 1;
+  prefetchInFlight = null;
+}
 
 export async function prefetchMarketData(queryClient: QueryClient): Promise<void> {
   await Promise.all([
@@ -78,8 +84,11 @@ export async function prefetchPortfolioTabData(
 export async function prefetchPortfolioData(queryClient: QueryClient): Promise<void> {
   if (prefetchInFlight) return prefetchInFlight;
 
-  prefetchInFlight = runPrefetch(queryClient).finally(() => {
-    prefetchInFlight = null;
+  const generation = prefetchGeneration;
+  prefetchInFlight = runPrefetch(queryClient, generation).finally(() => {
+    if (generation === prefetchGeneration) {
+      prefetchInFlight = null;
+    }
   });
   return prefetchInFlight;
 }
@@ -90,16 +99,18 @@ export async function prefetchAppData(queryClient: QueryClient): Promise<void> {
   return prefetchPortfolioData(queryClient);
 }
 
-async function runPrefetch(queryClient: QueryClient): Promise<void> {
+async function runPrefetch(queryClient: QueryClient, generation: number): Promise<void> {
   await queryClient.prefetchQuery({
     queryKey: portfolioQueryKeys.list,
     queryFn: listPortfolios,
   });
+  if (generation !== prefetchGeneration) return;
 
   const portfolios = queryClient.getQueryData<Portfolio[]>(portfolioQueryKeys.list) ?? [];
   const portfolioId = resolvePortfolioId(portfolios, getLastPortfolioId());
   if (!portfolioId) {
     await prefetchMarketData(queryClient);
+    if (generation !== prefetchGeneration) return;
     return;
   }
 
@@ -116,6 +127,7 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
   } catch {
     // Prefetch enrichment with defaults when settings are unavailable.
   }
+  if (generation !== prefetchGeneration) return;
 
   const prefetches: Array<Promise<void>> = [
     queryClient.prefetchQuery({

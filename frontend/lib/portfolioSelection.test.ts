@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolvePortfolioId } from "./portfolioSelection";
+import { clearLastPortfolioId, getLastPortfolioId, resolvePortfolioId, setLastPortfolioId } from "./portfolioSelection";
 
 const portfolios = [{ id: "a" }, { id: "b" }];
 
@@ -18,4 +18,44 @@ test("resolvePortfolioId falls back to first portfolio when preferred is stale",
 
 test("resolvePortfolioId falls back to first portfolio when preferred is null", () => {
   assert.equal(resolvePortfolioId(portfolios, null), "a");
+});
+
+test("clearLastPortfolioId removes the remembered portfolio", () => {
+  const previousWindow = globalThis.window;
+  const previousLocalStorage = globalThis.localStorage;
+  const storage = new Map<string, string>();
+  const fakeLocalStorage = {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      storage.set(key, value);
+    },
+    removeItem: (key: string) => {
+      storage.delete(key);
+    },
+  };
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { localStorage: fakeLocalStorage },
+  });
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: fakeLocalStorage,
+  });
+
+  try {
+    setLastPortfolioId("p1");
+    assert.equal(getLastPortfolioId(), "p1");
+    clearLastPortfolioId();
+    assert.equal(getLastPortfolioId(), null);
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: previousWindow,
+    });
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: previousLocalStorage,
+    });
+  }
 });
