@@ -1,4 +1,5 @@
 import json
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch, AsyncMock
@@ -9,6 +10,7 @@ from main import app
 from app.database import AsyncSessionLocal
 from app.models.api_key import ApiKey
 from app.models.user import User
+from app.services.auth import create_invite_token
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
 
@@ -239,6 +241,94 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_returning_cached_result():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+
+        invite_token = create_invite_token("discover-intruder@test.com")
+        r_intruder = await c.post(
+            "/auth/register",
+            json={
+                "email": "discover-intruder@test.com",
+                "password": "pass1234",
+                "name": "Intruder",
+                "invite_token": invite_token,
+            },
+        )
+        assert r_intruder.status_code == 200
+        intruder_token = r_intruder.json()["access_token"]
+
+        # This is the pre-fix shared cache key shape; an unauthorized user must
+        # not receive it before ownership is checked.
+        legacy_cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+        portfolio_module._discover_cache[legacy_cache_key] = (
+            [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "cached"}],
+            time.time() + portfolio_module._DISCOVER_TTL,
+        )
+
+        with patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {intruder_token}"},
+            )
+
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_after_market_failure():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    llm_calls = {"n": 0}
+
+    async def _llm(*_a, **_k):
+        llm_calls["n"] += 1
+        return MOCK_RECOMMENDATIONS
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as c:
+        token = await _register_and_token(c, "discover-cleanup@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+            patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=RuntimeError("market down"))),
+            patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
+        ):
+            r1 = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+        assert r1.status_code == 500
+        assert portfolio_module._discover_in_flight == set()
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(side_effect=_llm)),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+            _market_patches(),
+        ):
+            r2 = await c.post(f"/portfolio/{portfolio_id}/discover", json=body, headers=headers)
+
+    assert r2.status_code == 200
+    assert r2.json()["recommendations"][0]["ticker"] == "XYZ"
+    assert llm_calls["n"] == 1
 
 
 @pytest.mark.asyncio
