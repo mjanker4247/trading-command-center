@@ -300,6 +300,7 @@ async def test_discover_returns_empty_reason_when_no_candidates():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_discover_authorizes_before_returning_cached_result():
     import app.routers.portfolio as portfolio_module
 
@@ -361,6 +362,7 @@ class _FakeDb:
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_discover_cleans_up_in_flight_when_sector_pipeline_fails():
     import app.routers.portfolio as portfolio_module
 
