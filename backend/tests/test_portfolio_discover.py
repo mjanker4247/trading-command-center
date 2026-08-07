@@ -174,6 +174,7 @@ async def test_discover_fetches_api_key_for_requested_provider():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_discover_authorizes_before_cache_or_provider_lookup():
     import app.routers.portfolio as portfolio_module
 
