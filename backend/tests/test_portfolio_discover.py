@@ -290,6 +290,7 @@ async def test_discover_cached_unit_authorizes_before_returning_cached_result():
     with (
         patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(side_effect=_latest_snapshot)),
         patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
         patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")) as get_key,
         patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
         _market_patches(),
