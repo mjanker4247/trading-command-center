@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolvePortfolioId } from "./portfolioSelection";
+import { clearLastPortfolioId, resolvePortfolioId } from "./portfolioSelection";
 
 const portfolios = [{ id: "a" }, { id: "b" }];
 
@@ -18,4 +18,8 @@ test("resolvePortfolioId falls back to first portfolio when preferred is stale",
 
 test("resolvePortfolioId falls back to first portfolio when preferred is null", () => {
   assert.equal(resolvePortfolioId(portfolios, null), "a");
+});
+
+test("clearLastPortfolioId is safe without browser storage", () => {
+  assert.doesNotThrow(() => clearLastPortfolioId());
 });
