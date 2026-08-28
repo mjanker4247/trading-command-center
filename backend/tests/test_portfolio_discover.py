@@ -88,7 +88,8 @@ async def test_discover_unit_authorizes_before_cache_lookup():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_discover_unit_cleans_up_in_flight_after_pre_llm_error():
+async def test_discover_unit_falls_back_after_candidate_fetch_errors():
+    import app.routers.market as market_module
     import app.routers.portfolio as portfolio_module
 
     class FakeScalars:
@@ -116,15 +117,21 @@ async def test_discover_unit_cleans_up_in_flight_after_pre_llm_error():
         ),
         patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
         patch.object(portfolio_module, "get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+        patch.object(portfolio_module, "get_finnhub_key", new=AsyncMock(return_value=None)),
+        patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=RuntimeError("market failure"))),
+        patch.object(market_module, "MARKET_UNIVERSE", ["AAPL", "MSFT", "NVDA", "GOOGL"]),
+        patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value="[]")),
     ):
-        with pytest.raises(RuntimeError, match="sector failure"):
-            await portfolio_module.discover_stocks(
-                portfolio_id,
-                portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
-                FakeDb(),
-                user,
-            )
+        result = await portfolio_module.discover_stocks(
+            portfolio_id,
+            portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+            FakeDb(),
+            user,
+        )
 
+    assert result["cached"] is False
+    assert result["candidate_count"] == 3
+    assert [rec["ticker"] for rec in result["recommendations"]] == ["MSFT", "NVDA", "GOOGL"]
     assert portfolio_module._discover_in_flight == set()
 
 
@@ -357,7 +364,7 @@ async def test_discover_authorizes_before_returning_cached_result():
 
 
 @pytest.mark.asyncio
-async def test_discover_cleans_up_in_flight_after_candidate_fetch_error():
+async def test_discover_falls_back_after_candidate_fetch_error():
     import app.routers.market as market_module
     import app.routers.portfolio as portfolio_module
 
@@ -374,14 +381,16 @@ async def test_discover_cleans_up_in_flight_after_candidate_fetch_error():
         with (
             patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
             patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=_boom)),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value="[]")),
         ):
-            with pytest.raises(RuntimeError, match="market unavailable"):
-                await c.post(
-                    f"/portfolio/{portfolio_id}/discover",
-                    json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
-                    headers={"Authorization": f"Bearer {token}"},
-                )
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
+    assert r.status_code == 200
+    assert r.json()["recommendations"]
     assert portfolio_module._discover_in_flight == set()
 
 

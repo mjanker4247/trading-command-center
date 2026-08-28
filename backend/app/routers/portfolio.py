@@ -1700,15 +1700,21 @@ async def discover_stocks(
 
     _discover_in_flight.add(cache_key)
     try:
-        # Fetch sector gaps
-        gaps = await get_sector_gaps(portfolio_id, db, user)
+        try:
+            gaps = await get_sector_gaps(portfolio_id, db, user)
+        except Exception:
+            gaps = []
 
-        finnhub_key = await get_finnhub_key(db)
-        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0"}) as client:
-            trending_tickers = await _market_module._get_trending_tickers(client)
-            mover_tickers = await _market_module.get_big_mover_tickers(
-                client, finnhub_key, exclude=held_tickers,
-            )
+        try:
+            finnhub_key = await get_finnhub_key(db)
+            async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0"}) as client:
+                trending_tickers = await _market_module._get_trending_tickers(client)
+                mover_tickers = await _market_module.get_big_mover_tickers(
+                    client, finnhub_key, exclude=held_tickers,
+                )
+        except Exception:
+            trending_tickers = []
+            mover_tickers = []
 
         trending_candidates = [
             {"ticker": t, "tag": "Trending", "sector": ""}
