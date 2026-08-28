@@ -1,6 +1,9 @@
 import json
+import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -48,6 +51,81 @@ def _market_patches():
         patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
     ):
         yield
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_unit_authorizes_before_cache_lookup():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    portfolio_module._discover_cache[
+        f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    ] = ([{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": ""}], time.time() + 60)
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(side_effect=portfolio_module.HTTPException(status_code=404)),
+        ) as latest_snapshot,
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")) as get_key,
+    ):
+        with pytest.raises(portfolio_module.HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+                SimpleNamespace(),
+                SimpleNamespace(id=uuid.uuid4()),
+            )
+
+    assert exc.value.status_code == 404
+    latest_snapshot.assert_awaited_once()
+    get_key.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_unit_cleans_up_in_flight_after_pre_llm_error():
+    import app.routers.portfolio as portfolio_module
+
+    class FakeScalars:
+        def all(self):
+            return [SimpleNamespace(ticker="AAPL")]
+
+    class FakeResult:
+        def scalars(self):
+            return FakeScalars()
+
+    class FakeDb:
+        async def execute(self, _stmt):
+            return FakeResult()
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    user = SimpleNamespace(id=uuid.uuid4())
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4())),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch.object(portfolio_module, "get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+    ):
+        with pytest.raises(RuntimeError, match="sector failure"):
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini"),
+                FakeDb(),
+                user,
+            )
+
+    assert portfolio_module._discover_in_flight == set()
 
 
 @pytest.mark.asyncio
