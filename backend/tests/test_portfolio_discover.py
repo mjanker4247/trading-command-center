@@ -16,7 +16,7 @@ from app.models.user import User
 from app.services.auth import create_invite_token
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
-from app.utils.llm_config import DEFAULT_RESPONSE_LANGUAGE
+from app.utils.response_language import DEFAULT_RESPONSE_LANGUAGE
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
