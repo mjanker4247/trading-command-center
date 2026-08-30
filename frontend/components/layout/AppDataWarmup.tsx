@@ -4,17 +4,19 @@ import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchAppData } from "@/lib/prefetchPortfolioData";
+import { getSessionUserKey } from "@/lib/userScopedClientState";
 
 export function AppDataWarmup() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const queryClient = useQueryClient();
-  const warmed = useRef(false);
+  const warmedUserKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated" || warmed.current) return;
-    warmed.current = true;
+    const userKey = getSessionUserKey(status, session);
+    if (!userKey || userKey === "signed-out" || warmedUserKey.current === userKey) return;
+    warmedUserKey.current = userKey;
     void prefetchAppData(queryClient);
-  }, [status, queryClient]);
+  }, [status, session, queryClient]);
 
   return null;
 }
