@@ -141,7 +141,7 @@ function MarketPageContent() {
           )}
 
           {!loadingPortfolios && selectedPortfolioId && (
-            <DiscoverPanel portfolioId={selectedPortfolioId} />
+            <DiscoverPanel key={selectedPortfolioId} portfolioId={selectedPortfolioId} />
           )}
         </div>
       )}
