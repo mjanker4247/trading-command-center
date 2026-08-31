@@ -24,6 +24,12 @@ const TAG_COLORS: Record<string, string> = {
   Mover:      "bg-amber-900 text-amber-300 border border-amber-700",
 };
 
+type DiscoverMutationVariables = {
+  portfolioId: string;
+  forceRefresh: boolean;
+  config: LlmConfigValue;
+};
+
 export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
   const router = useRouter();
   const { provider, model, depth, responseLanguage, resolveModel } = useDefaultLlmConfig();
@@ -50,18 +56,19 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
   const [emptyReason, setEmptyReason] = useState<DiscoverResponse["empty_reason"]>(null);
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
 
-  const discoverMutation = useMutation({
-    mutationFn: (forceRefresh: boolean) =>
+  const discoverMutation = useMutation<DiscoverResponse, Error, DiscoverMutationVariables>({
+    mutationFn: ({ portfolioId, forceRefresh, config }) =>
       discoverStocks(
         portfolioId,
-        llmConfig.provider,
-        resolveModel(llmConfig),
+        config.provider,
+        resolveModel(config),
         {
           forceRefresh,
-          response_language: llmConfig.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
+          response_language: config.response_language ?? DEFAULT_RESPONSE_LANGUAGE,
         },
       ),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      if (variables.portfolioId !== portfolioId) return;
       setRecommendations(data.recommendations);
       setEmptyReason(data.empty_reason);
       setCandidateCount(data.candidate_count ?? null);
@@ -117,7 +124,7 @@ export function DiscoverPanel({ portfolioId }: { portfolioId: string }) {
               languageClassName="bg-page border border-input-border rounded-sm px-2 py-1 text-fg text-xs focus:outline-hidden focus:border-blue-600"
             />
             <button
-              onClick={() => discoverMutation.mutate(hasLoaded)}
+              onClick={() => discoverMutation.mutate({ portfolioId, forceRefresh: hasLoaded, config: llmConfig })}
               disabled={discoverMutation.isPending}
               className="text-xs font-semibold px-3 py-1 rounded-sm bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-fg transition-colors"
             >

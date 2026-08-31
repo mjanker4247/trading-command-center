@@ -54,6 +54,19 @@ def _market_patches():
         yield
 
 
+class _EmptyHoldingsResult:
+    def scalars(self):
+        return self
+
+    def all(self):
+        return []
+
+
+class _EmptyHoldingsDb:
+    async def execute(self, *_args, **_kwargs):
+        return _EmptyHoldingsResult()
+
+
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_discover_authorizes_before_returning_cached_result():
@@ -81,19 +94,33 @@ async def test_discover_authorizes_before_returning_cached_result():
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_discover_cleans_in_flight_when_candidate_pipeline_fails():
+async def test_discover_rejects_uncached_in_flight_request():
     import app.routers.portfolio as portfolio_module
 
-    class EmptyHoldingsResult:
-        def scalars(self):
-            return self
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    user = User(id=uuid.uuid4(), email="discover-owner@test.com", name="Owner", hashed_password="x")
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    cache_key = f"{user.id}:{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    portfolio_module._discover_in_flight.add(cache_key)
 
-        def all(self):
-            return []
+    with (
+        patch.object(portfolio_module, "_get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4()))),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(portfolio_id, body, db=_EmptyHoldingsDb(), user=user)
 
-    class EmptyHoldingsDb:
-        async def execute(self, *_args, **_kwargs):
-            return EmptyHoldingsResult()
+    assert exc.value.status_code == 409
+    assert cache_key in portfolio_module._discover_in_flight
+    portfolio_module._discover_in_flight.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_discover_cleans_in_flight_when_candidate_pipeline_fails():
+    import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
     portfolio_module._discover_in_flight.clear()
@@ -107,7 +134,7 @@ async def test_discover_cleans_in_flight_when_candidate_pipeline_fails():
         patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
     ):
         with pytest.raises(RuntimeError):
-            await portfolio_module.discover_stocks(portfolio_id, body, db=EmptyHoldingsDb(), user=user)
+            await portfolio_module.discover_stocks(portfolio_id, body, db=_EmptyHoldingsDb(), user=user)
 
     assert portfolio_module._discover_in_flight == set()
 
