@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FocusEvent, type MouseEvent } from "react";
 import { Logo } from "./Logo";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
@@ -16,6 +17,7 @@ import {
   PRIMARY_NAV,
   RESEARCH_NAV,
 } from "@/lib/navConfig";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 
 function navLinkClass(active: boolean) {
   return active
@@ -58,6 +60,7 @@ function NavLink({
 export function TopNav() {
   const path = usePathname();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const prefetchPortfolio = usePortfolioPrefetch();
 
@@ -77,6 +80,11 @@ export function TopNav() {
   }, [menuOpen]);
 
   const closeMobileMenu = () => setMenuOpen(false);
+
+  function handleSignOut() {
+    resetUserScopedClientState(queryClient);
+    signOut();
+  }
 
   return (
     <>
@@ -119,7 +127,7 @@ export function TopNav() {
             </span>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               className="hidden sm:inline text-subtle text-xs hover:text-muted"
             >
               Sign out
@@ -196,7 +204,7 @@ export function TopNav() {
               )}
               <button
                 type="button"
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 className="text-left text-subtle hover:text-muted text-xs py-2 touch-manipulation"
               >
                 Sign out
