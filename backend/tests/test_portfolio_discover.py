@@ -1,8 +1,12 @@
 import json
+import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -294,3 +298,108 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_cache_or_provider_lookup(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    user = SimpleNamespace(id=uuid.uuid4())
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    cached = [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "private"}]
+    portfolio_module._discover_cache[f"{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"] = (
+        cached,
+        time.time() + 60,
+    )
+    portfolio_module._discover_cache[f"{user.id}:{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"] = (
+        cached,
+        time.time() + 60,
+    )
+
+    async def _deny_access(*_args, **_kwargs):
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+
+    async def _fail_key_lookup(*_args, **_kwargs):
+        raise AssertionError("provider key lookup must not run before portfolio authorization")
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _deny_access)
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", _fail_key_lookup)
+
+    with pytest.raises(HTTPException) as exc:
+        await portfolio_module.discover_stocks(portfolio_id, body, SimpleNamespace(), user)
+
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_after_candidate_pipeline_error(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    class EmptyHoldingsResult:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return []
+
+    class FakeDb:
+        async def execute(self, *_args, **_kwargs):
+            return EmptyHoldingsResult()
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    user = SimpleNamespace(id=uuid.uuid4())
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+
+    async def _latest_snapshot(*_args, **_kwargs):
+        return SimpleNamespace(id=uuid.uuid4())
+
+    async def _sector_failure(*_args, **_kwargs):
+        raise RuntimeError("sector pipeline failed")
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _latest_snapshot)
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", AsyncMock(return_value="sk-test"))
+    monkeypatch.setattr(portfolio_module, "get_sector_gaps", _sector_failure)
+
+    with pytest.raises(RuntimeError, match="sector pipeline failed"):
+        await portfolio_module.discover_stocks(portfolio_id, body, FakeDb(), user)
+
+    assert portfolio_module._discover_in_flight == set()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_force_refresh_respects_in_flight_guard(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid.uuid4()
+    user = SimpleNamespace(id=uuid.uuid4())
+    body = portfolio_module.DiscoverRequest(
+        llm_provider="openai",
+        llm_model="gpt-4o-mini",
+        force_refresh=True,
+    )
+    cache_key = f"{user.id}:{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    portfolio_module._discover_in_flight.add(cache_key)
+
+    async def _latest_snapshot(*_args, **_kwargs):
+        return SimpleNamespace(id=uuid.uuid4())
+
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", _latest_snapshot)
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", AsyncMock(return_value="sk-test"))
+
+    try:
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(portfolio_id, body, SimpleNamespace(), user)
+    finally:
+        portfolio_module._discover_in_flight.clear()
+
+    assert exc.value.status_code == 409
