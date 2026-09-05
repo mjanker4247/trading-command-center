@@ -18,6 +18,15 @@ export function setLastPortfolioId(id: string): void {
   }
 }
 
+export function clearLastPortfolioId(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // private mode or storage unavailable — ignore
+  }
+}
+
 export function resolvePortfolioId(
   portfolios: readonly { id: string }[],
   preferredId: string | null

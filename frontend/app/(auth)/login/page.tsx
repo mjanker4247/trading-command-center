@@ -2,21 +2,27 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { AuthCard } from "@/components/layout/AuthCard";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS } from "@/lib/uiClasses";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const res = await signIn("credentials", { email, password, redirect: false });
     if (res?.error) setError("Invalid email or password");
-    else router.push("/runs");
+    else {
+      resetUserScopedClientState(queryClient, null);
+      router.push("/runs");
+    }
   }
 
   return (
