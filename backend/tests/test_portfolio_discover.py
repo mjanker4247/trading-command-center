@@ -1,8 +1,12 @@
 import json
+import time
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -294,3 +298,75 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_serving_cached_recommendations():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    old_portfolio_only_key = f"{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    portfolio_module._discover_cache[old_portfolio_only_key] = (
+        [{"ticker": "SECRET", "tag": "Gap Fill", "sector": "Technology", "reason": "private"}],
+        time.time() + 3600,
+    )
+
+    with (
+        patch(
+            "app.routers.portfolio._get_latest_snapshot",
+            new=AsyncMock(side_effect=HTTPException(status_code=404, detail="Portfolio not found")),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")) as get_api_key,
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body=body,
+                db=SimpleNamespace(),
+                user=SimpleNamespace(id=uuid4()),
+            )
+
+    assert exc.value.status_code == 404
+    get_api_key.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_clears_in_flight_after_market_fetch_failure():
+    import app.routers.market as market_module
+    import app.routers.portfolio as portfolio_module
+
+    class _Result:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return []
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    portfolio_id = uuid4()
+    user = SimpleNamespace(id=uuid4())
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    cache_key = f"{user.id}:{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+
+    with (
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id=uuid4()))),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
+        patch.object(market_module, "_get_trending_tickers", new=AsyncMock(side_effect=RuntimeError("market unavailable"))),
+    ):
+        with pytest.raises(RuntimeError, match="market unavailable"):
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body=body,
+                db=SimpleNamespace(execute=AsyncMock(return_value=_Result())),
+                user=user,
+            )
+
+    assert cache_key not in portfolio_module._discover_in_flight
