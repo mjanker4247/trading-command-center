@@ -1,8 +1,10 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -19,8 +21,24 @@ MOCK_RECOMMENDATIONS = json.dumps([
 ])
 
 
-async def _register_and_token(client: AsyncClient, email: str) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "pass1234", "name": "Test"})
+class _FakeExecuteResult:
+    def scalars(self):
+        return self
+
+    def all(self):
+        return [SimpleNamespace(ticker="AAPL")]
+
+
+class _FakeDiscoverDb:
+    async def execute(self, *_args, **_kwargs):
+        return _FakeExecuteResult()
+
+
+async def _register_and_token(client: AsyncClient, email: str, invite_token: str | None = None) -> str:
+    payload = {"email": email, "password": "pass1234", "name": "Test"}
+    if invite_token:
+        payload["invite_token"] = invite_token
+    r = await client.post("/auth/register", json=payload)
     return r.json()["access_token"]
 
 
@@ -48,6 +66,75 @@ def _market_patches():
         patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
     ):
         yield
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_unit_authorizes_before_cached_response():
+    import app.routers.portfolio as portfolio_module
+
+    owner = SimpleNamespace(id="owner-user", preferred_currency="USD")
+    attacker = SimpleNamespace(id="attacker-user", preferred_currency="USD")
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    portfolio_id = "00000000-0000-0000-0000-000000000001"
+
+    async def _latest_snapshot(_portfolio_id, user_id, _db):
+        if user_id != owner.id:
+            raise HTTPException(status_code=404, detail="Portfolio not found")
+        return SimpleNamespace(id="snapshot-id")
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    with (
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(side_effect=_latest_snapshot)),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(return_value=[])),
+        patch("app.routers.portfolio.get_finnhub_key", new=AsyncMock(return_value=None)),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+        _market_patches(),
+    ):
+        owner_response = await portfolio_module.discover_stocks(
+            portfolio_id,
+            body,
+            _FakeDiscoverDb(),
+            owner,
+        )
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body,
+                _FakeDiscoverDb(),
+                attacker,
+            )
+
+    assert owner_response["cached"] is False
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_unit_cleans_in_flight_when_candidate_fetch_fails():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    user = SimpleNamespace(id="owner-user", preferred_currency="USD")
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+
+    with (
+        patch("app.routers.portfolio._get_latest_snapshot", new=AsyncMock(return_value=SimpleNamespace(id="snapshot-id"))),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+    ):
+        with pytest.raises(RuntimeError, match="sector failure"):
+            await portfolio_module.discover_stocks(
+                "00000000-0000-0000-0000-000000000001",
+                body,
+                _FakeDiscoverDb(),
+                user,
+            )
+
+    assert portfolio_module._discover_in_flight == set()
 
 
 @pytest.mark.asyncio
@@ -207,6 +294,7 @@ async def test_discover_force_refresh_bypasses_cache():
     import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
     llm_calls = {"n": 0}
 
     async def _llm(*_a, **_k):
@@ -242,6 +330,72 @@ async def test_discover_force_refresh_bypasses_cache():
 
 
 @pytest.mark.asyncio
+async def test_discover_authorizes_before_returning_cached_response():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        from app.services.auth import create_invite_token
+
+        attacker_email = "discover-attacker@test.com"
+        attacker_token = await _register_and_token(
+            c,
+            attacker_email,
+            create_invite_token(attacker_email),
+        )
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            owner_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+            attacker_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {attacker_token}"},
+            )
+
+        assert owner_response.status_code == 200
+        assert owner_response.json()["cached"] is False
+        assert attacker_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_when_candidate_fetch_fails():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-cleanup@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+            pytest.raises(RuntimeError, match="sector failure"),
+        ):
+            await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+    assert portfolio_module._discover_in_flight == set()
+
+
+@pytest.mark.asyncio
 async def test_discover_falls_back_when_llm_returns_empty_array():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         token = await _register_and_token(c, "discover-llm-empty@test.com")
@@ -271,6 +425,7 @@ async def test_discover_returns_empty_reason_when_no_candidates():
     import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         token = await _register_and_token(c, "discover-empty@test.com")
