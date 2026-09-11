@@ -8,7 +8,8 @@ from sqlalchemy import select
 from main import app
 from app.database import AsyncSessionLocal
 from app.models.api_key import ApiKey
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.services.auth import create_access_token
 from app.services.encryption import encrypt_key
 from app.services.llm_selection import pick_llm_for_user
 
@@ -239,6 +240,55 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_serving_cached_recommendations():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+        body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            owner_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+
+        assert owner_response.status_code == 200
+        assert owner_response.json()["cached"] is False
+
+        async with AsyncSessionLocal() as db:
+            attacker = User(
+                email="discover-attacker@test.com",
+                hashed_password=None,
+                name="Attacker",
+                role=UserRole.member,
+            )
+            db.add(attacker)
+            await db.commit()
+            await db.refresh(attacker)
+            attacker_token = create_access_token(str(attacker.id), attacker.role.value)
+
+        with patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")):
+            attacker_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {attacker_token}"},
+            )
+
+    assert attacker_response.status_code == 404
+    assert "recommendations" not in attacker_response.json()
 
 
 @pytest.mark.asyncio
