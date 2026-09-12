@@ -1,7 +1,11 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
+from uuid import uuid4
+import time
+from fastapi import HTTPException
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -294,3 +298,82 @@ async def test_discover_returns_empty_reason_when_no_candidates():
         assert data["recommendations"] == []
         assert data["empty_reason"] == "no_candidates"
         assert data["candidate_count"] == 0
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_cached_response_and_provider_lookup():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    old_cross_user_key = f"{portfolio_id}:openai:gpt-4o-mini:{body.response_language}"
+    portfolio_module._discover_cache[old_cross_user_key] = (
+        [{"ticker": "LEAK", "tag": "Gap Fill", "sector": "Healthcare", "reason": "private context"}],
+        time.time() + 60,
+    )
+    get_api_key = AsyncMock(return_value="sk-test")
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(side_effect=HTTPException(status_code=404, detail="Portfolio not found")),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=get_api_key),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body,
+                db=object(),
+                user=SimpleNamespace(id=uuid4()),
+            )
+
+    assert exc.value.status_code == 404
+    get_api_key.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_when_candidate_pipeline_fails():
+    import app.routers.portfolio as portfolio_module
+
+    class EmptyHoldingsResult:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return []
+
+    class DummyDb:
+        async def execute(self, *_args, **_kwargs):
+            return EmptyHoldingsResult()
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(return_value=SimpleNamespace(id=uuid4())),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch.object(portfolio_module, "get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("sector failure"))),
+    ):
+        with pytest.raises(RuntimeError):
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body,
+                db=DummyDb(),
+                user=SimpleNamespace(id=uuid4()),
+            )
+
+    assert portfolio_module._discover_in_flight == set()
