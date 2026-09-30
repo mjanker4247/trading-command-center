@@ -2,13 +2,16 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthCard } from "@/components/layout/AuthCard";
 import { BTN_PRIMARY_CLASS, FIELD_INPUT_CLASS, FIELD_LABEL_CLASS } from "@/lib/uiClasses";
+import { resetUserScopedClientState } from "@/lib/userScopedClientState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function RegisterForm() {
   const params = useSearchParams();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +30,7 @@ function RegisterForm() {
       setError(body.detail ?? "Registration failed.");
       return;
     }
+    resetUserScopedClientState(queryClient);
     await signIn("credentials", { email, password, callbackUrl: "/runs" });
   }
 

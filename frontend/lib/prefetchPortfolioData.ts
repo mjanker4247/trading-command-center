@@ -26,6 +26,20 @@ import { getLastPortfolioId, resolvePortfolioId } from "@/lib/portfolioSelection
 import type { Portfolio } from "@/lib/types";
 
 let prefetchInFlight: Promise<void> | null = null;
+let prefetchGeneration = 0;
+
+export function resetPortfolioPrefetchState(): void {
+  prefetchGeneration += 1;
+  prefetchInFlight = null;
+}
+
+async function guardPrefetch<T>(generation: number, fn: () => Promise<T>): Promise<T> {
+  const value = await fn();
+  if (generation !== prefetchGeneration) {
+    throw new Error("Stale portfolio prefetch ignored");
+  }
+  return value;
+}
 
 export async function prefetchMarketData(queryClient: QueryClient): Promise<void> {
   await Promise.all([
@@ -50,13 +64,15 @@ export async function prefetchMarketData(queryClient: QueryClient): Promise<void
 export async function prefetchPortfolioTabData(
   queryClient: QueryClient,
   portfolioId: string,
-  options: { includeEarnings?: boolean } = {}
+  options: { includeEarnings?: boolean; generation?: number } = {}
 ): Promise<void> {
   const includeEarnings = options.includeEarnings !== false;
+  const queryFn = <T,>(fn: () => Promise<T>) =>
+    options.generation === undefined ? fn : () => guardPrefetch(options.generation!, fn);
   const prefetches: Array<Promise<void>> = [
     queryClient.prefetchQuery({
       queryKey: portfolioQueryKeys.news(portfolioId),
-      queryFn: () => getPortfolioNews(portfolioId, PORTFOLIO_NEWS_DAYS),
+      queryFn: queryFn(() => getPortfolioNews(portfolioId, PORTFOLIO_NEWS_DAYS)),
       staleTime: PORTFOLIO_STALE_TIMES.news,
     }),
     prefetchMarketData(queryClient),
@@ -66,7 +82,7 @@ export async function prefetchPortfolioTabData(
     prefetches.push(
       queryClient.prefetchQuery({
         queryKey: portfolioQueryKeys.earnings(portfolioId),
-        queryFn: () => getPortfolioEarnings(portfolioId, PORTFOLIO_EARNINGS_DAYS_AHEAD),
+        queryFn: queryFn(() => getPortfolioEarnings(portfolioId, PORTFOLIO_EARNINGS_DAYS_AHEAD)),
         staleTime: PORTFOLIO_STALE_TIMES.earnings,
       })
     );
@@ -78,8 +94,11 @@ export async function prefetchPortfolioTabData(
 export async function prefetchPortfolioData(queryClient: QueryClient): Promise<void> {
   if (prefetchInFlight) return prefetchInFlight;
 
-  prefetchInFlight = runPrefetch(queryClient).finally(() => {
-    prefetchInFlight = null;
+  const generation = prefetchGeneration;
+  prefetchInFlight = runPrefetch(queryClient, generation).finally(() => {
+    if (generation === prefetchGeneration) {
+      prefetchInFlight = null;
+    }
   });
   return prefetchInFlight;
 }
@@ -90,12 +109,13 @@ export async function prefetchAppData(queryClient: QueryClient): Promise<void> {
   return prefetchPortfolioData(queryClient);
 }
 
-async function runPrefetch(queryClient: QueryClient): Promise<void> {
+async function runPrefetch(queryClient: QueryClient, generation: number): Promise<void> {
   await queryClient.prefetchQuery({
     queryKey: portfolioQueryKeys.list,
-    queryFn: listPortfolios,
+    queryFn: () => guardPrefetch(generation, listPortfolios),
   });
 
+  if (generation !== prefetchGeneration) return;
   const portfolios = queryClient.getQueryData<Portfolio[]>(portfolioQueryKeys.list) ?? [];
   const portfolioId = resolvePortfolioId(portfolios, getLastPortfolioId());
   if (!portfolioId) {
@@ -108,7 +128,7 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
   try {
     const settings = await queryClient.fetchQuery({
       queryKey: ["app-settings"],
-      queryFn: getAppSettings,
+      queryFn: () => guardPrefetch(generation, getAppSettings),
       staleTime: 60_000,
     });
     markovEnabled = settings.enableMarkovRegime !== false;
@@ -120,32 +140,32 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
   const prefetches: Array<Promise<void>> = [
     queryClient.prefetchQuery({
       queryKey: portfolioQueryKeys.current(portfolioId),
-      queryFn: () => getPortfolioCurrent(portfolioId),
+      queryFn: () => guardPrefetch(generation, () => getPortfolioCurrent(portfolioId)),
       staleTime: PORTFOLIO_STALE_TIMES.current,
     }),
     queryClient.prefetchQuery({
       queryKey: portfolioQueryKeys.fundamentals(portfolioId),
-      queryFn: () => getPortfolioFundamentals(portfolioId),
+      queryFn: () => guardPrefetch(generation, () => getPortfolioFundamentals(portfolioId)),
       staleTime: PORTFOLIO_STALE_TIMES.fundamentals,
     }),
     queryClient.prefetchQuery({
       queryKey: portfolioQueryKeys.behavioralAlerts(portfolioId),
-      queryFn: () => getBehavioralAlerts(portfolioId),
+      queryFn: () => guardPrefetch(generation, () => getBehavioralAlerts(portfolioId)),
       staleTime: PORTFOLIO_STALE_TIMES.behavioralAlerts,
     }),
-    prefetchPortfolioTabData(queryClient, portfolioId),
+    prefetchPortfolioTabData(queryClient, portfolioId, { generation }),
   ];
 
   if (markovEnabled) {
     prefetches.push(
       queryClient.prefetchQuery({
         queryKey: portfolioQueryKeys.regime(portfolioId),
-        queryFn: () => getPortfolioRegime(portfolioId),
+        queryFn: () => guardPrefetch(generation, () => getPortfolioRegime(portfolioId)),
         staleTime: PORTFOLIO_STALE_TIMES.regime,
       }),
       queryClient.prefetchQuery({
         queryKey: portfolioQueryKeys.trimSignals(portfolioId),
-        queryFn: () => getPortfolioTrimSignals(portfolioId),
+        queryFn: () => guardPrefetch(generation, () => getPortfolioTrimSignals(portfolioId)),
         staleTime: PORTFOLIO_STALE_TIMES.trimSignals,
       })
     );
@@ -155,7 +175,7 @@ async function runPrefetch(queryClient: QueryClient): Promise<void> {
     prefetches.push(
       queryClient.prefetchQuery({
         queryKey: portfolioQueryKeys.wave(portfolioId),
-        queryFn: () => getPortfolioWave(portfolioId),
+        queryFn: () => guardPrefetch(generation, () => getPortfolioWave(portfolioId)),
         staleTime: PORTFOLIO_STALE_TIMES.wave,
       })
     );
