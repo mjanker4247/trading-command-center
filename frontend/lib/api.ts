@@ -158,6 +158,47 @@ export async function getProviderModels(provider: string): Promise<string[]> {
   return r.json();
 }
 
+export interface ProviderModelCatalog {
+  provider: string;
+  catalog: string[];
+  visible: string[];
+  refreshed_at: string | null;
+  selection_required: boolean;
+  default_model: string;
+  source: "seed" | "live" | string;
+}
+
+export async function getProviderModelCatalog(provider: string): Promise<ProviderModelCatalog> {
+  const r = await fetchWithAuth(`/llm-providers/${provider}/models/catalog`);
+  if (!r.ok) throw new Error(`Could not fetch model catalog for ${provider}`);
+  return r.json();
+}
+
+export async function refreshProviderModels(provider: string): Promise<ProviderModelCatalog> {
+  const r = await fetchWithAuth(`/llm-providers/${provider}/models/refresh`, { method: "POST" });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => null);
+    throw new Error(detail?.detail ?? `Could not refresh models for ${provider}`);
+  }
+  return r.json();
+}
+
+export async function updateProviderVisibleModels(
+  provider: string,
+  models: string[],
+): Promise<ProviderModelCatalog> {
+  const r = await fetchWithAuth(`/llm-providers/${provider}/models/visible`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ models }),
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => null);
+    throw new Error(detail?.detail ?? `Could not update visible models for ${provider}`);
+  }
+  return r.json();
+}
+
 export interface LlmProviderDefaults {
   default_provider: string;
   default_depth: string;

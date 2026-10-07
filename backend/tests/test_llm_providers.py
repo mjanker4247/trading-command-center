@@ -99,6 +99,116 @@ async def test_litellm_models_returns_list(httpx_mock):
 
 
 @pytest.mark.asyncio
+async def test_cloud_models_returns_seed_catalog_without_refresh():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "lp-seed@test.com")
+        r = await client.get("/llm-providers/ionos/models", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        models = r.json()
+        assert models[0] == "openai/gpt-oss-120b"
+        assert "meta-llama/Llama-3.3-70B-Instruct" in models
+
+
+@pytest.mark.asyncio
+async def test_refresh_ionos_models_persists_catalog(httpx_mock):
+    httpx_mock.add_response(
+        url="https://openai.inference.de-txl.ionos.com/v1/models",
+        status_code=200,
+        json={
+            "data": [
+                {"id": "openai/gpt-oss-120b"},
+                {"id": "meta-llama/Llama-3.3-70B-Instruct"},
+                {"id": "extra/model-a"},
+            ]
+        },
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "lp-refresh@test.com")
+        await _seed_api_key("ionos", "ion_test_key")
+        r = await client.post(
+            "/llm-providers/ionos/models/refresh",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["source"] == "live"
+        assert "extra/model-a" in body["catalog"]
+        assert body["selection_required"] is False
+
+        listed = await client.get(
+            "/llm-providers/ionos/models",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert listed.status_code == 200
+        assert "extra/model-a" in listed.json()
+
+
+@pytest.mark.asyncio
+async def test_refresh_large_catalog_seeds_visible_subset(httpx_mock):
+    models = [{"id": f"model-{i}"} for i in range(25)]
+    models.append({"id": "gpt-5.5"})
+    httpx_mock.add_response(
+        url="https://api.openai.com/v1/models",
+        status_code=200,
+        json={"data": models},
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "lp-large@test.com")
+        await _seed_api_key("openai", "sk-test")
+        r = await client.post(
+            "/llm-providers/openai/models/refresh",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["selection_required"] is True
+        assert len(body["catalog"]) == 26
+        assert len(body["visible"]) < len(body["catalog"])
+        assert body["visible"][0] == "gpt-5.5"
+
+        listed = await client.get(
+            "/llm-providers/openai/models",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert listed.json() == body["visible"]
+
+
+@pytest.mark.asyncio
+async def test_put_visible_models(httpx_mock):
+    httpx_mock.add_response(
+        url="https://api.groq.com/openai/v1/models",
+        status_code=200,
+        json={"data": [{"id": f"m{i}"} for i in range(25)] + [{"id": "llama-3.3-70b-versatile"}]},
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "lp-visible@test.com")
+        await _seed_api_key("groq", "gsk-test")
+        await client.post(
+            "/llm-providers/groq/models/refresh",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        r = await client.put(
+            "/llm-providers/groq/models/visible",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"models": ["m1", "m2", "llama-3.3-70b-versatile"]},
+        )
+        assert r.status_code == 200
+        assert r.json()["visible"][0] == "llama-3.3-70b-versatile"
+        assert set(r.json()["visible"]) == {"m1", "m2", "llama-3.3-70b-versatile"}
+
+
+@pytest.mark.asyncio
+async def test_refresh_requires_api_key():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "lp-nokey@test.com")
+        r = await client.post(
+            "/llm-providers/ionos/models/refresh",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_provider_defaults_returns_system_models():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         token = await _token(client, "lp-defaults@test.com")

@@ -21,7 +21,7 @@ SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset(DEFAULT_LLM_MODELS.keys())
 LOCAL_LLM_PROVIDERS: frozenset[str] = frozenset({"ollama", "vllm", "litellm"})
 SUPPORTED_LLM_DEPTHS: frozenset[str] = frozenset({"quick", "standard", "deep"})
 
-# Cloud provider model suggestions for /llm-providers/{provider}/models.
+# Seed catalogs for /llm-providers/{provider}/models before a live refresh.
 # Each list is de-duplicated with DEFAULT_LLM_MODELS[provider] first.
 _PROVIDER_MODEL_OPTIONS: dict[str, list[str]] = {
     "openai": [
@@ -63,13 +63,14 @@ _PROVIDER_MODEL_OPTIONS: dict[str, list[str]] = {
 }
 
 
-def _catalog_with_default_first(provider: str, models: list[str]) -> list[str]:
+def catalog_with_default_first(provider: str, models: list[str]) -> list[str]:
     default = DEFAULT_LLM_MODELS[provider]
     return [default, *[model for model in models if model != default]]
 
 
+# Seed catalogs used before a live refresh (and as fallback when refresh fails).
 PROVIDER_MODEL_CATALOG: dict[str, list[str]] = {
-    provider: _catalog_with_default_first(provider, models)
+    provider: catalog_with_default_first(provider, models)
     for provider, models in _PROVIDER_MODEL_OPTIONS.items()
 }
 

@@ -110,11 +110,14 @@ export function LlmConfigPicker({
   ) : models.length > 0 ? (
     <select
       id={modelId}
-      value={value.model}
+      value={value.model || models[0]}
       onChange={(e) => onChange({ ...value, model: e.target.value })}
       disabled={!enabled}
       className={modelClassName ?? `${inputClass} w-full`}
     >
+      {value.model && !models.includes(value.model) && (
+        <option value={value.model}>{value.model}</option>
+      )}
       {models.map((model) => (
         <option key={model} value={model}>{model}</option>
       ))}
