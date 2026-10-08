@@ -233,7 +233,7 @@ Once holdings are loaded, each row shows the current price, market value, and un
 1. Click **New Run** in the top nav.
 2. Enter a ticker (`AAPL`, `TSLA`, `BTC`, etc.).
 3. Set the analysis date — use today for a current view, or a past date to see how the agents would have called it then.
-4. Choose an LLM provider and model. GPT-4o or Claude Sonnet are good starting points; Groq's `llama-3.3-70b-versatile` is fast and free.
+4. Choose an LLM provider and model. GPT-4o or Claude Sonnet are good starting points; Groq's `llama-3.3-70b-versatile` is fast and free. Prefer models with reliable **tool calling** for news/market analysts — see [docs/llm-tool-calling.md](docs/llm-tool-calling.md) (also available via the **(i)** next to LLM Model in the UI).
 5. Choose depth: Quick / Standard / Deep.
 6. Click **Start Run** and watch the agents work in real time.
 
@@ -249,6 +249,16 @@ Go to **Settings → Team** (admin only). Enter an email and click **Invite Memb
 
 ## Developers
 
+Full walkthrough (stack, login, seed user): **[docs/local-development.md](docs/local-development.md)**.
+
+### Local login
+
+| Email | Password | Role |
+|---|---|---|
+| `dev@example.com` | `devpassword` | admin |
+
+Create or reset that account anytime with `./scripts/dev-stack.sh seed-user`. Open http://localhost:3000/login.
+
 <details>
 <summary>Manual setup (development)</summary>
 
@@ -258,26 +268,35 @@ Go to **Settings → Team** (admin only). Enter an email and click **Invite Memb
 - Node.js 20+
 - Docker (for Postgres, or the full stack)
 
-### 1. Clone and start Postgres
+### 1. Clone, submodules, and start Postgres
 
 ```bash
 git clone https://github.com/saketnayak/trading-command-center
 cd trading-command-center
+git submodule update --init --recursive
 docker compose -f docker-compose.dev.yml up db -d
 ```
 
 Postgres starts on **port 5433** to avoid conflicts with any local instance on 5432.
+
+Or use the helper (migrate + seed admin + start API/UI):
+
+```bash
+./scripts/dev-stack.sh start
+```
 
 ### 2. Backend
 
 ```bash
 cd backend
 pip install uv
-uv pip install --system -e ".[dev]"
+uv sync --group dev --extra markov-hmm
 cp .env.example .env          # edit: set JWT_SECRET and ENCRYPTION_KEY at minimum
 DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
-  alembic upgrade head
-python -m uvicorn main:app --reload
+  uv run alembic upgrade head
+../scripts/dev-stack.sh seed-user
+DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
+  uv run python -m uvicorn main:app --reload
 ```
 
 API at **http://localhost:8000** · Swagger docs at **http://localhost:8000/docs**
@@ -290,7 +309,7 @@ npm install
 npm run dev
 ```
 
-App at **http://localhost:3000**
+App at **http://localhost:3000** — sign in with `dev@example.com` / `devpassword`.
 
 ### Full-stack Docker
 
@@ -299,7 +318,7 @@ cp .env.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Nginx listens on port 80 and routes `/api/*` to FastAPI, `/ws/*` to the WebSocket endpoint, and everything else to Next.js.
+Nginx listens on port 80 and routes `/api/*` to FastAPI, `/ws/*` to the WebSocket endpoint, and everything else to Next.js. After the DB is up, seed the local admin from the host: `./scripts/dev-stack.sh seed-user`.
 
 </details>
 

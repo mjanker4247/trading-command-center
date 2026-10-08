@@ -1,101 +1,95 @@
-import os
-from types import SimpleNamespace
+"""Unit tests for trading_agent_runner / provider runtime wiring."""
 
 import pytest
 
-from app.services.trading_agent_runner import (
-    _extract_trader_decision,
-    _normalize_price,
-    _parse_verdict,
+from app.services.tauric_run_adapter import (
+    IONOS_OPENAI_BASE_URL,
+    resolve_provider_runtime,
 )
-from app.models.run import RunVerdict
 
-pytestmark = [pytest.mark.unit, pytest.mark.asyncio]
-
-
-@pytest.mark.parametrize(
-    ("signal", "expected"),
-    [
-        ("BUY", RunVerdict.buy),
-        ("buy", RunVerdict.buy),
-        ("SELL", RunVerdict.sell),
-        ("sell", RunVerdict.sell),
-        ("HOLD", RunVerdict.hold),
-        ("", RunVerdict.hold),
-    ],
-)
-async def test_parse_verdict(signal, expected):
-    rec = SimpleNamespace(signal=signal)
-    assert _parse_verdict(rec) == expected
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (150.5, "150.5"),
-        ("$142.00", "$142.00"),
-        (None, None),
-        ("n/a", None),
-    ],
-)
-async def test_normalize_price(value, expected):
-    assert _normalize_price(value) == expected
+def test_resolve_provider_runtime_native_cloud_keys():
+    assert resolve_provider_runtime("openai", "sk-test").env_patch == {
+        "OPENAI_API_KEY": "sk-test",
+    }
+    assert resolve_provider_runtime("groq", "gsk-test").env_patch == {
+        "GROQ_API_KEY": "gsk-test",
+    }
+    assert resolve_provider_runtime("google", "g-test").env_patch == {
+        "GOOGLE_API_KEY": "g-test",
+    }
+    assert resolve_provider_runtime("anthropic", "a-test").env_patch == {
+        "ANTHROPIC_API_KEY": "a-test",
+    }
 
 
-async def test_extract_trader_decision_prefers_recommendation_rationale():
-    state = SimpleNamespace(final_trade_decision="legacy text")
-    rec = SimpleNamespace(rationale="Structured rationale from Risk Judge.")
-    assert _extract_trader_decision(state, rec) == "Structured rationale from Risk Judge."
+def test_resolve_provider_runtime_ionos_via_openai_compatible():
+    """Vendored upstream has no native ionos — map to openai_compatible + IONOS URL."""
+    from tradingagents.llm_clients.openai_client import is_openai_compatible
+
+    runtime = resolve_provider_runtime("ionos", "ionos-test-key")
+    if is_openai_compatible("ionos"):
+        assert runtime.ta_provider == "ionos"
+        assert runtime.env_patch == {"IONOS_API_KEY": "ionos-test-key"}
+        assert runtime.backend_url is None
+    else:
+        assert runtime.ta_provider == "openai_compatible"
+        assert runtime.backend_url == IONOS_OPENAI_BASE_URL
+        assert runtime.env_patch == {"OPENAI_COMPATIBLE_API_KEY": "ionos-test-key"}
 
 
-async def test_extract_trader_decision_falls_back_to_state():
-    state = SimpleNamespace(
-        final_trade_recommendation=None,
-        final_trade_decision="FINAL TRANSACTION PROPOSAL: **BUY**",
+def test_resolve_provider_runtime_ollama_and_openai_compatible_local():
+    ollama = resolve_provider_runtime("ollama", "http://localhost:11434/")
+    assert ollama.ta_provider == "ollama"
+    assert ollama.env_patch == {"OLLAMA_BASE_URL": "http://localhost:11434"}
+    assert ollama.backend_url is None
+
+    vllm = resolve_provider_runtime("vllm", "http://localhost:8080")
+    assert vllm.ta_provider == "openai_compatible"
+    assert vllm.backend_url == "http://localhost:8080/v1"
+    assert vllm.env_patch == {"OPENAI_COMPATIBLE_API_KEY": "vllm"}
+
+    litellm = resolve_provider_runtime("litellm", "http://localhost:4000")
+    assert litellm.ta_provider == "openai_compatible"
+    assert litellm.backend_url == "http://localhost:4000/v1"
+    assert litellm.env_patch == {"OPENAI_COMPATIBLE_API_KEY": "litellm"}
+
+
+def test_tradingagents_graph_accepts_ionos_runtime_wiring(monkeypatch):
+    """Regression: IONOS runs must not raise Unsupported LLM provider at construct."""
+    import os
+
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
+
+    from app.services.tauric_run_adapter import build_ta_config, resolve_provider_runtime
+
+    runtime = resolve_provider_runtime("ionos", "ionos-test-key")
+    cfg = build_ta_config(
+        provider="ionos",
+        model="openai/gpt-oss-120b",
+        depth="quick",
+        response_language="en-US",
+        backend_url=runtime.backend_url,
+        ta_provider=runtime.ta_provider,
     )
-    rec = SimpleNamespace(rationale="")
-    assert "BUY" in _extract_trader_decision(state, rec)
+    for key, value in runtime.env_patch.items():
+        monkeypatch.setenv(key, value)
+
+    # Construct only — do not call propagate (would hit the network).
+    graph = TradingAgentsGraph(
+        selected_analysts=["market"],
+        config=cfg,
+        callbacks=[],
+    )
+    assert graph is not None
+    assert os.environ.get("OPENAI_COMPATIBLE_API_KEY") == "ionos-test-key" or os.environ.get(
+        "IONOS_API_KEY"
+    ) == "ionos-test-key"
 
 
-# ── reasoning_effort guard (Groq / IONOS) ────────────────────────────────────
-
-def _apply_reasoning_via_module(provider: str, effort: str, base_url: str | None) -> dict:
-    """Call tradingagents._apply_reasoning with a controlled OPENAI_BASE_URL."""
-    from app.services.tradingagents_grounding import apply_reasoning_effort_patch
-    apply_reasoning_effort_patch()
-
-    import tradingagents.llm as llm_module
-    old = os.environ.get("OPENAI_BASE_URL")
-    try:
-        if base_url is None:
-            os.environ.pop("OPENAI_BASE_URL", None)
-        else:
-            os.environ["OPENAI_BASE_URL"] = base_url
-        kwargs: dict = {}
-        llm_module._apply_reasoning(provider, effort, kwargs)
-        return kwargs
-    finally:
-        if old is None:
-            os.environ.pop("OPENAI_BASE_URL", None)
-        else:
-            os.environ["OPENAI_BASE_URL"] = old
-
-
-async def test_groq_reasoning_effort_skipped():
-    kwargs = _apply_reasoning_via_module("openai", "medium", "https://api.groq.com/openai/v1")
-    assert "reasoning_effort" not in kwargs
-
-
-async def test_ionos_reasoning_effort_skipped():
-    kwargs = _apply_reasoning_via_module("openai", "medium", "https://openai.inference.de-txl.ionos.com/v1")
-    assert "reasoning_effort" not in kwargs
-
-
-async def test_native_openai_reasoning_effort_applied():
-    kwargs = _apply_reasoning_via_module("openai", "medium", None)
-    assert kwargs.get("reasoning_effort") == "medium"
-
-
-async def test_native_openai_reasoning_effort_max_maps_to_xhigh():
-    kwargs = _apply_reasoning_via_module("openai", "max", None)
-    assert kwargs.get("reasoning_effort") == "xhigh"
+def test_resolve_provider_runtime_empty_without_key():
+    runtime = resolve_provider_runtime("openai", None)
+    assert runtime.env_patch == {}
+    assert resolve_provider_runtime("openai", "").env_patch == {}

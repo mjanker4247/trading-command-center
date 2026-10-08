@@ -1,24 +1,45 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-const POPOVER_WIDTH = 288;
+const DEFAULT_POPOVER_WIDTH = 288;
 const VIEWPORT_PADDING = 12;
 const GAP = 8;
 
 interface InfoPopoverProps {
-  label: string;
-  tooltip: string;
+  /** Optional field label shown before the (i) button. */
+  label?: string;
+  tooltip: ReactNode;
   open: boolean;
   onToggle: () => void;
   controlId?: string;
+  /** Wrapper around label + button. Defaults suit Settings rows. */
+  className?: string;
+  popoverWidth?: number;
+  /** Accessible name when `label` is omitted. */
+  ariaLabel?: string;
 }
 
-export function InfoPopover({ label, tooltip, open, onToggle, controlId }: InfoPopoverProps) {
+export function InfoPopover({
+  label,
+  tooltip,
+  open,
+  onToggle,
+  controlId,
+  className,
+  popoverWidth = DEFAULT_POPOVER_WIDTH,
+  ariaLabel,
+}: InfoPopoverProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const wrapperClass =
+    className ??
+    (label
+      ? "flex items-center gap-1.5 text-muted text-xs sm:w-44 shrink-0"
+      : "inline-flex items-center");
 
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) {
@@ -31,7 +52,7 @@ export function InfoPopover({ label, tooltip, open, onToggle, controlId }: InfoP
       if (!anchor) return;
 
       const rect = anchor.getBoundingClientRect();
-      const width = Math.min(POPOVER_WIDTH, window.innerWidth - VIEWPORT_PADDING * 2);
+      const width = Math.min(popoverWidth, window.innerWidth - VIEWPORT_PADDING * 2);
       let left = rect.left;
       if (left + width > window.innerWidth - VIEWPORT_PADDING) {
         left = window.innerWidth - VIEWPORT_PADDING - width;
@@ -52,7 +73,7 @@ export function InfoPopover({ label, tooltip, open, onToggle, controlId }: InfoP
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open]);
+  }, [open, popoverWidth]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,27 +85,38 @@ export function InfoPopover({ label, tooltip, open, onToggle, controlId }: InfoP
       onToggle();
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onToggle();
+    }
+
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open, onToggle]);
 
   return (
     <>
-      <div className="flex items-center gap-1.5 text-muted text-xs sm:w-44 shrink-0">
-        {controlId ? (
-          <label htmlFor={controlId} className="cursor-default">{label}</label>
-        ) : (
-          <span>{label}</span>
-        )}
+      <div className={wrapperClass}>
+        {label &&
+          (controlId ? (
+            <label htmlFor={controlId} className="cursor-default">
+              {label}
+            </label>
+          ) : (
+            <span>{label}</span>
+          ))}
         <button
           ref={buttonRef}
           type="button"
           onClick={onToggle}
-          aria-label={`Explain ${label}`}
+          aria-label={ariaLabel ?? (label ? `Explain ${label}` : "Model tool calling info")}
           aria-expanded={open}
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full touch-manipulation sm:min-h-7 sm:min-w-7"
         >
-          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-input-border text-[10px] text-muted hover:border-link hover:text-link transition-colors">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-input-border text-[10px] leading-none text-muted hover:border-link hover:text-link transition-colors">
             i
           </span>
         </button>

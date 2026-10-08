@@ -32,17 +32,25 @@ export function OutcomeCard({ outcome }: { outcome: RunOutcome }) {
       <h2 className="text-sm font-semibold text-fg-secondary uppercase tracking-wide mb-4">
         Trade Outcome ({currency})
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* auto-fill: sidebar (~20rem) wraps to 2–3 cols so $1,088.00 fits; wide layouts still densify */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(5.75rem,1fr))] gap-2">
         {CHECKPOINTS.map(({ label, key }) => {
           const price = outcome[key] as number | null;
+          const formatted = price != null ? fmtMoney(price, currency) : "—";
           return (
-            <div key={label} className="flex flex-col items-center bg-page rounded-lg p-3 gap-1">
-              <span className="text-xs text-muted">{label}</span>
-              <span className="text-sm font-semibold text-fg">
-                {price != null ? fmtMoney(price, currency) : "—"}
+            <div
+              key={label}
+              className="min-w-0 flex flex-col items-center bg-page rounded-lg px-2 py-2.5 gap-0.5"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-muted">{label}</span>
+              <span
+                className="w-full min-w-0 truncate text-center font-mono text-xs tabular-nums font-semibold text-fg"
+                title={formatted}
+              >
+                {formatted}
               </span>
               {key !== "price_at_analysis" && (
-                <span className={`text-xs font-medium ${pctColor(base, price, outcome.verdict)}`}>
+                <span className={`text-[10px] font-medium tabular-nums ${pctColor(base, price, outcome.verdict)}`}>
                   {pct(base, price)}
                 </span>
               )}

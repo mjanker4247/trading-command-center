@@ -20,13 +20,16 @@ dependencies = [
     "langchain-core>=0.3",
     "langchain-openai>=1.0",
     "apscheduler>=4.0.0a5",
-    "tradingagents>=0.7.0,<0.8.0",
+    "tradingagents",
     "pandas>=2.2.2",
     "numpy>=1.26.4",
     "scipy>=1.13.1",
     "yfinance>=0.2.54",
     "pykalman>=0.11.2",
 ]
+
+[tool.uv.sources]
+tradingagents = { path = "../vendor/TradingAgents", editable = true }
 
 [project.optional-dependencies]
 markov-hmm = [

@@ -35,11 +35,12 @@ Commands:
   status           Show backend/frontend/database status
   db-check         Verify the database is reachable
   migrate          Run alembic upgrade head after db-check
+  seed-user        Create/reset local admin (dev@example.com / devpassword)
   start-backend    Start FastAPI dev server on $BACKEND_HOST:$BACKEND_PORT
   stop-backend     Stop backend started by this script
   start-frontend   Start Next.js dev server on $FRONTEND_HOST:$FRONTEND_PORT
   stop-frontend    Stop frontend started by this script
-  start            Run db-check, migrate, start backend, start frontend
+  start            Run db-check, migrate, seed-user, start backend, start frontend
   stop             Stop frontend and backend
   restart          Stop, then start
 
@@ -47,6 +48,7 @@ Environment overrides:
   DATABASE_URL, BACKEND_HOST, BACKEND_PORT, FRONTEND_HOST, FRONTEND_PORT,
   NEXT_PUBLIC_API_URL, FRONTEND_READY_TIMEOUT, DEV_STACK_STATE_DIR
   NO_OPEN        Set to 1 to skip opening the frontend in a browser
+  DEV_USER_EMAIL / DEV_USER_PASSWORD / DEV_USER_NAME  (seed-user overrides)
 EOF
 }
 
@@ -260,6 +262,21 @@ open_frontend() {
   fi
 }
 
+seed_user() {
+  require_cmd uv
+  db_check
+  echo "Seeding local development user..."
+  (
+    cd "$BACKEND_DIR"
+    export DATABASE_URL
+    # Only forward overrides when set so script defaults remain intact.
+    [[ -n "${DEV_USER_EMAIL:-}" ]] && export DEV_USER_EMAIL
+    [[ -n "${DEV_USER_PASSWORD:-}" ]] && export DEV_USER_PASSWORD
+    [[ -n "${DEV_USER_NAME:-}" ]] && export DEV_USER_NAME
+    uv run python "$ROOT_DIR/scripts/seed_dev_user.py"
+  )
+}
+
 status() {
   local backend_pid_file frontend_pid_file
   backend_pid_file="$(pid_file backend)"
@@ -302,12 +319,14 @@ case "${1:-}" in
   status) status ;;
   db-check) db_check ;;
   migrate) migrate ;;
+  seed-user) seed_user ;;
   start-backend) start_backend ;;
   stop-backend) stop_service backend ;;
   start-frontend) start_frontend ;;
   stop-frontend) stop_service frontend ;;
   start)
     migrate
+    seed_user
     start_backend
     start_frontend
     ;;

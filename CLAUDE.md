@@ -13,9 +13,12 @@ AgentFloor is a web UI wrapping the [TradingAgents](https://github.com/TauricRes
 ### Backend
 
 ```bash
+# From monorepo root — TradingAgents is a git submodule
+git submodule update --init --recursive
+
 cd backend
 
-# Install (uv manages the virtualenv automatically)
+# Install (uv manages the virtualenv automatically; path-deps vendor/TradingAgents)
 pip install uv && uv sync --group dev --extra markov-hmm
 
 # Run dev server
@@ -44,6 +47,16 @@ npm run build    # production build (outputs standalone via next.config.mjs outp
 npm run lint
 npx tsc --noEmit # type-check without emitting
 ```
+
+### Local login
+
+Default local admin (created by `./scripts/dev-stack.sh seed-user`):
+
+| Email | Password | Role |
+|---|---|---|
+| `dev@example.com` | `devpassword` | admin |
+
+Open http://localhost:3000/login. Details: [docs/local-development.md](docs/local-development.md).
 
 ### Full stack (Docker)
 
@@ -88,7 +101,7 @@ CORS is restricted to `settings.frontend_url`.
 **Run lifecycle:**
 1. `POST /runs` creates a `Run` row and immediately calls `start_run()` from `job_manager.py`.
 2. `job_manager.py` wraps `execute_run()` in an `asyncio.Task` and stores it by `run_id`.
-3. `trading_agent_runner.py` runs `TradingAgentsGraph.propagate()` in a thread (`asyncio.to_thread`) because TradingAgents is synchronous. A `_SyncEmitter(BaseCallbackHandler)` puts events into a `SyncQueue`; a drain coroutine transfers them to an `asyncio.Queue`; a process coroutine persists `AgentEvent` rows and broadcasts over WebSocket. `propagate()` returns `(final_state, recommendation)` — the recommendation's `.signal`/`.rationale`/`.entry_reference_price`/`.stop_loss`/`.target_price` fields are used directly to populate the `Report`.
+3. `trading_agent_runner.py` runs Tauric `stream_run()` in a thread (`asyncio.to_thread`) because TradingAgents is synchronous. Live progress comes from state-chunk deltas (`tauric_live_progress.LiveProgressTracker`, same idea as the CLI live view), not LangChain `on_chain_*` callbacks (those do not surface nested analyst subgraphs reliably). Events go into a `SyncQueue` → asyncio drain → persist `AgentEvent` + WebSocket broadcast. On completion, `record_decision` + `run_rating(final_state)` feed `tauric_run_adapter.py`, which maps the 5-tier rating to AgentFloor `buy`/`sell`/`hold`, parses entry/stop/target from trader/PM markdown, and stores the state dict as `Report.raw_report`.
 4. `DELETE /runs/{run_id}` calls `abort_run()` which cancels the asyncio task, triggering `CancelledError` in the runner, which sets status to `aborted`.
 5. `GET /runs/{run_id}/report` returns the `Report` row created at completion.
 6. On completion, `outcome_service.py` lazily fetches closing prices from Finnhub (`/stock/candle`) at +7d/+14d/+30d/+90d and persists a `RunOutcome` row.
@@ -103,9 +116,7 @@ CORS is restricted to `settings.frontend_url`.
 
 **Config:** All settings are in `app/config.py` via pydantic-settings. Env var names: `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FRONTEND_URL`. For local inference: `OLLAMA_HOST` (default `http://localhost:11434`) and `VLLM_BASE_URL` (default `http://localhost:8080`) are read via `getattr(settings, ..., default)` — add them to `config.py` if you need to override the defaults.
 
-**TradingAgents version:** `tradingagents>=0.7.0,<0.8.0` (PyPI, Mai0313 fork). The `backend/patches/` install-time monkey-patch pipeline was removed when upgrading from 0.3.2; the technical analyst is now folded into the upstream `market` analyst. Legacy `"technical"` analyst selections are silently normalised to `"market"` by `app/utils/tradingagents_analysts.py`. `propagate()` now returns `(state, recommendation)` — a structured `TradeRecommendation` object with `.signal` (BUY/SELL/HOLD), `.rationale`, `.entry_reference_price`, `.stop_loss`, `.target_price` — replacing the free-text signal string. `_parse_verdict` and `_extract_trader_decision` in `trading_agent_runner.py` consume these structured fields directly.
-
-**TradingAgents runtime patches (`services/tradingagents_grounding.py`):** Two runtime patches applied at the start of each `execute_run` call (idempotent, module-level flags). Neither modifies site-packages. (1) `apply_analyst_specific_grounding_patch()` — tightens the grounding check so an analyst section is only marked as evidence-based when the ToolMessage belongs to *that analyst's* tool set, preventing cross-analyst contamination. (2) `apply_reasoning_effort_patch()` — patches `tradingagents.llm._apply_reasoning` to skip the `reasoning_effort` kwarg when `OPENAI_BASE_URL` points to a non-native OpenAI endpoint (Groq, IONOS); both providers use an OpenAI-compatible API but reject this parameter with HTTP 400.
+**TradingAgents version:** TauricResearch `tradingagents` **0.6.x**, vendored as git submodule at `vendor/TradingAgents` and path-depended from `backend/pyproject.toml` (`[tool.uv.sources]`). Config is a plain `DEFAULT_CONFIG` dict (not `TradingAgentsConfig`). `propagate()` returns `(state_dict, rating_string)` with a 5-tier scale; AgentFloor keeps its 3-tier API via `services/tauric_run_adapter.py`. Provider wiring (`resolve_provider_runtime`) maps AgentFloor ids onto Tauric clients: `vllm`/`litellm` → `openai_compatible` + `backend_url`; upstream packages without a native `ionos` registry entry also use `openai_compatible` with the IONOS OpenAI base URL + `OPENAI_COMPATIBLE_API_KEY`. Legacy `"technical"` analyst selections are still normalised to `"market"` by `app/utils/tradingagents_analysts.py`. Node names from Tauric Title Case are aliased for the live pipeline (`Sentiment Analyst` → `social_analyst`, `Portfolio Manager` → `risk_judge`). Run data vendors are yfinance/SEC/FRED (no Finnhub inside the package); AgentFloor Finnhub remains for portfolio prices and outcomes only. Optional env: `TRADINGAGENTS_RESULTS_DIR`, `TRADINGAGENTS_CACHE_DIR`, `TRADINGAGENTS_MEMORY_LOG_PATH` (Docker sets these under `/data/tradingagents`).
 
 **Tests:** All tests share one event loop (`asyncio_default_test_loop_scope = "session"` in pyproject.toml). The `clean_db` session-scoped autouse fixture in `conftest.py` TRUNCATEs all tables before each test session: `users, runs, agent_events, reports, api_keys, run_outcomes, watchlists, watchlist_items, portfolios, portfolio_snapshots, portfolio_holdings, portfolio_insights`.
 

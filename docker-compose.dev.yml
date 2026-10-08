@@ -28,7 +28,9 @@ services:
       - "8080"
       
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -45,8 +47,12 @@ services:
       SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
       LOGO_CACHE_DIR: /data/logos
+      TRADINGAGENTS_RESULTS_DIR: /data/tradingagents/logs
+      TRADINGAGENTS_CACHE_DIR: /data/tradingagents/cache
+      TRADINGAGENTS_MEMORY_LOG_PATH: /data/tradingagents/memory/trading_memory.md
     volumes:
       - logo_cache:/data/logos
+      - tradingagents_data:/data/tradingagents
 
   frontend:
     build: ./frontend
@@ -75,3 +81,4 @@ services:
 volumes:
   pgdata:
   logo_cache:
+  tradingagents_data:

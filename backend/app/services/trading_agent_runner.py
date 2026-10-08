@@ -2,85 +2,20 @@ import asyncio
 import os
 from queue import Queue as SyncQueue
 from datetime import datetime, timezone
-from langchain_core.callbacks import BaseCallbackHandler
 
-from app.services.llm_provider_registry import is_openai_compatible_local_provider, openai_compatible_base_url
+from app.services.tauric_live_progress import LiveProgressTracker
+from app.services.tauric_run_adapter import (
+    build_ta_config,
+    extract_decision_text,
+    extract_risk_assessment,
+    map_rating_to_verdict,
+    parse_prices_from_state,
+    resolve_provider_runtime,
+    state_to_raw_report,
+)
 
 # Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
 _env_fallback_lock = asyncio.Lock()
-
-# LangGraph node names emitted by TradingAgents v0.7 (callback `name` is lower_snake).
-AGENT_NODES = {
-    "market_analyst",
-    "social_analyst",
-    "news_analyst",
-    "fundamentals_analyst",
-    "situation_summariser",
-    "bull_researcher",
-    "bear_researcher",
-    "research_manager",
-    "trader",
-    "aggressive_analyst",
-    "conservative_analyst",
-    "neutral_analyst",
-    "risk_judge",
-}
-
-# Maps AgentFloor provider names to TradingAgentsConfig llm_provider literals.
-_PROVIDER_MAP: dict[str, str] = {
-    "openai": "openai",
-    "anthropic": "anthropic",
-    "google": "google_genai",
-    "ollama": "ollama",
-    "vllm": "openai",   # vLLM is OpenAI-compatible
-    "litellm": "openai",  # LiteLLM proxy is OpenAI-compatible
-    "groq": "openai",   # Groq is OpenAI-compatible
-    "ionos": "openai",  # IONOS is OpenAI-compatible
-}
-
-# max_recur_limit floor is 30 in tradingagents>=0.7 (Situation Summariser node).
-_DEPTH_PARAMS: dict[str, dict] = {
-    "quick": {"max_debate_rounds": 1, "max_risk_discuss_rounds": 1, "max_recur_limit": 75},
-    "standard": {"max_debate_rounds": 2, "max_risk_discuss_rounds": 2, "max_recur_limit": 150},
-    "deep": {"max_debate_rounds": 3, "max_risk_discuss_rounds": 3, "max_recur_limit": 200},
-}
-
-class _SyncEmitter(BaseCallbackHandler):
-    """Sync LangChain callback that enqueues events into a thread-safe queue."""
-
-    def __init__(self, queue: SyncQueue):
-        self._q = queue
-        self._current: str | None = None
-
-    def on_chain_start(self, serialized, inputs, **kwargs):
-        name = (kwargs.get("name") or "").lower().replace(" ", "_")
-        if name in AGENT_NODES:
-            self._current = name
-            self._q.put_nowait({"type": "started", "agent": name})
-
-    def on_llm_new_token(self, token: str, **kwargs):
-        if self._current:
-            self._q.put_nowait({"type": "token", "agent": self._current, "token": token})
-
-    def on_chain_end(self, outputs, **kwargs):
-        if self._current:
-            summary = str(outputs)[:500] if outputs else ""
-            self._q.put_nowait({"type": "completed", "agent": self._current, "summary": summary})
-            self._current = None
-
-    def on_chain_error(self, error, **kwargs):
-        agent = self._current or ""
-        self._q.put_nowait({"type": "error", "agent": agent, "message": str(error)})
-        self._current = None
-
-
-_CLOUD_KEY_ENV: dict[str, str] = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "google": "GOOGLE_API_KEY",
-    "groq": "GROQ_API_KEY",
-    "ionos": "IONOS_API_KEY",
-}
 
 
 async def _get_stored_key(provider: str) -> str | None:
@@ -95,6 +30,42 @@ async def _get_stored_key(provider: str) -> str | None:
     if not row:
         return None
     return decrypt_key(row.encrypted_key)
+
+
+def _run_graph_streaming(
+    graph,
+    *,
+    ticker: str,
+    analysis_date: str,
+    asset_type: str,
+    emit,
+) -> tuple[dict, str]:
+    """Run Tauric ``stream_run`` and emit AgentFloor live events from state chunks.
+
+    Mirrors TradingAgents CLI live path: create_run_state → stream_run →
+    record_decision. Callbacks alone do not surface LangGraph node progress
+    for nested analyst subgraphs, so pipeline WS events come from state deltas.
+    """
+    from tradingagents.agents.rating import run_rating
+
+    tracker = LiveProgressTracker(list(graph.selected_analysts), emit)
+    tracker.on_run_start()
+
+    init_state = graph.create_run_state(ticker, analysis_date, asset_type)
+    args = graph.propagator.get_graph_args()
+    final_state: dict = {}
+
+    for messages, chunk in graph.stream_run(graph.checkpoint_input(init_state), **args):
+        if messages:
+            tracker.on_messages(messages)
+        if chunk is not None:
+            tracker.on_chunk(chunk if isinstance(chunk, dict) else None)
+            if isinstance(chunk, dict):
+                final_state.update(chunk)
+
+    graph.record_decision(ticker, analysis_date, final_state)
+    graph.clear_checkpoint_on_success(ticker, analysis_date, asset_type)
+    return final_state, run_rating(final_state)
 
 
 async def execute_run(run_id: str, config: dict) -> None:
@@ -151,21 +122,20 @@ async def execute_run(run_id: str, config: dict) -> None:
                 run.completed_at = datetime.now(timezone.utc)
             await db.commit()
 
+    def _emit(event: dict) -> None:
+        sync_q.put_nowait(event)
+
     await _set_status(RunStatus.running)
-    emitter = _SyncEmitter(sync_q)
     drain_task = asyncio.create_task(_drain())
     process_task = asyncio.create_task(_process())
 
     try:
-        from app.services.tradingagents_grounding import (
-            apply_analyst_specific_grounding_patch,
-            apply_reasoning_effort_patch,
-        )
-        apply_analyst_specific_grounding_patch()
-        apply_reasoning_effort_patch()
-
         from tradingagents.graph.trading_graph import TradingAgentsGraph
-        from tradingagents.config import TradingAgentsConfig
+
+        # IONOS / Llama often emit tool calls as JSON prose; recover so ToolNode runs.
+        from app.services.tauric_tool_call_recovery import apply_tool_call_recovery_patch
+
+        apply_tool_call_recovery_patch()
 
         provider = config.get("llm_provider", "openai")
         model = config.get("llm_model", "")
@@ -176,36 +146,21 @@ async def execute_run(run_id: str, config: dict) -> None:
             config.get("analysts"),
             exclude_fundamentals=_is_crypto(ticker),
         )
-        depth_params = _DEPTH_PARAMS.get(depth, _DEPTH_PARAMS["standard"])
-        ta_provider = _PROVIDER_MAP.get(provider, provider)
+        asset_type = "crypto" if _is_crypto(ticker) else "stock"
 
         stored_key = await _get_stored_key(provider)
+        runtime = resolve_provider_runtime(provider, stored_key)
 
-        ta_config = TradingAgentsConfig(
-            llm_provider=ta_provider,
-            deep_think_llm=model,
-            quick_think_llm=model,
+        ta_config = build_ta_config(
+            provider=provider,
+            model=model,
+            depth=depth,
             response_language=response_language,
-            **depth_params,
+            backend_url=runtime.backend_url,
+            ta_provider=runtime.ta_provider,
         )
 
-        # Patch env vars needed by TradingAgents: API keys for cloud providers,
-        # server URLs for local inference.
-        env_patch: dict[str, str] = {}
-        if provider == "ionos" and stored_key:
-            env_patch["OPENAI_BASE_URL"] = "https://openai.inference.de-txl.ionos.com/v1"
-            env_patch["OPENAI_API_KEY"] = stored_key
-        elif provider == "groq" and stored_key:
-            env_patch["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
-            env_patch["OPENAI_API_KEY"] = stored_key
-        elif provider in _CLOUD_KEY_ENV and stored_key:
-            env_patch[_CLOUD_KEY_ENV[provider]] = stored_key
-        elif provider == "ollama" and stored_key:
-            env_patch["OLLAMA_HOST"] = stored_key.rstrip("/")
-        elif is_openai_compatible_local_provider(provider) and stored_key:
-            env_patch["OPENAI_BASE_URL"] = openai_compatible_base_url(stored_key)
-            env_patch["OPENAI_API_KEY"] = provider
-
+        env_patch = runtime.env_patch
         needs_lock = bool(env_patch)
         prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
 
@@ -214,16 +169,18 @@ async def execute_run(run_id: str, config: dict) -> None:
                 os.environ[k] = v
             try:
                 graph = TradingAgentsGraph(
-                    config=ta_config,
                     selected_analysts=analysts,
-                    callbacks=[emitter],
+                    config=ta_config,
                 )
                 from app.config import settings as _settings
-                final_state, recommendation = await asyncio.wait_for(
+                final_state, rating = await asyncio.wait_for(
                     asyncio.to_thread(
-                        graph.propagate,
-                        ticker,
-                        config["analysis_date"],
+                        _run_graph_streaming,
+                        graph,
+                        ticker=ticker,
+                        analysis_date=config["analysis_date"],
+                        asset_type=asset_type,
+                        emit=_emit,
                     ),
                     timeout=_settings.run_timeout_seconds,
                 )
@@ -238,13 +195,12 @@ async def execute_run(run_id: str, config: dict) -> None:
         await async_q.put(None)  # sentinel
         await process_task
 
-        verdict = _parse_verdict(recommendation)
-        raw = final_state.model_dump() if hasattr(final_state, "model_dump") else {}
-        trader_decision = _extract_trader_decision(final_state, recommendation)
+        state = final_state if isinstance(final_state, dict) else {}
+        verdict = map_rating_to_verdict(rating)
+        raw = state_to_raw_report(state)
+        trader_decision = extract_decision_text(state)
+        suggested_entry, suggested_stop, suggested_target = parse_prices_from_state(state)
 
-        suggested_entry = _normalize_price(getattr(recommendation, "entry_reference_price", None))
-        suggested_stop = _normalize_price(getattr(recommendation, "stop_loss", None))
-        suggested_target = _normalize_price(getattr(recommendation, "target_price", None))
         async with AsyncSessionLocal() as db:
             from app.services.finnhub_client import get_finnhub_key
             from app.services.quote_currency_service import resolve_quote_currency
@@ -259,7 +215,7 @@ async def execute_run(run_id: str, config: dict) -> None:
                 suggested_stop=suggested_stop,
                 suggested_target=suggested_target,
                 price_currency=price_currency,
-                risk_assessment=_extract_risk_assessment(final_state),
+                risk_assessment=extract_risk_assessment(state),
                 raw_report=raw,
             ))
             await db.commit()
@@ -311,50 +267,3 @@ async def execute_run(run_id: str, config: dict) -> None:
 
     finally:
         drain_task.cancel()
-
-
-def _extract_risk_assessment(state) -> str:
-    rds = getattr(state, "risk_debate_state", None)
-    if not rds:
-        return ""
-    parts = []
-    if getattr(rds, "judge_decision", ""):
-        parts.append(rds.judge_decision)
-    if getattr(rds, "history", ""):
-        parts.append(rds.history)
-    return "\n\n".join(parts)
-
-
-def _normalize_price(value) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    if not text or text.lower() in {"none", "null", "n/a", "na"}:
-        return None
-    return text
-
-
-def _extract_trader_decision(state, recommendation) -> str:
-    rationale = getattr(recommendation, "rationale", None)
-    if rationale:
-        return str(rationale).strip()
-
-    final_recommendation = getattr(state, "final_trade_recommendation", None)
-    if final_recommendation is not None:
-        final_rationale = getattr(final_recommendation, "rationale", None)
-        if final_rationale:
-            return str(final_rationale).strip()
-
-    final_decision = getattr(state, "final_trade_decision", "")
-    return str(final_decision).strip()
-
-
-def _parse_verdict(recommendation) -> "RunVerdict":
-    from app.models.run import RunVerdict
-
-    signal = str(getattr(recommendation, "signal", "")).strip().lower()
-    if signal in ("buy", "b"):
-        return RunVerdict.buy
-    if signal in ("sell", "s"):
-        return RunVerdict.sell
-    return RunVerdict.hold

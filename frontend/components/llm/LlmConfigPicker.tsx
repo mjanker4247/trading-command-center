@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getProviderModels } from "@/lib/api";
 import {
@@ -11,10 +11,12 @@ import {
   type LlmDepth,
   type LlmProvider,
 } from "@/lib/llmConfig";
+import { LlmToolCallingInfoContent } from "@/lib/llmToolCallingInfo";
 import { DEFAULT_RESPONSE_LANGUAGE, RESPONSE_LANGUAGE_OPTIONS } from "@/lib/responseLanguage";
 import type { ResponseLanguage } from "@/lib/responseLanguage";
 import { useLlmProviderDefaults } from "@/lib/useDefaultLlmConfig";
 import { FIELD_INPUT_CLASS, FIELD_INPUT_SM_CLASS } from "@/lib/uiClasses";
+import { InfoPopover } from "@/components/settings/InfoPopover";
 
 export interface LlmConfigValue {
   provider: LlmProvider;
@@ -59,6 +61,18 @@ export function LlmConfigPicker({
   const inputClass = layout === "compact" ? COMPACT_INPUT_CLASS : INPUT_CLASS;
   const { data: providerDefaults } = useLlmProviderDefaults();
   const modelPlaceholder = providerDefaults?.default_models[value.provider] ?? "model name";
+  const [toolInfoOpen, setToolInfoOpen] = useState(false);
+
+  const toolCallingInfo = (
+    <InfoPopover
+      open={toolInfoOpen}
+      onToggle={() => setToolInfoOpen((open) => !open)}
+      ariaLabel="Which models support tool calling"
+      popoverWidth={340}
+      className="inline-flex items-center shrink-0"
+      tooltip={<LlmToolCallingInfoContent />}
+    />
+  );
 
   const { data: models = [], isLoading: modelsLoading } = useQuery({
     queryKey: ["models", value.provider],
@@ -141,10 +155,20 @@ export function LlmConfigPicker({
 
   const modelField = (
     <div className={layout === "inline" ? "space-y-1" : "mb-0"}>
-      {layout !== "compact" && (
-        <label htmlFor={modelId} className="block text-muted text-xs mb-1">LLM Model</label>
+      {layout !== "compact" ? (
+        <div className="mb-1 flex items-center gap-1">
+          <label htmlFor={modelId} className="text-muted text-xs">
+            LLM Model
+          </label>
+          {toolCallingInfo}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">{modelControl}</div>
+          {toolCallingInfo}
+        </div>
       )}
-      {modelControl}
+      {layout !== "compact" && modelControl}
     </div>
   );
 
