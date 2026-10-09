@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, memo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -9,9 +9,24 @@ import { PipelinePanel } from "@/components/runs/PipelinePanel";
 import { getRun, abortRun, getRunEvents } from "@/lib/api";
 import { useAgentStream } from "@/lib/websocket";
 import { useRunTabTitle } from "@/lib/useRunTabTitle";
-import type { AgentEventPayload } from "@/lib/types";
-import { APP_CONTENT_CONTAINER_CLASS, APP_PAGE_PADDING_X_CLASS } from "@/components/layout/constants";
+import type { AgentEventPayload, Run } from "@/lib/types";
+import {
+  APP_CONTENT_CONTAINER_CLASS,
+  APP_PAGE_PADDING_X_CLASS,
+  TOP_NAV_HEIGHT_REM,
+} from "@/components/layout/constants";
 import { BTN_PRIMARY_CLASS } from "@/lib/uiClasses";
+
+/** Isolate sidebar from token-spam re-renders when only events change. */
+const MemoSidebar = memo(function MemoSidebar({
+  run,
+  onAbort,
+}: {
+  run: Run | undefined;
+  onAbort: () => void;
+}) {
+  return <AgentSidebar run={run} onAbort={onAbort} />;
+});
 
 export default function LiveRunPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,10 +60,10 @@ export default function LiveRunPage() {
   useAgentStream(id, handleEvent);
   useRunTabTitle(run?.ticker, run?.status);
 
-  const handleAbort = async () => {
+  const handleAbort = useCallback(async () => {
     await abortRun(id);
     refetch();
-  };
+  }, [id, refetch]);
 
   const isDone =
     run?.status === "completed" ||
@@ -56,10 +71,15 @@ export default function LiveRunPage() {
     run?.status === "aborted";
 
   return (
-    <div className="min-h-0 flex-1 flex flex-col">
-      <div className={`flex flex-col lg:flex-row gap-4 py-4 sm:py-6 ${APP_CONTENT_CONTAINER_CLASS} ${APP_PAGE_PADDING_X_CLASS} flex-1 overflow-hidden`}>
-        <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4 overflow-y-auto">
-          <AgentSidebar run={run} onAbort={handleAbort} />
+    <div
+      className="flex min-h-0 flex-col overflow-hidden"
+      style={{ height: `calc(100dvh - ${TOP_NAV_HEIGHT_REM})` }}
+    >
+      <div
+        className={`flex min-h-0 flex-1 flex-col gap-4 overflow-hidden py-4 sm:py-6 lg:flex-row ${APP_CONTENT_CONTAINER_CLASS} ${APP_PAGE_PADDING_X_CLASS}`}
+      >
+        <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto overscroll-contain lg:w-64 lg:max-h-full">
+          <MemoSidebar run={run} onAbort={handleAbort} />
           {run && <PipelinePanel analysts={run.analysts} events={events} />}
           {isDone && (
             <Link
@@ -69,14 +89,15 @@ export default function LiveRunPage() {
               View Results
             </Link>
           )}
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="mb-3 flex shrink-0 items-center justify-between">
             <h1 className="text-fg text-sm font-semibold">Live Event Feed</h1>
             <span className="text-muted text-xs">{events.length} events</span>
           </div>
           <AgentFeed events={events} />
-        </div>
+        </section>
       </div>
     </div>
   );

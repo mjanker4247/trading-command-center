@@ -15,26 +15,58 @@ const agentNameColor: Record<AgentEventPayload["type"], string> = {
   run_aborted: "text-yellow-400",
 };
 
+/** Longest pipeline ids (e.g. conservative_analyst) need ~11rem at text-xs mono. */
+const AGENT_COL_CLASS =
+  "w-[11rem] shrink-0 truncate text-xs font-mono";
+
 export function AgentFeed({ events }: AgentFeedProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      // Stay pinned only while the user is near the bottom; otherwise leave their place.
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+      stickToBottom.current = remaining < 48;
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !stickToBottom.current) return;
+    // Scroll the feed pane only — never scrollIntoView (that moves the whole page).
+    el.scrollTop = el.scrollHeight;
   }, [events]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-page rounded-sm border border-border p-3 space-y-1">
-      {events.map((event, i) => (
-        <div key={i} className="flex gap-2">
-          <span className={`text-xs font-mono w-28 shrink-0 ${agentNameColor[event.type]}`}>
-            {event.agent ?? event.type}
-          </span>
-          <span className="text-fg-secondary text-xs font-mono whitespace-pre-wrap flex-1">
-            {event.token ?? event.summary ?? event.message ?? ""}
-          </span>
-        </div>
-      ))}
-      <div ref={bottomRef} />
+    <div
+      ref={containerRef}
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-page rounded-sm border border-border p-3"
+    >
+      <div className="space-y-1">
+        {events.map((event, i) => {
+          const agentLabel = event.agent ?? event.type;
+          return (
+            <div key={i} className="flex gap-2 min-w-0 items-start">
+              <span
+                className={`${AGENT_COL_CLASS} ${agentNameColor[event.type]}`}
+                title={agentLabel}
+              >
+                {agentLabel}
+              </span>
+              <span className="min-w-0 flex-1 text-fg-secondary text-xs font-mono whitespace-pre-wrap break-words">
+                {event.token ?? event.summary ?? event.message ?? ""}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
