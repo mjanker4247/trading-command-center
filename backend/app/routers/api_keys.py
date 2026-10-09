@@ -152,6 +152,21 @@ async def _validate_key(provider: str, key: str) -> dict[str, Any]:
                 if "Global Quote" in data:
                     return {"is_valid": True}
                 return {"is_valid": r.status_code == 200}
+            if provider == "fred":
+                r = await client.get(
+                    "https://api.stlouisfed.org/fred/series",
+                    params={"series_id": "GDP", "api_key": key, "file_type": "json"},
+                    timeout=5,
+                )
+                if r.status_code != 200:
+                    return {"is_valid": False}
+                data = r.json()
+                if data.get("error_code") is not None:
+                    return {"is_valid": False}
+                return {"is_valid": bool(data.get("seriess"))}
+            if provider == "sec_edgar":
+                # Contact User-Agent for SEC EDGAR — not a secret; require a non-empty string.
+                return {"is_valid": bool(key.strip())}
             if provider == "finnhub":
                 r = await client.get(
                     "https://finnhub.io/api/v1/quote",

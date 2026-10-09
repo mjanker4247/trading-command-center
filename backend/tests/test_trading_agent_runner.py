@@ -93,3 +93,33 @@ def test_resolve_provider_runtime_empty_without_key():
     runtime = resolve_provider_runtime("openai", None)
     assert runtime.env_patch == {}
     assert resolve_provider_runtime("openai", "").env_patch == {}
+
+
+@pytest.mark.asyncio
+async def test_data_vendor_env_patch_maps_stored_keys(monkeypatch):
+    from app.services import trading_agent_runner as runner
+
+    async def fake_keys(providers: list[str]) -> dict[str, str]:
+        assert set(providers) >= {"fred", "alpha_vantage", "typesafe", "sec_edgar"}
+        return {
+            "fred": "fred-secret",
+            "alpha_vantage": "av-secret",
+            "sec_edgar": "AgentFloor Dev contact@example.com",
+        }
+
+    monkeypatch.setattr(runner, "_get_stored_keys", fake_keys)
+    patch = await runner._data_vendor_env_patch()
+    assert patch == {
+        "FRED_API_KEY": "fred-secret",
+        "ALPHA_VANTAGE_API_KEY": "av-secret",
+        "SEC_EDGAR_USER_AGENT": "AgentFloor Dev contact@example.com",
+    }
+
+
+def test_data_provider_env_catalog_matches_tradingagents():
+    from app.utils.data_providers import DATA_PROVIDER_ENV
+
+    assert DATA_PROVIDER_ENV["fred"] == "FRED_API_KEY"
+    assert DATA_PROVIDER_ENV["alpha_vantage"] == "ALPHA_VANTAGE_API_KEY"
+    assert DATA_PROVIDER_ENV["typesafe"] == "TYPESAFE_API_KEY"
+    assert DATA_PROVIDER_ENV["sec_edgar"] == "SEC_EDGAR_USER_AGENT"

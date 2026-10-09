@@ -1,8 +1,10 @@
 "use client";
 
 import type { ApiKeyStatus } from "@/lib/types";
+import { DATA_PROVIDERS } from "@/lib/dataProviders";
 import { ApiKeyRow } from "@/components/settings/ApiKeyRow";
 import { SectionCard } from "@/components/settings/SectionCard";
+import { SettingsDivider } from "@/components/settings/SettingsDivider";
 
 type DataProvidersSectionProps = {
   apiKeys: ApiKeyStatus[];
@@ -10,25 +12,33 @@ type DataProvidersSectionProps = {
 };
 
 export function DataProvidersSection({ apiKeys, onKeysChanged }: DataProvidersSectionProps) {
-  const finnhubKey = apiKeys.find((k) => k.provider === "finnhub");
-
   return (
     <SectionCard
       id="data-providers"
       title="Data Providers"
-      description="Third-party data sources used for portfolio prices and outcome tracking."
+      description="Third-party data sources for portfolio prices, outcomes, and TradingAgents market/macro tools."
     >
-      <ApiKeyRow
-        provider="finnhub"
-        label="Finnhub"
-        description="Live portfolio prices, fundamentals, news, and outcome tracking"
-        placeholder="Your Finnhub API key"
-        docsUrl="https://finnhub.io/dashboard"
-        isSet={finnhubKey?.is_valid ?? false}
-        capabilities={finnhubKey?.capabilities}
-        capabilityWarning={finnhubKey?.last_error_message ?? null}
-        onSaved={onKeysChanged}
-      />
+      {DATA_PROVIDERS.map((meta, i) => {
+        const keyRow = apiKeys.find((k) => k.provider === meta.id);
+        return (
+          <div key={meta.id}>
+            {i > 0 && <SettingsDivider />}
+            <ApiKeyRow
+              provider={meta.id}
+              label={meta.label}
+              description={meta.description}
+              placeholder={meta.placeholder}
+              docsUrl={meta.docsUrl}
+              inputType={meta.inputType}
+              saveButtonLabel={meta.id === "sec_edgar" ? "Save" : undefined}
+              isSet={keyRow?.is_valid ?? false}
+              capabilities={meta.id === "finnhub" ? keyRow?.capabilities : undefined}
+              capabilityWarning={meta.id === "finnhub" ? (keyRow?.last_error_message ?? null) : null}
+              onSaved={onKeysChanged}
+            />
+          </div>
+        );
+      })}
     </SectionCard>
   );
 }

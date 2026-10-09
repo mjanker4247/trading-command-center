@@ -20,16 +20,41 @@ _env_fallback_lock = asyncio.Lock()
 
 async def _get_stored_key(provider: str) -> str | None:
     """Return the decrypted stored API key for any provider, or None."""
+    keys = await _get_stored_keys([provider])
+    return keys.get(provider)
+
+
+async def _get_stored_keys(providers: list[str]) -> dict[str, str]:
+    """Return decrypted keys for the given provider ids (missing/undecryptable omitted)."""
+    if not providers:
+        return {}
     from app.database import AsyncSessionLocal
     from app.models.api_key import ApiKey
     from app.services.encryption import decrypt_key
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
-        row = (await db.execute(select(ApiKey).where(ApiKey.provider == provider))).scalar_one_or_none()
-    if not row:
-        return None
-    return decrypt_key(row.encrypted_key)
+        rows = (
+            await db.execute(select(ApiKey).where(ApiKey.provider.in_(providers)))
+        ).scalars().all()
+    out: dict[str, str] = {}
+    for row in rows:
+        plain = decrypt_key(row.encrypted_key)
+        if plain:
+            out[row.provider] = plain
+    return out
+
+
+async def _data_vendor_env_patch() -> dict[str, str]:
+    """Build env vars for TradingAgents data vendors from Settings-stored keys."""
+    from app.utils.data_providers import DATA_PROVIDER_ENV
+
+    stored = await _get_stored_keys(list(DATA_PROVIDER_ENV))
+    return {
+        env_var: stored[provider]
+        for provider, env_var in DATA_PROVIDER_ENV.items()
+        if provider in stored
+    }
 
 
 def _run_graph_streaming(
@@ -160,7 +185,8 @@ async def execute_run(run_id: str, config: dict) -> None:
             ta_provider=runtime.ta_provider,
         )
 
-        env_patch = runtime.env_patch
+        # LLM key from resolve_provider_runtime; data vendors from Settings (FRED, etc.).
+        env_patch = {**runtime.env_patch, **await _data_vendor_env_patch()}
         needs_lock = bool(env_patch)
         prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
 

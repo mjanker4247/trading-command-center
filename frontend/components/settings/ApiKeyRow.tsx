@@ -12,6 +12,8 @@ interface ApiKeyRowProps {
   description?: string;
   placeholder?: string;
   docsUrl?: string;
+  inputType?: "password" | "text";
+  saveButtonLabel?: string;
   isSet: boolean;
   capabilities?: Record<string, FinnhubCapabilityStatus> | null;
   capabilityWarning?: string | null;
@@ -24,6 +26,8 @@ export function ApiKeyRow({
   description,
   placeholder,
   docsUrl,
+  inputType = "password",
+  saveButtonLabel,
   isSet,
   capabilities,
   capabilityWarning,
@@ -34,6 +38,11 @@ export function ApiKeyRow({
   const inputId = `api-key-${provider}`;
   const displayName = label ?? provider.charAt(0).toUpperCase() + provider.slice(1);
   const capabilityEntries = capabilities ? Object.entries(capabilities) : [];
+  const docsAria =
+    inputType === "text"
+      ? `${displayName} documentation (opens in new tab)`
+      : `Get ${displayName} API key (opens in new tab)`;
+  const buttonLabel = saveButtonLabel ?? "Save key";
 
   const mutation = useMutation({
     mutationFn: () => upsertApiKey(provider, value),
@@ -56,8 +65,8 @@ export function ApiKeyRow({
                 href={docsUrl}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`Get ${displayName} API key (opens in new tab)`}
-                title="Get API key"
+                aria-label={docsAria}
+                title={inputType === "text" ? "Documentation" : "Get API key"}
                 className="text-muted hover:text-link transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
@@ -74,7 +83,7 @@ export function ApiKeyRow({
         </span>
         <input
           id={inputId}
-          type="password"
+          type={inputType}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder ?? "sk-…"}
@@ -87,13 +96,15 @@ export function ApiKeyRow({
           disabled={mutation.isPending || !value}
           className={`${BTN_PRIMARY_SM_CLASS} shrink-0 w-full sm:w-auto`}
         >
-          {mutation.isPending ? "Saving…" : "Save key"}
+          {mutation.isPending ? "Saving…" : buttonLabel}
         </button>
         {mutation.isError && (
           <span className={STATUS_ERROR_CLASS}>{(mutation.error as Error).message}</span>
         )}
         {!mutation.isError && savedResult === "valid" && (
-          <span className={STATUS_OK_CLASS}>Key saved and verified</span>
+          <span className={STATUS_OK_CLASS}>
+            {inputType === "text" ? "Saved" : "Key saved and verified"}
+          </span>
         )}
         {!mutation.isError && savedResult === "invalid" && (
           <span className="text-xs text-warning">Key saved — we couldn&apos;t verify it. Double-check the value.</span>
