@@ -79,10 +79,6 @@ export default function LiveRunPage() {
         className={`flex min-h-0 flex-1 flex-col gap-4 overflow-hidden py-4 sm:py-6 lg:flex-row ${APP_CONTENT_CONTAINER_CLASS} ${APP_PAGE_PADDING_X_CLASS}`}
       >
         <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto overscroll-contain lg:w-64 lg:max-h-full">
-          <MemoSidebar run={run} onAbort={handleAbort} />
-          {run && (
-            <PipelinePanel analysts={run.analysts} events={events} runStatus={run.status} />
-          )}
           {isDone && (
             <Link
               href={`/runs/${id}`}
@@ -90,6 +86,10 @@ export default function LiveRunPage() {
             >
               View Results
             </Link>
+          )}
+          <MemoSidebar run={run} onAbort={handleAbort} />
+          {run && (
+            <PipelinePanel analysts={run.analysts} events={events} runStatus={run.status} />
           )}
         </aside>
 
