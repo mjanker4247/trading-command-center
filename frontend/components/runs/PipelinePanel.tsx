@@ -1,13 +1,18 @@
 "use client";
 import { AnalystIconBadge } from "@/components/runs/RunContextIcons";
-import type { AgentEventPayload } from "@/lib/types";
+import {
+  getStageStatus,
+  resolvePipelineTerminal,
+  type StageStatus,
+} from "@/lib/pipelineStatus";
+import type { AgentEventPayload, Run } from "@/lib/types";
 
 interface PipelinePanelProps {
   analysts: string[];
   events: AgentEventPayload[];
+  /** Needed to finalize stages — `run_completed` is WS-only and not in persisted events. */
+  runStatus?: Run["status"];
 }
-
-type StageStatus = "waiting" | "running" | "done" | "error";
 
 const DOWNSTREAM_STAGES = [
   { key: "bull_researcher", label: "Bull Research" },
@@ -19,15 +24,6 @@ const DOWNSTREAM_STAGES = [
   { key: "neutral_analyst", label: "Risk: Neutral" },
   { key: "risk_judge", label: "Risk Judge" },
 ];
-
-function getStageStatus(key: string, events: AgentEventPayload[]): StageStatus {
-  const matched = events.filter((e) => e.agent === key || e.agent === `${key}_analyst`);
-  if (matched.length === 0) return "waiting";
-  if (matched.some((e) => e.type === "error")) return "error";
-  if (matched.some((e) => e.type === "completed")) return "done";
-  if (matched.some((e) => e.type === "started")) return "running";
-  return "waiting";
-}
 
 const statusDot: Record<StageStatus, string> = {
   waiting: "bg-subtle",
@@ -54,7 +50,9 @@ function StageRow({ label, status, analyst }: { label: string; status: StageStat
   );
 }
 
-export function PipelinePanel({ analysts, events }: PipelinePanelProps) {
+export function PipelinePanel({ analysts, events, runStatus }: PipelinePanelProps) {
+  const terminal = resolvePipelineTerminal(runStatus, events);
+
   return (
     <div className="bg-surface rounded-sm border border-border p-4">
       <p className="text-muted text-xs uppercase tracking-wider mb-3">Pipeline</p>
@@ -63,7 +61,7 @@ export function PipelinePanel({ analysts, events }: PipelinePanelProps) {
           <StageRow
             key={analyst}
             label={analyst.charAt(0).toUpperCase() + analyst.slice(1)}
-            status={getStageStatus(analyst, events)}
+            status={getStageStatus(analyst, events, terminal)}
             analyst={analyst}
           />
         ))}
@@ -72,7 +70,7 @@ export function PipelinePanel({ analysts, events }: PipelinePanelProps) {
           <StageRow
             key={stage.key}
             label={stage.label}
-            status={getStageStatus(stage.key, events)}
+            status={getStageStatus(stage.key, events, terminal)}
           />
         ))}
       </div>

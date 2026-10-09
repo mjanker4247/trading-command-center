@@ -52,7 +52,7 @@ export default function LiveRunPage() {
     if (e.sequence != null && seenSequences.current.has(e.sequence)) return;
     if (e.sequence != null) seenSequences.current.add(e.sequence);
     setEvents((prev) => [...prev, e]);
-    if (e.type === "run_completed" || e.type === "run_aborted") {
+    if (e.type === "run_completed" || e.type === "run_aborted" || (e.type === "error" && !e.agent)) {
       refetch();
     }
   }, [refetch]);
@@ -80,7 +80,9 @@ export default function LiveRunPage() {
       >
         <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto overscroll-contain lg:w-64 lg:max-h-full">
           <MemoSidebar run={run} onAbort={handleAbort} />
-          {run && <PipelinePanel analysts={run.analysts} events={events} />}
+          {run && (
+            <PipelinePanel analysts={run.analysts} events={events} runStatus={run.status} />
+          )}
           {isDone && (
             <Link
               href={`/runs/${id}`}
