@@ -673,6 +673,7 @@ function PortfolioPageContent() {
                   portfolioId={selectedId}
                   hasHoldings={hasHoldings}
                   enabled={optimizerEnabled}
+                  displayCurrency={current.display_currency ?? "USD"}
                 />
               </div>
             )}

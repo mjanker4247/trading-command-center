@@ -476,15 +476,47 @@ export interface RegimeData {
 
 export type AllocationObjective = "sharpe" | "volatility" | "black_litterman";
 
+export type AllocationAction = "BUY" | "SELL" | "HOLD";
+
 export interface AllocationHoldingRow {
   ticker: string;
+  current_price: number | null;
+  current_shares: number;
+  current_value: number | null;
+  current_weight: number;
+  target_shares: number;
+  target_value: number | null;
+  target_weight: number;
+  delta_weight: number;
+  delta_value: number | null;
+  share_delta: number;
+  /** @deprecated use target_shares */
+  suggested_shares: number;
+  action: AllocationAction;
+}
+
+export interface LookthroughConstituent {
+  symbol: string;
+  name: string;
   current_weight: number;
   target_weight: number;
   delta_weight: number;
-  current_shares: number;
-  suggested_shares: number;
-  share_delta: number;
-  current_price: number | null;
+  at_limit?: boolean;
+}
+
+export interface LookthroughSector {
+  sector: string;
+  current_weight: number;
+  target_weight: number;
+  delta_weight: number;
+}
+
+export interface AllocationLookthrough {
+  etf_tickers: string[];
+  note: string;
+  constituents: LookthroughConstituent[];
+  sectors: LookthroughSector[];
+  concentration_limit?: number | null;
 }
 
 export interface AllocationResult {
@@ -494,13 +526,22 @@ export interface AllocationResult {
   volatility: number;
   sharpe: number;
   leftover_cash: number;
+  discrete_method?: string;
   views_applied: string[];
   holdings: AllocationHoldingRow[];
+  orders?: AllocationHoldingRow[];
+  lookthrough?: AllocationLookthrough;
   skipped: string[];
   lookback_days: number;
   min_pos: number;
   max_pos: number;
   use_verdict_views: boolean;
+  /** Always tradable ETF/stock units */
+  mode?: "tradable";
+  /** Max effective look-through weight per underlying (null/0 = off) */
+  max_concentration?: number | null;
+  lookthrough_concentration?: boolean;
+  note?: string | null;
 }
 
 export interface OptimizePortfolioRequest {
@@ -509,6 +550,8 @@ export interface OptimizePortfolioRequest {
   max_pos?: number;
   use_verdict_views?: boolean;
   lookback_days?: number;
+  /** 0 disables look-through concentration; default 0.10 */
+  max_concentration?: number | null;
 }
 
 export interface KalmanData {

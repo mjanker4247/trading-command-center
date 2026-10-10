@@ -1,9 +1,10 @@
-import type { NextFetchEvent } from "next/server";
-import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 
-export function proxy(request: NextRequestWithAuth, event: NextFetchEvent) {
-  return withAuth(request, event);
-}
+// Next.js 16: named `proxy` export (replaces middleware.ts).
+// pages.signIn must be set here too — withAuth does not read authOptions.pages.
+export const proxy = withAuth({
+  pages: { signIn: "/login" },
+});
 
 export const config = {
   matcher: ["/((?!login|register|api/auth|_next/static|_next/image|favicon.ico|icon.svg).*)"],

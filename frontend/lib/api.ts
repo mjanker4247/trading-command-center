@@ -638,6 +638,7 @@ export async function optimizePortfolio(
     if (body.max_pos != null) params.set("max_pos", String(body.max_pos));
     if (body.use_verdict_views != null) params.set("use_verdict_views", String(body.use_verdict_views));
     if (body.lookback_days != null) params.set("lookback_days", String(body.lookback_days));
+    if (body.max_concentration != null) params.set("max_concentration", String(body.max_concentration));
   }
   const qs = params.toString();
   const r = await fetchWithAuth(

@@ -1974,6 +1974,8 @@ class OptimizeRequest(BaseModel):
     max_pos: float = Field(default=0.4, ge=0.0, le=1.0)
     use_verdict_views: bool = False
     lookback_days: int = Field(default=730, ge=90, le=3650)
+    # Max effective look-through weight per underlying (0 / omit = disable). Default 10%.
+    max_concentration: Optional[float] = Field(default=0.10, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
     def _bounds(self):
@@ -2033,8 +2035,9 @@ async def _run_portfolio_optimize(
             use_verdict_views=body.use_verdict_views,
             verdicts=verdicts,
             lookback_days=body.lookback_days,
+            max_concentration=body.max_concentration,
             cache_key=f"{portfolio_id}:{body.objective}:{body.min_pos}:{body.max_pos}:"
-            f"{body.use_verdict_views}:{body.lookback_days}:"
+            f"{body.use_verdict_views}:{body.lookback_days}:{body.max_concentration}:"
             f"{[(h.ticker, h.shares, h.current_price) for h in holdings_in]}",
         )
     except AllocationError as exc:
@@ -2049,6 +2052,7 @@ async def get_portfolio_optimize(
     max_pos: float = 0.4,
     use_verdict_views: bool = False,
     lookback_days: int = 730,
+    max_concentration: Optional[float] = 0.10,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -2059,6 +2063,7 @@ async def get_portfolio_optimize(
         max_pos=max_pos,
         use_verdict_views=use_verdict_views,
         lookback_days=lookback_days,
+        max_concentration=max_concentration,
     )
     return await _run_portfolio_optimize(portfolio_id, user, db, body)
 
