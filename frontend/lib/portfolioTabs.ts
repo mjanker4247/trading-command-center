@@ -4,11 +4,18 @@ export type { PortfolioTab };
 
 export const DEFAULT_PORTFOLIO_TAB: PortfolioTab = "holdings";
 
-export const PRIMARY_PORTFOLIO_TAB_IDS: readonly PortfolioTab[] = ["holdings", "insights", "earnings", "news"];
+export const PRIMARY_PORTFOLIO_TAB_IDS: readonly PortfolioTab[] = [
+  "holdings",
+  "insights",
+  "allocation",
+  "earnings",
+  "news",
+];
 
 const VALID_TABS: readonly PortfolioTab[] = [
   "holdings",
   "insights",
+  "allocation",
   "earnings",
   "news",
   "chat",
@@ -25,11 +32,14 @@ export interface PortfolioTabDefinition {
   /** Shown on tab when behavioral alerts exist (Insights only). */
   showAlertCount?: boolean;
   hideWhenAllCrypto?: boolean;
+  /** Hidden when portfolio optimizer module is off. */
+  requiresOptimizer?: boolean;
 }
 
 const BASE_TAB_DEFINITIONS: PortfolioTabDefinition[] = [
   { id: "holdings", label: "Holdings", tier: "primary" },
   { id: "insights", label: "AI Insights", shortLabel: "Insights", tier: "primary", badge: "✦", showAlertCount: true },
+  { id: "allocation", label: "Allocation", shortLabel: "Alloc.", tier: "primary", requiresOptimizer: true },
   { id: "earnings", label: "Earnings", shortLabel: "Earn.", tier: "primary", hideWhenAllCrypto: true },
   { id: "news", label: "News", tier: "primary" },
   { id: "chat", label: "Chat", tier: "overflow" },
@@ -48,7 +58,7 @@ export function isPortfolioTab(value: string | null | undefined): value is Portf
 
 export function resolvePortfolioTab(
   value: string | null | undefined,
-  options: { allCrypto: boolean } = { allCrypto: false },
+  options: { allCrypto: boolean; optimizerEnabled?: boolean } = { allCrypto: false },
 ): PortfolioTab {
   const groups = buildPortfolioTabGroups(options);
   const allowed = new Set(groups.all.map((t) => t.id));
@@ -58,10 +68,16 @@ export function resolvePortfolioTab(
   return DEFAULT_PORTFOLIO_TAB;
 }
 
-export function buildPortfolioTabGroups(options: { allCrypto: boolean }): PortfolioTabGroups {
-  const visible = BASE_TAB_DEFINITIONS.filter(
-    (tab) => !(tab.hideWhenAllCrypto && options.allCrypto),
-  );
+export function buildPortfolioTabGroups(options: {
+  allCrypto: boolean;
+  optimizerEnabled?: boolean;
+}): PortfolioTabGroups {
+  const optimizerEnabled = options.optimizerEnabled !== false;
+  const visible = BASE_TAB_DEFINITIONS.filter((tab) => {
+    if (tab.hideWhenAllCrypto && options.allCrypto) return false;
+    if (tab.requiresOptimizer && !optimizerEnabled) return false;
+    return true;
+  });
   return {
     primary: visible.filter((tab) => tab.tier === "primary"),
     overflow: visible.filter((tab) => tab.tier === "overflow"),
@@ -71,7 +87,7 @@ export function buildPortfolioTabGroups(options: { allCrypto: boolean }): Portfo
 
 export function isOverflowPortfolioTab(
   tab: PortfolioTab,
-  options: { allCrypto: boolean },
+  options: { allCrypto: boolean; optimizerEnabled?: boolean },
 ): boolean {
   return buildPortfolioTabGroups(options).overflow.some((t) => t.id === tab);
 }

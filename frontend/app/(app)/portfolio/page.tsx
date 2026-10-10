@@ -51,6 +51,7 @@ import { PortfolioHeader } from "@/components/portfolio/PortfolioHeader";
 import { UploadDrawer } from "@/components/portfolio/UploadDrawer";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
 import { InsightsDashboard } from "@/components/portfolio/InsightsDashboard";
+import { AllocationPanel } from "@/components/portfolio/AllocationPanel";
 import { PortfolioStatsBar } from "@/components/portfolio/PortfolioStatsBar";
 import { EarningsPanel } from "@/components/portfolio/EarningsPanel";
 import { NewsPanel } from "@/components/portfolio/NewsPanel";
@@ -252,9 +253,18 @@ function PortfolioPageContent() {
   const hasHoldings = (current?.holdings?.length ?? 0) > 0;
   const allCrypto = hasHoldings && (current?.holdings ?? []).every((h) => isCrypto(h.ticker));
 
+  const { data: strategySettings } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: getAppSettings,
+    retry: false,
+  });
+  const markovEnabled = strategySettings?.enableMarkovRegime !== false;
+  const waveEnabled = strategySettings?.enableElliottWave !== false;
+  const optimizerEnabled = strategySettings?.enablePortfolioOptimizer !== false;
+
   const tab = useMemo(
-    () => resolvePortfolioTab(searchParams.get("tab"), { allCrypto }),
-    [searchParams, allCrypto],
+    () => resolvePortfolioTab(searchParams.get("tab"), { allCrypto, optimizerEnabled }),
+    [searchParams, allCrypto, optimizerEnabled],
   );
 
   // Redirect legacy Market / Discover portfolio tabs to /market.
@@ -290,14 +300,6 @@ function PortfolioPageContent() {
     () => (current?.holdings ?? []).map((h) => h.ticker),
     [current?.holdings]
   );
-
-  const { data: strategySettings } = useQuery({
-    queryKey: ["app-settings"],
-    queryFn: getAppSettings,
-    retry: false,
-  });
-  const markovEnabled = strategySettings?.enableMarkovRegime !== false;
-  const waveEnabled = strategySettings?.enableElliottWave !== false;
 
   const { data: fundamentalsResult, isFetching: fetchingFundamentals } = useQuery({
     queryKey: portfolioQueryKeys.fundamentals(selectedId ?? ""),
@@ -468,8 +470,8 @@ function PortfolioPageContent() {
   );
 
   const tabGroups = useMemo(
-    () => buildPortfolioTabGroups({ allCrypto }),
-    [allCrypto],
+    () => buildPortfolioTabGroups({ allCrypto, optimizerEnabled }),
+    [allCrypto, optimizerEnabled],
   );
   const primaryTabs = useMemo(
     () => tabGroups.primary.map((def) => toTabBarItem(def, alertCount)),
@@ -658,6 +660,20 @@ function PortfolioPageContent() {
                 hasHoldings={hasHoldings}
                 portfolioName={selectedPortfolio?.name}
               />
+              </div>
+            )}
+
+            {tab === "allocation" && (
+              <div
+                id="portfolio-panel-allocation"
+                role="tabpanel"
+                aria-labelledby="portfolio-tab-allocation"
+              >
+                <AllocationPanel
+                  portfolioId={selectedId}
+                  hasHoldings={hasHoldings}
+                  enabled={optimizerEnabled}
+                />
               </div>
             )}
 

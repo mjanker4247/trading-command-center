@@ -34,6 +34,7 @@ class KalmanSettingsUpdate(BaseModel):
     enable_kalman_filter: bool = True
     enable_elliott_wave: bool = True
     enable_markov_regime: bool = True
+    enable_portfolio_optimizer: bool = True
 
 
 @router.get("/kalman/settings")
@@ -70,6 +71,7 @@ async def put_kalman_settings(
             enable_kalman_filter=body.enable_kalman_filter,
             enable_elliott_wave=body.enable_elliott_wave,
             enable_markov_regime=body.enable_markov_regime,
+            enable_portfolio_optimizer=body.enable_portfolio_optimizer,
         )
     except SettingsDataError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

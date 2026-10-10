@@ -325,6 +325,7 @@ def _build_prompt(
     holdings: list[dict],
     investor_profile=None,
     regime_map: Optional[dict] = None,
+    allocation_summary: Optional[dict] = None,
     response_language: str = DEFAULT_RESPONSE_LANGUAGE,
 ) -> str:
     rows = []
@@ -420,6 +421,25 @@ def _build_prompt(
                 + "\nNote: Markov regime reflects statistical price history only. Weight alongside fundamental analysis.\n"
             )
 
+    allocation_block = ""
+    if allocation_summary and allocation_summary.get("holdings"):
+        lines = []
+        for row in allocation_summary["holdings"]:
+            lines.append(
+                f"  {row['ticker']}: current {row['current_weight']*100:.1f}% → "
+                f"target {row['target_weight']*100:.1f}% "
+                f"(Δ {row['delta_weight']*100:+.1f}%)"
+            )
+        allocation_block = (
+            f"\nALLOCATION CONTEXT (Markowitz max-Sharpe via PyPortfolioOpt, research-only):\n"
+            f"Expected return {allocation_summary.get('expected_return', 0)*100:.1f}% · "
+            f"vol {allocation_summary.get('volatility', 0)*100:.1f}% · "
+            f"Sharpe {allocation_summary.get('sharpe', 0):.2f}\n"
+            + "\n".join(lines)
+            + "\nNote: Target weights are model output, not trade instructions. "
+            "Flag large under/overweights vs current when relevant.\n"
+        )
+
     return f"""You are a professional portfolio analyst AI. Analyze the following investment portfolio and provide structured daily insights.
 
 Date: {analysis_date}
@@ -431,7 +451,7 @@ Number of holdings: {len(holdings)}
 {profile_block}
 Holdings:
 {holdings_text}
-{regime_block}
+{regime_block}{allocation_block}
 Your analysis should:
 1. Identify concentration risk (positions >20% of portfolio)
 2. Flag significant unrealized losses (>15% drawdown)
@@ -442,6 +462,7 @@ Your analysis should:
 7. Respect the investor's anti-portfolio rules — never recommend buying excluded sectors/assets
 8. Frame urgency and risk relative to the investor's stated time horizon and risk tolerance
 9. Where regime data is provided, note regime-conflicted positions (e.g. AI said Buy but regime is Bear) and regime-supported positions
+10. Where allocation targets are provided, note large deviations from model weights as trim/add candidates (research only)
 
 Respond ONLY with a single valid JSON object matching this exact schema (no markdown, no explanation):
 {{
@@ -562,6 +583,36 @@ async def generate_portfolio_insight(insight_id: str) -> None:
             except Exception:
                 regime_map = {}
 
+            # Optional Markowitz allocation summary (soft-fail)
+            allocation_summary: Optional[dict] = None
+            try:
+                from app.services.settings_service import get_app_settings as _get_settings
+                from app.services.allocation_service import HoldingInput, optimize_holdings
+
+                app_settings = await _get_settings(db)
+                if app_settings.get("enable_portfolio_optimizer"):
+                    holdings_in = [
+                        HoldingInput(
+                            ticker=h.ticker,
+                            shares=float(h.shares),
+                            current_price=(
+                                price_map[h.ticker].amount
+                                if price_map.get(h.ticker)
+                                else None
+                            ),
+                        )
+                        for h in holdings
+                    ]
+                    allocation_summary = await optimize_holdings(
+                        holdings_in,
+                        objective="sharpe",
+                        min_pos=0.0,
+                        max_pos=1.0,
+                    )
+            except Exception:
+                logger.debug("allocation summary skipped for insight", exc_info=True)
+                allocation_summary = None
+
             # Fetch last run verdict per ticker
             today = date.today()
             last_verdicts: dict[str, tuple[str, int]] = {}  # ticker → (verdict, days_ago)
@@ -656,6 +707,7 @@ async def generate_portfolio_insight(insight_id: str) -> None:
                 holdings=enriched,
                 investor_profile=investor_profile,
                 regime_map=regime_map,
+                allocation_summary=allocation_summary,
                 response_language=insight.response_language,
             )
 

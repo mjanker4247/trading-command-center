@@ -5,10 +5,10 @@ import io
 import time
 from uuid import UUID
 from datetime import datetime, timezone, date, timedelta
-from typing import Optional
+from typing import Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
@@ -35,6 +35,11 @@ from app.services.portfolio_parser import parse_portfolio_csv
 from app.services.ticker_metadata_service import get_many_ticker_metadata
 from app.services.trim_signal_service import score_trim_signal
 from app.services.markov_service import get_regime_for_portfolio
+from app.services.allocation_service import (
+    AllocationError,
+    HoldingInput,
+    optimize_holdings,
+)
 from app.services.settings_service import get_app_settings
 from app.schemas.portfolio_delivery_settings import UpdateDeliverySettingsRequest
 from app.utils.asset_type import is_crypto
@@ -1959,6 +1964,114 @@ async def test_webhook_delivery(
         raise HTTPException(status_code=400, detail=f"Webhook delivery failed: {exc}")
 
     return {"sent": True}
+
+
+# ── Portfolio Allocation (PyPortfolioOpt) ─────────────────────────────────────
+
+class OptimizeRequest(BaseModel):
+    objective: Literal["sharpe", "volatility", "black_litterman"] = "sharpe"
+    min_pos: float = Field(default=0.0, ge=0.0, le=1.0)
+    max_pos: float = Field(default=0.4, ge=0.0, le=1.0)
+    use_verdict_views: bool = False
+    lookback_days: int = Field(default=730, ge=90, le=3650)
+
+    @model_validator(mode="after")
+    def _bounds(self):
+        if self.min_pos > self.max_pos:
+            raise ValueError("min_pos must be ≤ max_pos")
+        return self
+
+
+async def _run_portfolio_optimize(
+    portfolio_id: UUID,
+    user: User,
+    db: AsyncSession,
+    body: OptimizeRequest,
+) -> dict:
+    settings = await get_app_settings(db)
+    if not settings["enable_portfolio_optimizer"]:
+        raise HTTPException(status_code=404, detail="Portfolio optimizer module is disabled")
+
+    await _verify_portfolio_access(portfolio_id, user.id, db)
+
+    snap_result = await db.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .options(selectinload(PortfolioSnapshot.holdings))
+        .order_by(desc(PortfolioSnapshot.uploaded_at))
+        .limit(1)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if not snapshot or not snapshot.holdings:
+        raise HTTPException(status_code=400, detail="Portfolio has no holdings")
+
+    tickers = [h.ticker for h in snapshot.holdings]
+    av_key = await _get_finnhub_key(db)
+    price_map, last_runs = await asyncio.gather(
+        _fetch_prices_bulk(tickers, av_key, db),
+        _get_last_runs_for_holdings(tickers, user.id, db),
+    )
+
+    holdings_in = [
+        HoldingInput(
+            ticker=h.ticker,
+            shares=float(h.shares),
+            current_price=(price_map.get(h.ticker).amount if price_map.get(h.ticker) else None),
+        )
+        for h in snapshot.holdings
+    ]
+    verdicts = {
+        t: lr.verdict for t, lr in last_runs.items() if lr.verdict
+    }
+
+    try:
+        return await optimize_holdings(
+            holdings_in,
+            objective=body.objective,
+            min_pos=body.min_pos,
+            max_pos=body.max_pos,
+            use_verdict_views=body.use_verdict_views,
+            verdicts=verdicts,
+            lookback_days=body.lookback_days,
+            cache_key=f"{portfolio_id}:{body.objective}:{body.min_pos}:{body.max_pos}:"
+            f"{body.use_verdict_views}:{body.lookback_days}:"
+            f"{[(h.ticker, h.shares, h.current_price) for h in holdings_in]}",
+        )
+    except AllocationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/portfolio/{portfolio_id}/optimize")
+async def get_portfolio_optimize(
+    portfolio_id: UUID,
+    objective: Literal["sharpe", "volatility", "black_litterman"] = "sharpe",
+    min_pos: float = 0.0,
+    max_pos: float = 0.4,
+    use_verdict_views: bool = False,
+    lookback_days: int = 730,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return cached/default Markowitz or Black-Litterman allocation for the portfolio."""
+    body = OptimizeRequest(
+        objective=objective,
+        min_pos=min_pos,
+        max_pos=max_pos,
+        use_verdict_views=use_verdict_views,
+        lookback_days=lookback_days,
+    )
+    return await _run_portfolio_optimize(portfolio_id, user, db, body)
+
+
+@router.post("/portfolio/{portfolio_id}/optimize")
+async def post_portfolio_optimize(
+    portfolio_id: UUID,
+    body: OptimizeRequest = Body(default_factory=OptimizeRequest),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Recompute Markowitz or Black-Litterman allocation for the portfolio."""
+    return await _run_portfolio_optimize(portfolio_id, user, db, body)
 
 
 # ── Regime Analysis ───────────────────────────────────────────────────────────

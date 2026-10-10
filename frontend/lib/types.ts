@@ -474,6 +474,43 @@ export interface RegimeData {
   computed_at: string;
 }
 
+export type AllocationObjective = "sharpe" | "volatility" | "black_litterman";
+
+export interface AllocationHoldingRow {
+  ticker: string;
+  current_weight: number;
+  target_weight: number;
+  delta_weight: number;
+  current_shares: number;
+  suggested_shares: number;
+  share_delta: number;
+  current_price: number | null;
+}
+
+export interface AllocationResult {
+  objective: AllocationObjective;
+  nav: number;
+  expected_return: number;
+  volatility: number;
+  sharpe: number;
+  leftover_cash: number;
+  views_applied: string[];
+  holdings: AllocationHoldingRow[];
+  skipped: string[];
+  lookback_days: number;
+  min_pos: number;
+  max_pos: number;
+  use_verdict_views: boolean;
+}
+
+export interface OptimizePortfolioRequest {
+  objective?: AllocationObjective;
+  min_pos?: number;
+  max_pos?: number;
+  use_verdict_views?: boolean;
+  lookback_days?: number;
+}
+
 export interface KalmanData {
   ticker: string;
   start: string;

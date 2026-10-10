@@ -1,5 +1,5 @@
 import { getSession, signOut } from "next-auth/react";
-import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, SchedulerJobsResponse, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, KalmanData, TrimSignalsResponse, WaveSummary, PortfolioEarningsResponse, PortfolioFundamentalsResponse, PortfolioNewsResponse } from "./types";
+import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Report, RunStats, CompareResult, RunOutcome, PerformanceStats, Watchlist, WatchlistItem, AddWatchlistItemRequest, SchedulerJobsResponse, Portfolio, PortfolioSnapshot, PortfolioCurrentResponse, PortfolioInsight, GenerateInsightRequest, EarningsEvent, FundamentalsData, NewsArticle, BatchRunResult, TickerSnapshot, TickerMetadataResponse, MarketTicker, MoversResponse, SectorData, InvestorProfile, InvestorProfileUpsertRequest, ThesisCrossRef, BehavioralAlertsResponse, DeliverySettings, UpdateDeliverySettingsRequest, RegimeData, KalmanData, TrimSignalsResponse, WaveSummary, PortfolioEarningsResponse, PortfolioFundamentalsResponse, PortfolioNewsResponse, AllocationResult, OptimizePortfolioRequest } from "./types";
 import type { AnalyzeResponse } from "./wave/types";
 import type { ResponseLanguage } from "./responseLanguage";
 import type { AppSettings } from "./appSettings";
@@ -507,6 +507,7 @@ interface AppSettingsResponse {
   enable_kalman_filter: boolean;
   enable_elliott_wave: boolean;
   enable_markov_regime: boolean;
+  enable_portfolio_optimizer: boolean;
   updated_at: string | null;
 }
 
@@ -518,6 +519,7 @@ function fromAppSettingsResponse(data: AppSettingsResponse): AppSettings {
     enableKalmanFilter: data.enable_kalman_filter,
     enableElliottWave: data.enable_elliott_wave,
     enableMarkovRegime: data.enable_markov_regime,
+    enablePortfolioOptimizer: data.enable_portfolio_optimizer ?? true,
   };
 }
 
@@ -537,6 +539,7 @@ export async function updateAppSettings(settings: AppSettings): Promise<AppSetti
       enable_kalman_filter: settings.enableKalmanFilter,
       enable_elliott_wave: settings.enableElliottWave,
       enable_markov_regime: settings.enableMarkovRegime,
+      enable_portfolio_optimizer: settings.enablePortfolioOptimizer,
     }),
   });
   if (!r.ok) {
@@ -621,6 +624,31 @@ export async function getPortfolioTrimSignals(
   }
   const data = await r.json();
   return data ?? { entries: [], computed_at: "" };
+}
+
+export async function optimizePortfolio(
+  portfolioId: string,
+  body: OptimizePortfolioRequest = {},
+  method: "GET" | "POST" = "GET",
+): Promise<AllocationResult> {
+  const params = new URLSearchParams();
+  if (method === "GET") {
+    if (body.objective) params.set("objective", body.objective);
+    if (body.min_pos != null) params.set("min_pos", String(body.min_pos));
+    if (body.max_pos != null) params.set("max_pos", String(body.max_pos));
+    if (body.use_verdict_views != null) params.set("use_verdict_views", String(body.use_verdict_views));
+    if (body.lookback_days != null) params.set("lookback_days", String(body.lookback_days));
+  }
+  const qs = params.toString();
+  const r = await fetchWithAuth(
+    `/portfolio/${portfolioId}/optimize${qs ? `?${qs}` : ""}`,
+    method === "POST" ? { method: "POST", body: JSON.stringify(body) } : undefined,
+  );
+  if (!r.ok) {
+    const errBody = await r.json().catch(() => null);
+    throw new Error(errBody?.detail ?? `Failed to optimize portfolio (${r.status})`);
+  }
+  return r.json();
 }
 
 export async function getPortfolioNews(portfolioId: string, days = 7): Promise<PortfolioNewsResponse> {

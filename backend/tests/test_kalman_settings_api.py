@@ -38,6 +38,7 @@ async def test_kalman_settings_defaults_and_admin_update():
         assert r1.json()["enable_kalman_filter"] is True
         assert r1.json()["enable_elliott_wave"] is True
         assert r1.json()["enable_markov_regime"] is True
+        assert r1.json()["enable_portfolio_optimizer"] is True
 
         r2 = await client.put(
             "/settings",
@@ -48,6 +49,7 @@ async def test_kalman_settings_defaults_and_admin_update():
                 "enable_kalman_filter": False,
                 "enable_elliott_wave": True,
                 "enable_markov_regime": False,
+                "enable_portfolio_optimizer": False,
             },
             headers=headers,
         )
@@ -58,6 +60,7 @@ async def test_kalman_settings_defaults_and_admin_update():
         assert r2.json()["enable_kalman_filter"] is False
         assert r2.json()["enable_elliott_wave"] is True
         assert r2.json()["enable_markov_regime"] is False
+        assert r2.json()["enable_portfolio_optimizer"] is False
 
         legacy = await client.get("/kalman/settings", headers=headers)
         assert legacy.status_code == 200
@@ -114,6 +117,7 @@ async def test_disabled_modules_return_unavailable_without_running_analysis():
                 "enable_kalman_filter": False,
                 "enable_elliott_wave": False,
                 "enable_markov_regime": False,
+                "enable_portfolio_optimizer": False,
             },
             headers=headers,
         )

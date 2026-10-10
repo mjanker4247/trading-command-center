@@ -41,6 +41,7 @@ AgentFloor gives you the same research infrastructure — powered by AI — runn
 
 - **Upload your portfolio** from any broker CSV (or add holdings manually)
 - **Get a live AI briefing every weekday morning** — health score, action items per holding, risk alerts, sector exposure
+- **Compare target vs current weights** — Markowitz / Black-Litterman allocation (research-only) on the Allocation tab
 - **Run a deep multi-agent analysis** on any stock or crypto ticker in minutes
 - **Set a watchlist on a schedule** — daily, weekdays, weekly — and let the agents monitor it automatically
 - **Track accuracy over time** — see how AI verdicts held up at +7d / +14d / +30d / +90d

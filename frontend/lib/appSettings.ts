@@ -7,6 +7,7 @@ export interface AppSettings {
   enableKalmanFilter: boolean;
   enableElliottWave: boolean;
   enableMarkovRegime: boolean;
+  enablePortfolioOptimizer: boolean;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
@@ -16,6 +17,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   enableKalmanFilter: true,
   enableElliottWave: true,
   enableMarkovRegime: true,
+  enablePortfolioOptimizer: true,
 };
 
 export const APP_SETTINGS_RANGES = {

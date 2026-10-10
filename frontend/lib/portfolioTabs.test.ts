@@ -16,14 +16,28 @@ describe("portfolioTabs", () => {
 
   it("splits primary and overflow tabs", () => {
     const groups = buildPortfolioTabGroups({ allCrypto: false });
-    expect(groups.primary.map((t) => t.id)).toEqual(["holdings", "insights", "earnings", "news"]);
+    expect(groups.primary.map((t) => t.id)).toEqual([
+      "holdings",
+      "insights",
+      "allocation",
+      "earnings",
+      "news",
+    ]);
     expect(groups.overflow.map((t) => t.id)).toEqual(["chat", "thesis"]);
   });
 
   it("hides earnings when portfolio is all crypto", () => {
     const groups = buildPortfolioTabGroups({ allCrypto: true });
-    expect(groups.overflow.some((t) => t.id === "earnings")).toBe(false);
+    expect(groups.primary.some((t) => t.id === "earnings")).toBe(false);
     expect(resolvePortfolioTab("earnings", { allCrypto: true })).toBe("holdings");
+  });
+
+  it("hides allocation when optimizer is disabled", () => {
+    const groups = buildPortfolioTabGroups({ allCrypto: false, optimizerEnabled: false });
+    expect(groups.primary.some((t) => t.id === "allocation")).toBe(false);
+    expect(resolvePortfolioTab("allocation", { allCrypto: false, optimizerEnabled: false })).toBe(
+      "holdings",
+    );
   });
 
   it("falls back to holdings for unknown tabs", () => {

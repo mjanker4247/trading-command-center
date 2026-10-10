@@ -35,6 +35,7 @@ function toDraft(settings: AppSettings): AppSettingsDraft {
     enableKalmanFilter: settings.enableKalmanFilter,
     enableElliottWave: settings.enableElliottWave,
     enableMarkovRegime: settings.enableMarkovRegime,
+    enablePortfolioOptimizer: settings.enablePortfolioOptimizer,
   };
 }
 
@@ -84,6 +85,7 @@ export function StrategySection({ isAdmin }: { isAdmin: boolean }) {
       enableKalmanFilter: values.enableKalmanFilter,
       enableElliottWave: values.enableElliottWave,
       enableMarkovRegime: values.enableMarkovRegime,
+      enablePortfolioOptimizer: values.enablePortfolioOptimizer,
     };
   }
 
@@ -100,6 +102,7 @@ export function StrategySection({ isAdmin }: { isAdmin: boolean }) {
       queryClient.invalidateQueries({ queryKey: ["ticker-wave"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-wave"] });
       queryClient.invalidateQueries({ queryKey: ["wave-analyze"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio-optimize"] });
     },
     onError: (err: Error) => {
       setStatus("error");
@@ -222,7 +225,7 @@ export function StrategySection({ isAdmin }: { isAdmin: boolean }) {
               Turn modules off to hide their charts, badges, and confirmation cards everywhere in the app.
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <ModuleToggle
               label="Kalman trend filter"
               checked={values.enableKalmanFilter}
@@ -247,6 +250,15 @@ export function StrategySection({ isAdmin }: { isAdmin: boolean }) {
               disabled={disabled}
               onChange={(checked) => {
                 setDraft({ ...values, enableMarkovRegime: checked });
+                setStatus("idle");
+              }}
+            />
+            <ModuleToggle
+              label="Portfolio allocation"
+              checked={values.enablePortfolioOptimizer}
+              disabled={disabled}
+              onChange={(checked) => {
+                setDraft({ ...values, enablePortfolioOptimizer: checked });
                 setStatus("idle");
               }}
             />

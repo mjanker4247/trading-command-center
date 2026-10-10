@@ -72,6 +72,7 @@ docker compose -f docker-compose.dev.yml up db
 # Terminal 2 — API
 cd backend
 uv sync --group dev --extra markov-hmm
+# pyportfolioopt (portfolio Allocation tab) is a core backend dep — included by uv sync
 DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
   uv run alembic upgrade head
 ../scripts/dev-stack.sh seed-user

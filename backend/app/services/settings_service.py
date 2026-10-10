@@ -40,6 +40,7 @@ def _settings_to_dict(settings: AppSettings) -> dict:
         "enable_kalman_filter": settings.enable_kalman_filter,
         "enable_elliott_wave": settings.enable_elliott_wave,
         "enable_markov_regime": settings.enable_markov_regime,
+        "enable_portfolio_optimizer": settings.enable_portfolio_optimizer,
         "updated_at": settings.updated_at.isoformat() if settings.updated_at else None,
     }
 
@@ -56,6 +57,7 @@ async def get_app_settings(db: AsyncSession) -> dict:
             enable_kalman_filter=True,
             enable_elliott_wave=True,
             enable_markov_regime=True,
+            enable_portfolio_optimizer=True,
         )
         db.add(settings)
         await db.commit()
@@ -71,6 +73,7 @@ async def update_app_settings(
     enable_kalman_filter: bool,
     enable_elliott_wave: bool,
     enable_markov_regime: bool,
+    enable_portfolio_optimizer: bool = True,
 ) -> dict:
     """Persist system-wide settings after server-side validation."""
     r_value = _as_bounded_float(
@@ -98,6 +101,7 @@ async def update_app_settings(
     settings.enable_kalman_filter = enable_kalman_filter
     settings.enable_elliott_wave = enable_elliott_wave
     settings.enable_markov_regime = enable_markov_regime
+    settings.enable_portfolio_optimizer = enable_portfolio_optimizer
     await db.commit()
     await db.refresh(settings)
     return _settings_to_dict(settings)

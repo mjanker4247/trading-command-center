@@ -47,4 +47,5 @@ export interface AppSettingsDraft {
   enableKalmanFilter: boolean;
   enableElliottWave: boolean;
   enableMarkovRegime: boolean;
+  enablePortfolioOptimizer: boolean;
 }
