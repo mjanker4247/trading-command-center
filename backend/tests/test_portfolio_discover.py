@@ -207,6 +207,7 @@ async def test_discover_force_refresh_bypasses_cache():
     import app.routers.portfolio as portfolio_module
 
     portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
     llm_calls = {"n": 0}
 
     async def _llm(*_a, **_k):
@@ -239,6 +240,69 @@ async def test_discover_force_refresh_bypasses_cache():
         assert r3.status_code == 200
         assert r3.json()["cached"] is False
         assert llm_calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_cached_result_requires_portfolio_owner():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    body = {"llm_provider": "openai", "llm_model": "gpt-4o-mini"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        other_token = await _register_and_token(c, "discover-other@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.services.portfolio_insight_runner._call_llm", new=AsyncMock(return_value=MOCK_RECOMMENDATIONS)),
+            _market_patches(),
+        ):
+            owner_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+            other_response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {other_token}"},
+            )
+
+    assert owner_response.status_code == 200
+    assert owner_response.json()["recommendations"]
+    assert other_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_discover_in_flight_clears_after_candidate_pipeline_error():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as c:
+        token = await _register_and_token(c, "discover-pipeline-error@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        ):
+            response = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+    assert response.status_code == 500
+    assert portfolio_module._discover_in_flight == set()
 
 
 @pytest.mark.asyncio
