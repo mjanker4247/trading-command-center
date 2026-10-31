@@ -1,5 +1,8 @@
 """Unit tests for trading_agent_runner / provider runtime wiring."""
 
+import asyncio
+import os
+
 import pytest
 
 from app.services.tauric_run_adapter import (
@@ -93,6 +96,79 @@ def test_resolve_provider_runtime_empty_without_key():
     runtime = resolve_provider_runtime("openai", None)
     assert runtime.env_patch == {}
     assert resolve_provider_runtime("openai", "").env_patch == {}
+
+
+@pytest.mark.asyncio
+async def test_env_patch_serializes_unpatched_work(monkeypatch):
+    """Unpatched runs must not observe another run's temporary process env."""
+    from app.services import trading_agent_runner as runner
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    observed_key: str | None = "not-read"
+
+    async def patched_work() -> str:
+        entered.set()
+        assert os.environ.get("OPENAI_API_KEY") == "secret-a"
+        await release.wait()
+        return "patched"
+
+    async def unpatched_work() -> str:
+        nonlocal observed_key
+        observed_key = os.environ.get("OPENAI_API_KEY")
+        return "unpatched"
+
+    patched_task = asyncio.create_task(
+        runner._with_env_patch({"OPENAI_API_KEY": "secret-a"}, patched_work)
+    )
+    await entered.wait()
+    unpatched_task = asyncio.create_task(runner._with_env_patch({}, unpatched_work))
+    await asyncio.sleep(0)
+
+    assert not unpatched_task.done()
+
+    release.set()
+    assert await patched_task == "patched"
+    assert await unpatched_task == "unpatched"
+    assert observed_key is None
+    assert os.environ.get("OPENAI_API_KEY") is None
+
+
+@pytest.mark.asyncio
+async def test_env_patch_restores_original_after_queued_patch(monkeypatch):
+    """Queued patched runs capture the original env after acquiring the lock."""
+    from app.services import trading_agent_runner as runner
+
+    monkeypatch.setenv("OPENAI_API_KEY", "original")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def first_work() -> str:
+        entered.set()
+        assert os.environ.get("OPENAI_API_KEY") == "secret-a"
+        await release.wait()
+        return "first"
+
+    async def second_work() -> str:
+        assert os.environ.get("OPENAI_API_KEY") == "secret-b"
+        return "second"
+
+    first_task = asyncio.create_task(
+        runner._with_env_patch({"OPENAI_API_KEY": "secret-a"}, first_work)
+    )
+    await entered.wait()
+    second_task = asyncio.create_task(
+        runner._with_env_patch({"OPENAI_API_KEY": "secret-b"}, second_work)
+    )
+    await asyncio.sleep(0)
+
+    assert not second_task.done()
+
+    release.set()
+    assert await first_task == "first"
+    assert await second_task == "second"
+    assert os.environ.get("OPENAI_API_KEY") == "original"
 
 
 @pytest.mark.asyncio
