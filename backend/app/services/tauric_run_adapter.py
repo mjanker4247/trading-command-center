@@ -1,4 +1,4 @@
-"""Map AgentFloor run config ↔ TauricResearch TradingAgents 0.6 API.
+"""Map AgentFloor run config ↔ TauricResearch TradingAgents 0.7 API.
 
 Preserves AgentFloor's 3-tier verdict / Report fields while the package returns
 a 5-tier rating string and markdown state dict.
@@ -33,7 +33,7 @@ NODE_NAME_ALIASES: dict[str, str] = {
 }
 
 # Hosted OpenAI-compatible endpoint used when the vendored package has no native
-# ``ionos`` registry entry (upstream Tauric 0.6); forks that register ``ionos``
+# ``ionos`` registry entry (upstream Tauric 0.7); forks that register ``ionos``
 # keep the native provider + IONOS_API_KEY path.
 IONOS_OPENAI_BASE_URL = "https://openai.inference.de-txl.ionos.com/v1"
 
@@ -97,7 +97,7 @@ def map_provider(agentfloor_provider: str) -> str:
     provider = (agentfloor_provider or "openai").lower()
     if provider in {"vllm", "litellm"}:
         return "openai_compatible"
-    # Upstream vendored TradingAgents 0.6 has no ``ionos`` registry entry;
+    # Upstream vendored TradingAgents 0.7 has no ``ionos`` registry entry;
     # route through the generic OpenAI-compatible client with IONOS base URL.
     if provider == "ionos" and not _tradingagents_knows_openai_compatible("ionos"):
         return "openai_compatible"

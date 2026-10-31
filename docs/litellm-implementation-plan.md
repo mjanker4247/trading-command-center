@@ -31,7 +31,7 @@ Status: initial implementation is on `feature/litellm-local-provider`.
    - Normalize stored URLs with `rstrip("/")`; append `/v1` only when building OpenAI-compatible API URLs.
 
 3. Add LiteLLM to TradingAgents run execution. Done.
-   - Map `litellm` to TradingAgents provider `openai_compatible` (TauricResearch 0.6 path dep).
+   - Map `litellm` to TradingAgents provider `openai_compatible` (TauricResearch 0.7 path dep).
    - Patch `OPENAI_BASE_URL` to `{stored_url}/v1` and `OPENAI_API_KEY` to a non-empty placeholder unless a future LiteLLM authentication setting is added.
    - Include `litellm` in the local serialization set used by batch runs.
    - Confirm TauricResearch's native OpenAI-compatible client skips Responses API / reasoning_effort for LiteLLM (and Groq/IONOS/vLLM) base URLs.
