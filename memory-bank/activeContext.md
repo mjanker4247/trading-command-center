@@ -2,12 +2,12 @@
 
 ## Focus
 
-Vendor TradingAgents **v0.7.1** — reflection done.
+None — ready for next task.
 
-## Mode
+## Last completed
 
-REFLECT complete. **Next: `/archive`.**
+TradingAgents vendor bump to **v0.7.1** (archived).
 
-## Pending outside workflow
+## Next
 
-- Uncommitted: `CLAUDE.md` (+ Memory Bank files if tracked)
+`/van <task description>`

@@ -42,7 +42,11 @@ Pinned `vendor/TradingAgents` from v0.6.0 to upstream `v0.7.1`, refreshed `backe
 - If ChatGPT plan runs become a product ask: design interactive/browser auth separately; do not map it to ApiKey storage.
 - Optional later: one live LLM smoke run after deploy (not done here).
 - Optional later: rebase personal `TradingAgents-TauricResearch` fork onto 0.7.1 (out of band).
-- Commit pending `CLAUDE.md` + decide whether Memory Bank markdown should be tracked.
+
+## Post-reflect update (2026-10-31)
+
+- `CLAUDE.md` known-deltas + Memory Bank markdown committed and pushed (`90b7c25` on `main`).
+- Tracking decision: Memory Bank task/reflection files **are** in git for this project.
 
 ## Time Estimation Accuracy
 
