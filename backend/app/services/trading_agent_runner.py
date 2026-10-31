@@ -1,7 +1,9 @@
 import asyncio
 import os
+from collections.abc import Awaitable, Callable
 from queue import Queue as SyncQueue
 from datetime import datetime, timezone
+from typing import TypeVar
 
 from app.services.tauric_live_progress import LiveProgressTracker
 from app.services.tauric_run_adapter import (
@@ -16,6 +18,27 @@ from app.services.tauric_run_adapter import (
 
 # Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
 _env_fallback_lock = asyncio.Lock()
+_T = TypeVar("_T")
+
+
+async def _with_env_patch(
+    env_patch: dict[str, str],
+    work: Callable[[], Awaitable[_T]],
+) -> _T:
+    """Run work while temporary env vars are active, isolated from other runs."""
+    async with _env_fallback_lock:
+        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
+        for k, v in env_patch.items():
+            os.environ[k] = v
+        try:
+            return await work()
+        finally:
+            for k in env_patch:
+                prev = prev_env[k]
+                if prev is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = prev
 
 
 async def _get_stored_key(provider: str) -> str | None:
@@ -187,36 +210,25 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         # LLM key from resolve_provider_runtime; data vendors from Settings (FRED, etc.).
         env_patch = {**runtime.env_patch, **await _data_vendor_env_patch()}
-        needs_lock = bool(env_patch)
-        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
+        async def _run_with_runtime_env() -> tuple[dict, str]:
+            graph = TradingAgentsGraph(
+                selected_analysts=analysts,
+                config=ta_config,
+            )
+            from app.config import settings as _settings
+            return await asyncio.wait_for(
+                asyncio.to_thread(
+                    _run_graph_streaming,
+                    graph,
+                    ticker=ticker,
+                    analysis_date=config["analysis_date"],
+                    asset_type=asset_type,
+                    emit=_emit,
+                ),
+                timeout=_settings.run_timeout_seconds,
+            )
 
-        async with (_env_fallback_lock if needs_lock else asyncio.Lock()):
-            for k, v in env_patch.items():
-                os.environ[k] = v
-            try:
-                graph = TradingAgentsGraph(
-                    selected_analysts=analysts,
-                    config=ta_config,
-                )
-                from app.config import settings as _settings
-                final_state, rating = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        _run_graph_streaming,
-                        graph,
-                        ticker=ticker,
-                        analysis_date=config["analysis_date"],
-                        asset_type=asset_type,
-                        emit=_emit,
-                    ),
-                    timeout=_settings.run_timeout_seconds,
-                )
-            finally:
-                for k in env_patch:
-                    prev = prev_env[k]
-                    if prev is None:
-                        os.environ.pop(k, None)
-                    else:
-                        os.environ[k] = prev
+        final_state, rating = await _with_env_patch(env_patch, _run_with_runtime_env)
 
         await async_q.put(None)  # sentinel
         await process_task
@@ -284,7 +296,9 @@ async def execute_run(run_id: str, config: dict) -> None:
         await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
 
     except Exception as exc:
-        import traceback, logging
+        import logging
+        import traceback
+
         logging.getLogger(__name__).error("Run %s failed: %s", run_id, traceback.format_exc())
         drain_task.cancel()
         process_task.cancel()
