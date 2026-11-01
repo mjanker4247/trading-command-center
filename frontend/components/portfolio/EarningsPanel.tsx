@@ -9,8 +9,10 @@ import {
 import { ALERT_BANNER_CLASS, LINK_INLINE_CLASS } from "@/lib/uiClasses";
 import { finnhubUnavailableMessage } from "@/lib/finnhubMessages";
 import { TickerLabel } from "@/components/ui/TickerLabel";
+import { PricedInBadge } from "@/components/portfolio/PricedInBadge";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { useDateFormat } from "@/lib/useDateFormat";
+import { resolvePricedInForEarningsEvent } from "@/lib/pricedIn";
 import type { PortfolioHolding } from "@/lib/types";
 
 interface Props {
@@ -108,6 +110,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
       <p className="text-xs text-muted">
         Upcoming earnings for your holdings (next 60 days). Rows highlighted in{" "}
         <span className="text-yellow-400">yellow</span> have no recent AI analysis — re-run before earnings if you rely on verdicts.
+        {" "}Priced-in % is a mock research estimate (hover for metrics) — not a trade signal.
       </p>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
@@ -116,6 +119,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
               <th className="text-left px-4 py-3">Ticker</th>
               <th className="text-left px-4 py-3 min-w-[6.75rem] whitespace-nowrap">Date</th>
               <th className="text-right px-4 py-3">Days Away</th>
+              <th className="text-right px-4 py-3 whitespace-nowrap">Priced-in</th>
               <th className="hidden lg:table-cell text-right px-4 py-3">EPS Est.</th>
               <th className="hidden lg:table-cell text-right px-4 py-3">EPS Actual</th>
               <th className="hidden lg:table-cell text-right px-4 py-3">Rev. Est. ($B)</th>
@@ -126,6 +130,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
             {events.map((e, i) => {
               const days = daysUntil(e.date);
               const isStale = staleSet.has(e.ticker);
+              const pricedIn = resolvePricedInForEarningsEvent(e.ticker, e.date);
               return (
                 <tr
                   key={`${e.ticker}-${e.date}-${i}`}
@@ -140,6 +145,9 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
                   <td className={`px-4 py-2.5 text-xs whitespace-nowrap ${isStale ? "text-yellow-400" : ""}`}>{formatDate(e.date)}</td>
                   <td className={`px-4 py-2.5 text-right text-xs ${days <= 7 ? "text-orange-400" : ""}`}>
                     {days}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <PricedInBadge status={pricedIn} />
                   </td>
                   <td className="hidden lg:table-cell px-4 py-2.5 text-right text-xs font-mono">
                     {fmtNum(e.eps_estimate)}

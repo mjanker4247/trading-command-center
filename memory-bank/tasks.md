@@ -1,13 +1,27 @@
 # Tasks
 
-## Status
+## Active Task
 
-No active task. Last completed: **vendor-ta-0.7.1-integrate** (archived 2026-10-31).
+**ID:** priced-in-event-badge  
+**Title:** Priced-in visual indicator for upcoming market events  
+**Created:** 2026-11-01  
+**Status:** REFLECT complete → next `/archive`  
+**Complexity:** Level 2 (Simple Enhancement)
 
-## Archive
+### Goal
 
-`memory-bank/archive/archive-vendor-ta-0.7.1-integrate.md`
+Compact “priced-in” badge on portfolio earnings rows with mock calc separated from render.
 
-## Next
+### Reflection
 
-Start a new task with `/van <description>`.
+See `memory-bank/reflection/reflection-priced-in-event-badge.md`.
+
+### Open follow-ups (not blocking archive)
+
+- [ ] Commit / push frontend feature files
+- [ ] Optional: TickerDrawer mount
+- [ ] Optional: live priced-in API behind same resolve seam
+
+### Next Mode
+
+**`/archive`**

@@ -1,11 +1,15 @@
 # Progress
 
-## Completed
+## priced-in-event-badge
 
-| Task ID | Archive |
+| Phase | Status |
 |---|---|
-| vendor-ta-0.7.1-integrate | `memory-bank/archive/archive-vendor-ta-0.7.1-integrate.md` |
+| VAN | Complete |
+| PLAN | Complete |
+| BUILD | Complete |
+| REFLECT | Complete |
+| ARCHIVE | Pending |
 
-## Active
+## Reflection
 
-None.
+`memory-bank/reflection/reflection-priced-in-event-badge.md`

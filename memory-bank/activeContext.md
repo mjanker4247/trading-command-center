@@ -2,12 +2,16 @@
 
 ## Focus
 
-None — ready for next task.
+Priced-in earnings badge (mock v1) — reflect done.
 
-## Last completed
+## Mode
 
-TradingAgents vendor bump to **v0.7.1** (archived).
+REFLECT complete. **Next: `/archive`.**
 
-## Next
+## Uncommitted product diffs
 
-`/van <task description>`
+- `frontend/lib/pricedIn.ts`
+- `frontend/lib/pricedIn.test.ts`
+- `frontend/components/portfolio/PricedInBadge.tsx`
+- `frontend/components/portfolio/EarningsPanel.tsx`
+- Memory Bank task/progress/reflection updates
