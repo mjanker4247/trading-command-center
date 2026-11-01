@@ -36,4 +36,5 @@ class Run(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    report = relationship("Report", uselist=False, lazy="noload")
+    # selectin: avoid deprecated noload (SA 2.1) and async MissingGreenlet on access
+    report = relationship("Report", uselist=False, lazy="selectin")
