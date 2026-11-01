@@ -110,7 +110,7 @@ export function EarningsPanel({ portfolioId, holdings, priceUnavailableReason }:
       <p className="text-xs text-muted">
         Upcoming earnings for your holdings (next 60 days). Rows highlighted in{" "}
         <span className="text-yellow-400">yellow</span> have no recent AI analysis — re-run before earnings if you rely on verdicts.
-        {" "}Priced-in % is a mock research estimate (hover for metrics) — not a trade signal.
+        {" "}Priced-in % combines mock IV percentile, implied vs historical move, skew, and consensus gap (hover for metrics) — not a trade signal.
       </p>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">

@@ -2,6 +2,7 @@
 
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
 import { KalmanConfirmation } from "@/components/runs/KalmanConfirmation";
+import { PricedInConfirmation } from "@/components/runs/PricedInConfirmation";
 import { WaveConfirmation } from "@/components/wave/WaveConfirmation";
 import type { Report, Run } from "@/lib/types";
 
@@ -29,15 +30,15 @@ export function ConfluenceStrip({
     strategy.kalmanEnabled,
     strategy.waveEnabled,
   ].filter(Boolean).length;
-
-  if (enabledCount === 0) return null;
+  // Event priced-in always accompanies the run date (not a strategy toggle).
+  const signalCount = enabledCount + 1;
 
   return (
     <div className="rounded-lg border border-border bg-surface">
       <div className="px-3 py-2.5 flex items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-muted">
         <span>Signal confluence</span>
         <span className="normal-case tracking-normal text-[10px] text-subtle">
-          {enabledCount} signal{enabledCount === 1 ? "" : "s"}
+          {signalCount} signal{signalCount === 1 ? "" : "s"}
         </span>
       </div>
       <div className="space-y-2 border-t border-input-border px-3 pb-3 pt-2">
@@ -68,6 +69,11 @@ export function ConfluenceStrip({
             variant="compact"
           />
         )}
+        <PricedInConfirmation
+          ticker={run.ticker}
+          analysisDate={run.analysis_date}
+          variant="compact"
+        />
       </div>
     </div>
   );
