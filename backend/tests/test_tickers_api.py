@@ -274,3 +274,57 @@ async def test_get_ticker_logo_uses_website_favicon_fallback(tmp_path):
     assert kwargs["logo_url"] is None
     assert kwargs["website"] == "https://www.rheinmetall.com"
 
+
+
+@pytest.mark.asyncio
+async def test_get_ticker_valuation_requires_auth():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/tickers/AAPL/valuation")
+        assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_ticker_valuation_empty_when_insufficient():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "val_empty@test.com")
+        with patch(
+            "app.routers.tickers.get_valuation_corridor",
+            new=AsyncMock(return_value=None),
+        ):
+            r = await client.get(
+                "/tickers/AAPL/valuation",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["ticker"] == "AAPL"
+        assert data["unavailable_reason"] == "insufficient_history"
+
+
+@pytest.mark.asyncio
+async def test_get_ticker_valuation_happy_path():
+    payload = {
+        "ticker": "AAPL",
+        "source": "yfinance",
+        "lookback_years": 5,
+        "available_lookbacks": [3, 5],
+        "summary": {"price": 190.0, "currency": "USD"},
+        "series": {"price": [{"date": "2024-01-02", "value": 190.0}], "fair_eps": []},
+        "corridors": {"eps": {"lookback_years": 5, "points": []}},
+        "estimates": {"source": "yfinance"},
+        "pricedIn": {"growth": {"consensusCagr": 0.1}},
+    }
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        token = await _token(client, "val_ok@test.com")
+        with patch(
+            "app.routers.tickers.get_valuation_corridor",
+            new=AsyncMock(return_value=payload),
+        ):
+            r = await client.get(
+                "/tickers/AAPL/valuation?lookback=5",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["source"] == "yfinance"
+        assert data["summary"]["price"] == 190.0

@@ -145,13 +145,6 @@ export function WaveConfirmation({
             )}
           </p>
         )}
-        <ChartQuickLook
-          label="Elliott / Fibonacci chart"
-          maxWidth={960}
-          fillContent
-          thumbnail={waveChartThumbnail}
-          preview={() => <WaveFullChartPanel ticker={ticker} fill />}
-        />
       </div>
     );
 

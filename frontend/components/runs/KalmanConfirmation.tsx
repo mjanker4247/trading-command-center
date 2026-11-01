@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getTickerKalman } from "@/lib/api";
 import type { KalmanData } from "@/lib/types";
 import { fmtMoney, resolveQuoteCurrency } from "@/lib/currency";
-import { ChartQuickLook } from "@/components/ui/ChartQuickLook";
 import { KalmanChart } from "@/components/runs/confluence/KalmanChart";
 
 interface Props {
@@ -57,22 +56,6 @@ export function KalmanConfirmation({
   const agreementLabel = isConflict ? "Conflicts" : isNeutral ? "Neutral" : "Confirms";
   const agreementClass = isConflict ? "text-amber-400" : isNeutral ? "text-muted" : "text-green-400";
 
-  const chartThumbnail = (
-    <div className="rounded-md border border-input-border/60 bg-page px-2 py-1.5">
-      <KalmanChart chart={kalman.chart} currency={currency} height={48} showLegend={false} />
-    </div>
-  );
-
-  const chartPreviewExpanded = (
-    <KalmanChart
-      chart={kalman.chart}
-      currency={currency}
-      width={720}
-      height={180}
-      expanded
-    />
-  );
-
   const chartPreviewInline = (
     <KalmanChart chart={kalman.chart} currency={currency} width={420} height={90} />
   );
@@ -93,12 +76,6 @@ export function KalmanConfirmation({
           <span>{fmtMoney(kalman.latest_price, currency)}</span>
           <span>Kalman {fmtMoney(kalman.kalman_price, currency)}</span>
         </div>
-        <ChartQuickLook
-          label="Kalman price chart"
-          maxWidth={760}
-          thumbnail={chartThumbnail}
-          preview={chartPreviewExpanded}
-        />
       </div>
     );
 

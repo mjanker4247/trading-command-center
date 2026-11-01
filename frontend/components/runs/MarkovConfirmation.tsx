@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTickerRegime } from "@/lib/api";
 import type { RegimeData } from "@/lib/types";
-import { ChartQuickLook } from "@/components/ui/ChartQuickLook";
 import {
   MarkovStationaryBars,
   MarkovTransitionMatrix,
@@ -125,16 +124,6 @@ export function MarkovConfirmation({ ticker, verdict, variant = "default" }: Pro
             <span>Sharpe {regime.walk_forward.sharpe?.toFixed(2) ?? "—"}</span>
             <span>Persistence {(regime.persistence * 100).toFixed(0)}%</span>
           </div>
-          <ChartQuickLook
-            label="Markov regime charts"
-            maxWidth={680}
-            thumbnail={
-              <div className="rounded-md border border-input-border/60 bg-page px-2 py-1.5">
-                <MarkovGraphicsPanel regime={regime} compact />
-              </div>
-            }
-            preview={<MarkovGraphicsPanel regime={regime} expanded />}
-          />
         </div>
       </details>
     );

@@ -90,7 +90,7 @@ Local Postgres from `docker compose -f docker-compose.dev.yml up db` is mapped t
 | `/regime` | `regime.py` | Markov regime detection — `GET /regime/{ticker}` returns current regime (Bull/Sideways/Bear), signal, Sharpe, max drawdown, and 3×3 transition matrix |
 | (none) | `wave.py` | Elliott Wave + Fibonacci analysis — `GET /wave/{ticker}` (compact summary), `POST /wave/{ticker}/analyze` (full chart payload), `GET /portfolio/{id}/wave` (batch for all holdings) |
 | (none) | `market.py` | Market-wide data — `GET /market/trending`, `GET /market/movers`. Sources Yahoo Finance trending list + Finnhub quotes. Requires Finnhub key; returns empty gracefully without one. |
-| (none) | `tickers.py` | Batch ticker metadata — `GET /tickers/metadata?symbols=AAPL,MSFT`. Returns company name, sector, logo, exchange, market cap, etc. from Finnhub with a DB cache (`ticker_metadata` table, TTL-based). Up to 50 symbols per request. |
+| (none) | `tickers.py` | Batch ticker metadata — `GET /tickers/metadata?symbols=AAPL,MSFT`. Returns company name, sector, logo, exchange, market cap, etc. from Finnhub with a DB cache (`ticker_metadata` table, TTL-based). Up to 50 symbols per request. Also `GET /tickers/{ticker}/valuation` — yfinance-first fair-value corridors (EPS/OCF/FCF median multiples), research-only. |
 
 CORS is restricted to `settings.frontend_url`.
 
@@ -146,6 +146,7 @@ CORS is restricted to `settings.frontend_url`.
 - `/portfolio` — portfolio manager with primary tabs: **Holdings** (CSV upload, live prices via Finnhub, unrealized P&L, inline row editing, CSV export; stats bar with best/worst performer and stale count; per-row "Watch" button to add to watchlist; expandable ▸ fundamentals strip per holding), **AI Insights** (generate / view AI-powered portfolio briefings — health score, action items, risk alerts, sector exposure), **Allocation** (Markowitz / Black-Litterman target weights vs current holdings via PyPortfolioOpt — research-only), **Earnings** (upcoming earnings calendar for portfolio tickers, 60-day window), and **News** (merged company news feed). Multiple portfolios per user; each portfolio holds versioned snapshots.
 - `/settings` — API key management (Finnhub for portfolio prices + outcome tracking; LLM providers including IONOS) + team admin (admin-only). Invite URL is shown inline when SMTP is not configured.
 - `/wave/[ticker]` — Elliott Wave + Fibonacci analysis page for a single ticker. Renders the `WavePanel` Plotly chart, `WaveConfirmation` badge, scenario/trade-region panels, and a projection overlay.
+- `/tickers/[ticker]/valuation-technicals` — Valuation & Technical Confluence (fair-value corridors via recharts, price technicals via lightweight-charts, forecast CAGR slider, dual event/growth priced-in cards). Deep-linked from Signal Confluence on `/runs/[id]` (`?from=run&runId=`). Research estimates only — not trade advice.
 
 **Export (`lib/export/`):** Three client-side utilities used by `DownloadMenu`:
 - `buildMarkdown(run, report)` — assembles a `.md` string covering all report fields (verdict, analyst reports, debate, plan, final decision). Missing fields are silently omitted.

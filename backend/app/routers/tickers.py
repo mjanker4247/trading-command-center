@@ -1,6 +1,6 @@
 """Batch ticker metadata (company name, sector, logo, etc.)."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -18,6 +18,7 @@ from app.services.ticker_metadata_service import (
     metadata_to_dict,
     normalize_ticker,
 )
+from app.services.valuation_corridor_service import get_valuation_corridor
 
 router = APIRouter()
 
@@ -83,6 +84,31 @@ _LOGO_HEADERS = {
     "Cache-Control": _LOGO_CACHE_CONTROL,
     "X-Content-Type-Options": "nosniff",
 }
+
+
+@router.get("/tickers/{symbol}/valuation")
+async def get_ticker_valuation(
+    symbol: str,
+    lookback: int = Query(5, ge=3, le=15, description="Median multiple lookback in years"),
+    _user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Fair-value corridor + summary for a ticker (yfinance-first research estimate)."""
+    ticker = normalize_ticker(symbol)
+    payload = await get_valuation_corridor(ticker, lookback=lookback)
+    if payload is None:
+        return {
+            "ticker": ticker,
+            "source": "none",
+            "lookback_years": lookback,
+            "available_lookbacks": [],
+            "summary": {},
+            "series": {},
+            "corridors": {},
+            "estimates": {"source": "none"},
+            "pricedIn": {"growth": None},
+            "unavailable_reason": "insufficient_history",
+        }
+    return payload
 
 
 @router.get("/tickers/{symbol}/logo")

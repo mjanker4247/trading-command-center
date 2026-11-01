@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { MarkovConfirmation } from "@/components/runs/MarkovConfirmation";
 import { KalmanConfirmation } from "@/components/runs/KalmanConfirmation";
 import { PricedInConfirmation } from "@/components/runs/PricedInConfirmation";
@@ -32,6 +33,7 @@ export function ConfluenceStrip({
   ].filter(Boolean).length;
   // Event priced-in always accompanies the run date (not a strategy toggle).
   const signalCount = enabledCount + 1;
+  const valuationHref = `/tickers/${encodeURIComponent(run.ticker)}/valuation-technicals?from=run&runId=${encodeURIComponent(run.id)}`;
 
   return (
     <div className="rounded-lg border border-border bg-surface">
@@ -74,6 +76,14 @@ export function ConfluenceStrip({
           analysisDate={run.analysis_date}
           variant="compact"
         />
+        <div className="pt-1">
+          <Link
+            href={valuationHref}
+            className="inline-flex text-[11px] font-medium text-link hover:text-link-hover hover:underline"
+          >
+            Open Valuation &amp; Technicals →
+          </Link>
+        </div>
       </div>
     </div>
   );

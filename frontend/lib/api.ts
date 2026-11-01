@@ -3,6 +3,7 @@ import type { Run, AgentEventPayload, CreateRunRequest, ApiKeyStatus, User, Repo
 import type { AnalyzeResponse } from "./wave/types";
 import type { ResponseLanguage } from "./responseLanguage";
 import type { AppSettings } from "./appSettings";
+import type { ValuationPayload } from "./valuationTypes";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -226,6 +227,18 @@ export async function getSmtpStatus(): Promise<{ configured: boolean; from_addre
 export async function getTickerSnapshot(ticker: string): Promise<TickerSnapshot> {
   const r = await fetchWithAuth(`/ticker/${encodeURIComponent(ticker)}/snapshot`);
   if (!r.ok) throw new Error("Failed to fetch ticker snapshot");
+  return r.json();
+}
+
+export async function getTickerValuation(
+  ticker: string,
+  lookback = 5,
+): Promise<ValuationPayload> {
+  const qs = new URLSearchParams({ lookback: String(lookback) });
+  const r = await fetchWithAuth(
+    `/tickers/${encodeURIComponent(ticker)}/valuation?${qs.toString()}`,
+  );
+  if (!r.ok) throw new Error("Failed to fetch valuation");
   return r.json();
 }
 
