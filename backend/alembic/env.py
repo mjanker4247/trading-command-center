@@ -30,7 +30,9 @@ def _load_env_files() -> None:
 
 
 def _normalize_database_url(url: str) -> str:
-    return url.replace("+asyncpg", "")
+    from app.database import to_sync_psycopg2_url
+
+    return to_sync_psycopg2_url(url)
 
 
 def _resolve_database_url(config_ini_url: str) -> str:

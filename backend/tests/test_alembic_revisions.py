@@ -4,6 +4,30 @@ import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
+from app.database import to_sync_psycopg2_url
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (
+            "postgresql+asyncpg://agentfloor:agentfloor@db:5432/agentfloor",
+            "postgresql+psycopg2://agentfloor:agentfloor@db:5432/agentfloor",
+        ),
+        (
+            "postgresql://agentfloor:agentfloor@localhost:5433/agentfloor",
+            "postgresql+psycopg2://agentfloor:agentfloor@localhost:5433/agentfloor",
+        ),
+        (
+            "postgresql+psycopg2://agentfloor:agentfloor@db:5432/agentfloor",
+            "postgresql+psycopg2://agentfloor:agentfloor@db:5432/agentfloor",
+        ),
+    ],
+)
+def test_to_sync_psycopg2_url_pins_psycopg2(raw: str, expected: str):
+    assert to_sync_psycopg2_url(raw) == expected
+
 
 @pytest.mark.unit
 def test_published_watchlist_timezone_revisions_remain_resolvable():
