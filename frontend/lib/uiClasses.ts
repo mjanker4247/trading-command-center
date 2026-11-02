@@ -81,7 +81,9 @@ export const LANGUAGE_FLAG_BADGE =
 export const ANALYST_TAB_ACTIVE_CLASS =
   "border-b-2 border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400";
 
-export function signalToneBadgeClass(tone: "success" | "warning" | "danger" | "neutral"): string {
+export function signalToneBadgeClass(
+  tone: "success" | "warning" | "danger" | "info" | "neutral",
+): string {
   switch (tone) {
     case "success":
       return "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30";
@@ -89,6 +91,8 @@ export function signalToneBadgeClass(tone: "success" | "warning" | "danger" | "n
       return "text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30";
     case "danger":
       return "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30";
+    case "info":
+      return "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-950/50";
     default:
       return "text-muted bg-muted-surface";
   }

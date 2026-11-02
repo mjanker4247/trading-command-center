@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { PricedInBadge } from "@/components/portfolio/PricedInBadge";
 import {
-  levelLabel,
   PRICED_IN_BACKGROUND,
-  resolvePricedInForEarningsEvent,
-  type PricedInStatus,
+  resolveEarningsPricedIn,
+  statusLabel,
+  statusTone,
+  type PricedInAssessment,
 } from "@/lib/pricedIn";
 import { signalToneBadgeClass } from "@/lib/uiClasses";
 
@@ -16,10 +17,11 @@ interface Props {
   variant?: "default" | "compact";
 }
 
-function toneBorder(status: PricedInStatus | null): string {
-  if (!status) return "border-input-border";
-  if (status.level === "full") return "border-green-500/40";
-  if (status.level === "partial") return "border-amber-500/40";
+function toneBorder(assessment: PricedInAssessment | null): string {
+  if (!assessment) return "border-input-border";
+  if (assessment.status === "fully") return "border-green-500/40";
+  if (assessment.status === "partially") return "border-amber-500/40";
+  if (assessment.status === "unpriced") return "border-blue-500/40";
   return "border-input-border";
 }
 
@@ -32,28 +34,34 @@ function MetricRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PricedInDetails({ status }: { status: PricedInStatus }) {
-  const m = status.metrics;
+function PricedInDetails({ assessment }: { assessment: PricedInAssessment }) {
+  const m = assessment.metrics;
   return (
     <div className="space-y-2">
       <p className="text-[10px] leading-relaxed text-muted">{PRICED_IN_BACKGROUND}</p>
       <div className="rounded-md border border-input-border/60 bg-page px-2.5 py-2 space-y-1">
-        <MetricRow label="IV percentile" value={`${m.ivPercentile}`} />
-        <MetricRow label="Implied move (ATM-style)" value={`${m.impliedMovePct}%`} />
-        <MetricRow label="Hist. post-event move" value={`${m.historicalMovePct}%`} />
-        <MetricRow label="Implied / hist. ratio" value={m.moveRatio.toFixed(2)} />
-        <MetricRow label="Consensus target gap" value={`${m.consensusTargetDistancePct}%`} />
-        <MetricRow label="Options skew" value={m.optionsSkew} />
+        {m.impliedMovePct != null && (
+          <MetricRow label="Implied move (ATM×0.85)" value={`±${m.impliedMovePct}%`} />
+        )}
+        {m.historicalMovePct != null && (
+          <MetricRow label="Hist. post-event move" value={`±${m.historicalMovePct}%`} />
+        )}
+        {m.pricedInRatio != null && (
+          <MetricRow label="Implied / hist. ratio" value={m.pricedInRatio.toFixed(2)} />
+        )}
+        {m.eventProbability != null && (
+          <MetricRow
+            label="Event probability"
+            value={`${(m.eventProbability * 100).toFixed(0)}%`}
+          />
+        )}
       </div>
       <p className="text-[10px] text-muted">
-        <span className="font-medium text-fg-secondary">Key factor:</span> {status.keyFactor}
+        <span className="font-medium text-fg-secondary">Driver:</span> {assessment.summary}
       </p>
-      {status.source === "mock" && (
-        <p className="text-[10px] text-subtle">
-          Underlying feeds are mocked until options/consensus APIs are wired — the score weights
-          those indicators the same way a live build would.
-        </p>
-      )}
+      <p className="text-[10px] text-subtle">
+        Fixture inputs until live options/rates APIs are wired — engine math matches the live path.
+      </p>
     </div>
   );
 }
@@ -64,8 +72,8 @@ export function PricedInConfirmation({
   variant = "default",
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const status = resolvePricedInForEarningsEvent(ticker, analysisDate);
-  const borderColor = toneBorder(status);
+  const assessment = resolveEarningsPricedIn(ticker, analysisDate);
+  const borderColor = toneBorder(assessment);
 
   if (variant === "compact") {
     const chevron = (
@@ -83,26 +91,26 @@ export function PricedInConfirmation({
         <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between gap-2">
           <span className="font-medium text-fg">Event priced-in</span>
           <div className="flex items-center gap-2 shrink-0">
-            <PricedInBadge status={status} />
-            {status && (
+            <PricedInBadge status={assessment} />
+            {assessment && (
               <span
                 className={`hidden sm:inline text-[10px] font-semibold ${
-                  status.level === "full"
+                  assessment.status === "fully"
                     ? "text-green-400"
-                    : status.level === "partial"
+                    : assessment.status === "partially"
                       ? "text-amber-400"
-                      : "text-muted"
+                      : "text-blue-400"
                 }`}
               >
-                {levelLabel(status.level)}
+                {statusLabel(assessment.status)}
               </span>
             )}
             {chevron}
           </div>
         </summary>
         <div className="px-3 pb-3 pt-2 border-t border-input-border/50">
-          {status ? (
-            <PricedInDetails status={status} />
+          {assessment ? (
+            <PricedInDetails assessment={assessment} />
           ) : (
             <p className="text-[10px] text-muted">Priced-in data unavailable for this run.</p>
           )}
@@ -116,18 +124,18 @@ export function PricedInConfirmation({
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Event priced-in</h3>
         <div className="flex items-center gap-2">
-          <PricedInBadge status={status} />
-          {status && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${signalToneBadgeClass(
-              status.level === "full" ? "success" : status.level === "partial" ? "warning" : "neutral",
-            )}`}>
-              {levelLabel(status.level)}
+          <PricedInBadge status={assessment} />
+          {assessment && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded ${signalToneBadgeClass(statusTone(assessment.status))}`}
+            >
+              {statusLabel(assessment.status)}
             </span>
           )}
         </div>
       </div>
-      {status ? (
-        <PricedInDetails status={status} />
+      {assessment ? (
+        <PricedInDetails assessment={assessment} />
       ) : (
         <p className="text-xs text-muted">Priced-in data unavailable.</p>
       )}

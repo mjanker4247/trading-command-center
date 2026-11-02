@@ -7,12 +7,14 @@ import { useQuery } from "@tanstack/react-query";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Breadcrumbs, RESEARCH_BREADCRUMB } from "@/components/layout/Breadcrumbs";
 import { PageShell } from "@/components/layout/PageShell";
+import { PricedInBadge } from "@/components/portfolio/PricedInBadge";
 import { FairValueCorridorChart } from "@/components/valuation/FairValueCorridorChart";
 import { ForecastCalculator } from "@/components/valuation/ForecastCalculator";
 import { PricedInExpectationPanel } from "@/components/valuation/PricedInExpectationPanel";
 import { TechnicalConfluenceChart } from "@/components/valuation/TechnicalConfluenceChart";
 import { ValuationSummaryBar } from "@/components/valuation/ValuationSummaryBar";
 import { getRun, getTickerValuation } from "@/lib/api";
+import { resolveEarningsPricedIn } from "@/lib/pricedIn";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { ValuationMetric } from "@/lib/valuationTypes";
 
@@ -68,6 +70,7 @@ export default function ValuationTechnicalsPage() {
   const unavailable = Boolean(valuation?.unavailable_reason) || valuation?.source === "none";
   const eventDate =
     run?.analysis_date ?? new Date().toISOString().slice(0, 10);
+  const headerPricedIn = resolveEarningsPricedIn(symbol, eventDate);
 
   return (
     <PageShell gap="6">
@@ -77,7 +80,10 @@ export default function ValuationTechnicalsPage() {
           <div className="flex min-w-0 items-center gap-3">
             <CompanyLogo ticker={symbol} size="lg" />
             <div className="min-w-0">
-              <h1 className="font-mono text-2xl font-semibold text-fg">{symbol}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-mono text-2xl font-semibold text-fg">{symbol}</h1>
+                <PricedInBadge status={headerPricedIn} />
+              </div>
               <p className="truncate text-sm text-muted">{companyName}</p>
               <p className="mt-1 text-sm text-fg-secondary">Valuation &amp; Technical Confluence</p>
             </div>

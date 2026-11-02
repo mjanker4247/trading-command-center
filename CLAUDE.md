@@ -92,6 +92,8 @@ Local Postgres from `docker compose -f docker-compose.dev.yml up db` is mapped t
 | (none) | `market.py` | Market-wide data — `GET /market/trending`, `GET /market/movers`. Sources Yahoo Finance trending list + Finnhub quotes. Requires Finnhub key; returns empty gracefully without one. |
 | (none) | `tickers.py` | Batch ticker metadata — `GET /tickers/metadata?symbols=AAPL,MSFT`. Returns company name, sector, logo, exchange, market cap, etc. from Finnhub with a DB cache (`ticker_metadata` table, TTL-based). Up to 50 symbols per request. Also `GET /tickers/{ticker}/valuation` — yfinance-first fair-value corridors (EPS/OCF/FCF median multiples), research-only. |
 
+**Priced-in indicator (frontend):** Pure engines in `frontend/lib/pricedInEngine.ts` — macro `(impliedRate−currentRate)/stepSize` and earnings `((ATM call+put)×0.85)/S0` vs hist move. Facade fixtures in `pricedIn.ts`. `PricedInBadge` on Earnings, Confluence, TickerDrawer header, and valuation page. Thresholds ≥80 fully / ≥40 partial / else unpriced (info blue). Fixture inputs until live options/rates feeds.
+
 CORS is restricted to `settings.frontend_url`.
 
 **Markov regime analysis:** `services/markov_service.py` fits a 3-state (Bull/Sideways/Bear) Gaussian HMM on 2 years of daily returns via `hmmlearn` (optional dependency — install with `pip install -e ".[markov-hmm]"`). Returns current regime, directional signal (`bull_prob − bear_prob`, range −1 to +1), walk-forward Sharpe, max drawdown, and the 3×3 transition probability matrix. Results are cached in-process for 1 hour. The endpoint is authenticated (`Depends(get_current_user)`).

@@ -8,6 +8,8 @@ import { fmtMoney } from "@/lib/currency";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import { useDateFormat } from "@/lib/useDateFormat";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { PricedInBadge } from "@/components/portfolio/PricedInBadge";
+import { resolveEarningsPricedIn } from "@/lib/pricedIn";
 import { WavePanel } from "@/components/wave/WavePanel";
 import type { PortfolioHolding, TickerChart } from "@/lib/types";
 
@@ -139,6 +141,8 @@ function DrawerContent({
   const exchange = metadata?.exchange ?? snap?.exchange;
   const country = metadata?.country ?? snap?.country;
   const hasChart = (snap?.chart?.c?.length ?? 0) >= 2;
+  const earningsDate = snap?.next_earnings?.date ?? null;
+  const pricedIn = resolveEarningsPricedIn(ticker, earningsDate);
 
   return (
     <div className="flex flex-col gap-5 pb-6">
@@ -154,6 +158,10 @@ function DrawerContent({
             {exchange && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{exchange}</span>}
             {sector && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{sector}</span>}
             {country && <span className="text-[10px] text-muted bg-input rounded-sm px-1.5 py-0.5">{country}</span>}
+            <span className="inline-flex items-center gap-1">
+              <span className="text-[10px] text-muted">Priced-in</span>
+              <PricedInBadge status={pricedIn} />
+            </span>
           </div>
         </div>
         <CompanyLogo ticker={ticker} size="lg" className="bg-input p-1" />

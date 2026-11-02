@@ -1,44 +1,47 @@
 "use client";
 
+import { PricedInBadge } from "@/components/portfolio/PricedInBadge";
 import {
-  levelLabel,
   PRICED_IN_BACKGROUND,
-  resolvePricedInForEarningsEvent,
-  type PricedInStatus,
+  resolveEarningsPricedIn,
+  statusLabel,
+  type PricedInAssessment,
 } from "@/lib/pricedIn";
 import type { ValuationPayload } from "@/lib/valuationTypes";
 
 type Props = {
   ticker: string;
-  /** ISO date used for deterministic event mock (run analysis date or today). */
+  /** ISO date used for deterministic event fixture (run analysis date or today). */
   eventDate: string;
   growth: NonNullable<ValuationPayload["pricedIn"]>["growth"];
 };
 
 function fmtCagr(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  // yfinance earningsGrowth is typically a fraction
   const pct = Math.abs(n) <= 1 ? n * 100 : n;
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(1)}%`;
 }
 
-function EventCard({ status }: { status: PricedInStatus | null }) {
+function EventCard({ assessment }: { assessment: PricedInAssessment | null }) {
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Event priced-in</h3>
-        <span className="rounded-md bg-muted-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-          mock
-        </span>
+        <div className="flex items-center gap-2">
+          <PricedInBadge status={assessment} />
+          <span className="rounded-md bg-muted-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+            fixture
+          </span>
+        </div>
       </div>
-      {status ? (
+      {assessment ? (
         <>
           <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-fg">
-            {status.percentage}%
+            {assessment.score}%
           </p>
-          <p className="text-xs text-fg-secondary">{levelLabel(status.level)}</p>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted">{status.keyFactor}</p>
+          <p className="text-xs text-fg-secondary">{statusLabel(assessment.status)}</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted">{assessment.summary}</p>
           <details className="mt-3">
             <summary className="cursor-pointer text-[11px] text-link">What this means</summary>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">{PRICED_IN_BACKGROUND}</p>
@@ -108,7 +111,7 @@ function GrowthCard({
 }
 
 export function PricedInExpectationPanel({ ticker, eventDate, growth }: Props) {
-  const status = resolvePricedInForEarningsEvent(ticker, eventDate);
+  const assessment = resolveEarningsPricedIn(ticker, eventDate);
   return (
     <section className="space-y-3">
       <div>
@@ -118,7 +121,7 @@ export function PricedInExpectationPanel({ ticker, eventDate, growth }: Props) {
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <EventCard status={status} />
+        <EventCard assessment={assessment} />
         <GrowthCard growth={growth} />
       </div>
     </section>
