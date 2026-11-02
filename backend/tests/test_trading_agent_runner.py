@@ -1,5 +1,7 @@
 """Unit tests for trading_agent_runner / provider runtime wiring."""
 
+import asyncio
+
 import pytest
 
 from app.services.tauric_run_adapter import (
@@ -93,6 +95,26 @@ def test_resolve_provider_runtime_empty_without_key():
     runtime = resolve_provider_runtime("openai", None)
     assert runtime.env_patch == {}
     assert resolve_provider_runtime("openai", "").env_patch == {}
+
+
+@pytest.mark.asyncio
+async def test_empty_env_patch_waits_for_active_process_env_overlay(monkeypatch):
+    from app.services import trading_agent_runner as runner
+
+    monkeypatch.setenv("OPENAI_API_KEY", "base-key")
+
+    async def enter_without_patch() -> str | None:
+        async with runner._patched_process_environ({}):
+            return runner.os.environ.get("OPENAI_API_KEY")
+
+    async with runner._patched_process_environ({"OPENAI_API_KEY": "run-key"}):
+        task = asyncio.create_task(enter_without_patch())
+        await asyncio.sleep(0)
+        assert not task.done()
+        assert runner.os.environ["OPENAI_API_KEY"] == "run-key"
+
+    assert await task == "base-key"
+    assert runner.os.environ["OPENAI_API_KEY"] == "base-key"
 
 
 @pytest.mark.asyncio
