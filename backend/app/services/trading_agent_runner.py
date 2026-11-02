@@ -1,7 +1,8 @@
 import asyncio
 import os
-from queue import Queue as SyncQueue
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from queue import Queue as SyncQueue
 
 from app.services.tauric_live_progress import LiveProgressTracker
 from app.services.tauric_run_adapter import (
@@ -16,6 +17,24 @@ from app.services.tauric_run_adapter import (
 
 # Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
 _env_fallback_lock = asyncio.Lock()
+
+
+@asynccontextmanager
+async def _patched_process_environ(env_patch: dict[str, str]):
+    """Serialize process-global env overlays for one TradingAgents graph run."""
+    async with _env_fallback_lock:
+        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
+        for k, v in env_patch.items():
+            os.environ[k] = v
+        try:
+            yield
+        finally:
+            for k in env_patch:
+                prev = prev_env[k]
+                if prev is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = prev
 
 
 async def _get_stored_key(provider: str) -> str | None:
@@ -187,36 +206,24 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         # LLM key from resolve_provider_runtime; data vendors from Settings (FRED, etc.).
         env_patch = {**runtime.env_patch, **await _data_vendor_env_patch()}
-        needs_lock = bool(env_patch)
-        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
 
-        async with (_env_fallback_lock if needs_lock else asyncio.Lock()):
-            for k, v in env_patch.items():
-                os.environ[k] = v
-            try:
-                graph = TradingAgentsGraph(
-                    selected_analysts=analysts,
-                    config=ta_config,
-                )
-                from app.config import settings as _settings
-                final_state, rating = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        _run_graph_streaming,
-                        graph,
-                        ticker=ticker,
-                        analysis_date=config["analysis_date"],
-                        asset_type=asset_type,
-                        emit=_emit,
-                    ),
-                    timeout=_settings.run_timeout_seconds,
-                )
-            finally:
-                for k in env_patch:
-                    prev = prev_env[k]
-                    if prev is None:
-                        os.environ.pop(k, None)
-                    else:
-                        os.environ[k] = prev
+        async with _patched_process_environ(env_patch):
+            graph = TradingAgentsGraph(
+                selected_analysts=analysts,
+                config=ta_config,
+            )
+            from app.config import settings as _settings
+            final_state, rating = await asyncio.wait_for(
+                asyncio.to_thread(
+                    _run_graph_streaming,
+                    graph,
+                    ticker=ticker,
+                    analysis_date=config["analysis_date"],
+                    asset_type=asset_type,
+                    emit=_emit,
+                ),
+                timeout=_settings.run_timeout_seconds,
+            )
 
         await async_q.put(None)  # sentinel
         await process_task
