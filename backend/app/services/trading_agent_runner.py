@@ -1,7 +1,11 @@
 import asyncio
+import logging
 import os
+import traceback
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from queue import Queue as SyncQueue
-from datetime import datetime, timezone
+from typing import Any
 
 from app.services.tauric_live_progress import LiveProgressTracker
 from app.services.tauric_run_adapter import (
@@ -14,8 +18,29 @@ from app.services.tauric_run_adapter import (
     state_to_raw_report,
 )
 
-# Serializes env-var patching so concurrent local-inference runs don't race on os.environ.
+# Serializes graph execution so concurrent runs don't race on process-global os.environ.
 _env_fallback_lock = asyncio.Lock()
+logger = logging.getLogger(__name__)
+
+
+async def _run_with_process_env(
+    env_patch: dict[str, str],
+    operation: Callable[[], Awaitable[Any]],
+) -> Any:
+    """Run TradingAgents work under one process-env critical section."""
+    async with _env_fallback_lock:
+        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
+        for k, v in env_patch.items():
+            os.environ[k] = v
+        try:
+            return await operation()
+        finally:
+            for k in env_patch:
+                prev = prev_env[k]
+                if prev is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = prev
 
 
 async def _get_stored_key(provider: str) -> str | None:
@@ -28,10 +53,11 @@ async def _get_stored_keys(providers: list[str]) -> dict[str, str]:
     """Return decrypted keys for the given provider ids (missing/undecryptable omitted)."""
     if not providers:
         return {}
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.api_key import ApiKey
     from app.services.encryption import decrypt_key
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
         rows = (
@@ -95,9 +121,9 @@ def _run_graph_streaming(
 
 async def execute_run(run_id: str, config: dict) -> None:
     from app.database import AsyncSessionLocal
-    from app.models.run import Run, RunStatus, RunVerdict
     from app.models.agent_event import AgentEvent, EventType
     from app.models.report import Report
+    from app.models.run import Run, RunStatus, RunVerdict
     from app.services.websocket_manager import ws_manager
     from app.utils.asset_type import is_crypto as _is_crypto
     from app.utils.response_language import normalize_response_language
@@ -142,9 +168,9 @@ async def execute_run(run_id: str, config: dict) -> None:
             if verdict:
                 run.verdict = verdict
             if status == RunStatus.running:
-                run.started_at = datetime.now(timezone.utc)
+                run.started_at = datetime.now(UTC)
             elif status in (RunStatus.completed, RunStatus.aborted, RunStatus.failed):
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
             await db.commit()
 
     def _emit(event: dict) -> None:
@@ -158,7 +184,9 @@ async def execute_run(run_id: str, config: dict) -> None:
         from tradingagents.graph.trading_graph import TradingAgentsGraph
 
         # IONOS / Llama often emit tool calls as JSON prose; recover so ToolNode runs.
-        from app.services.tauric_tool_call_recovery import apply_tool_call_recovery_patch
+        from app.services.tauric_tool_call_recovery import (
+            apply_tool_call_recovery_patch,
+        )
 
         apply_tool_call_recovery_patch()
 
@@ -187,36 +215,25 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         # LLM key from resolve_provider_runtime; data vendors from Settings (FRED, etc.).
         env_patch = {**runtime.env_patch, **await _data_vendor_env_patch()}
-        needs_lock = bool(env_patch)
-        prev_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_patch}
+        async def _run_tradingagents_graph() -> tuple[dict, str]:
+            graph = TradingAgentsGraph(
+                selected_analysts=analysts,
+                config=ta_config,
+            )
+            from app.config import settings as _settings
+            return await asyncio.wait_for(
+                asyncio.to_thread(
+                    _run_graph_streaming,
+                    graph,
+                    ticker=ticker,
+                    analysis_date=config["analysis_date"],
+                    asset_type=asset_type,
+                    emit=_emit,
+                ),
+                timeout=_settings.run_timeout_seconds,
+            )
 
-        async with (_env_fallback_lock if needs_lock else asyncio.Lock()):
-            for k, v in env_patch.items():
-                os.environ[k] = v
-            try:
-                graph = TradingAgentsGraph(
-                    selected_analysts=analysts,
-                    config=ta_config,
-                )
-                from app.config import settings as _settings
-                final_state, rating = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        _run_graph_streaming,
-                        graph,
-                        ticker=ticker,
-                        analysis_date=config["analysis_date"],
-                        asset_type=asset_type,
-                        emit=_emit,
-                    ),
-                    timeout=_settings.run_timeout_seconds,
-                )
-            finally:
-                for k in env_patch:
-                    prev = prev_env[k]
-                    if prev is None:
-                        os.environ.pop(k, None)
-                    else:
-                        os.environ[k] = prev
+        final_state, rating = await _run_with_process_env(env_patch, _run_tradingagents_graph)
 
         await async_q.put(None)  # sentinel
         await process_task
@@ -251,9 +268,9 @@ async def execute_run(run_id: str, config: dict) -> None:
 
         # Fire-and-forget completion email; failure never affects run status
         try:
+            from app.config import settings as _cfg
             from app.models.user import User
             from app.services.email import send_run_complete_email
-            from app.config import settings as _cfg
             async with AsyncSessionLocal() as db:
                 run_row = await db.get(Run, run_id)
                 user_row = await db.get(User, run_row.created_by)
@@ -266,12 +283,11 @@ async def execute_run(run_id: str, config: dict) -> None:
                         frontend_url=_cfg.frontend_url,
                     )
         except Exception:
-            pass
+            logger.debug("Completion email failed for run %s", run_id, exc_info=True)
 
-    except asyncio.TimeoutError:
-        import logging
+    except TimeoutError:
         from app.config import settings as _cfg
-        logging.getLogger(__name__).error("Run %s timed out after %ss", run_id, _cfg.run_timeout_seconds)
+        logger.error("Run %s timed out after %ss", run_id, _cfg.run_timeout_seconds)
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
@@ -283,9 +299,8 @@ async def execute_run(run_id: str, config: dict) -> None:
         await _set_status(RunStatus.aborted)
         await ws_manager.broadcast(run_id, {"type": "run_aborted", "run_id": run_id})
 
-    except Exception as exc:
-        import traceback, logging
-        logging.getLogger(__name__).error("Run %s failed: %s", run_id, traceback.format_exc())
+    except Exception as exc:  # noqa: BLE001 - terminal run failure path
+        logger.error("Run %s failed: %s", run_id, traceback.format_exc())
         drain_task.cancel()
         process_task.cancel()
         await _set_status(RunStatus.failed)
