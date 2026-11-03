@@ -63,7 +63,10 @@ def test_tradingagents_graph_accepts_ionos_runtime_wiring(monkeypatch):
 
     from tradingagents.graph.trading_graph import TradingAgentsGraph
 
-    from app.services.tauric_run_adapter import build_ta_config, resolve_provider_runtime
+    from app.services.tauric_run_adapter import (
+        build_ta_config,
+        resolve_provider_runtime,
+    )
 
     runtime = resolve_provider_runtime("ionos", "ionos-test-key")
     cfg = build_ta_config(
@@ -123,3 +126,73 @@ def test_data_provider_env_catalog_matches_tradingagents():
     assert DATA_PROVIDER_ENV["alpha_vantage"] == "ALPHA_VANTAGE_API_KEY"
     assert DATA_PROVIDER_ENV["typesafe"] == "TYPESAFE_API_KEY"
     assert DATA_PROVIDER_ENV["sec_edgar"] == "SEC_EDGAR_USER_AGENT"
+
+
+@pytest.mark.asyncio
+async def test_process_env_patch_serializes_runs_without_env_patch(monkeypatch):
+    import asyncio
+    import os
+
+    from app.services.trading_agent_runner import _run_with_process_env
+
+    key = "AGENTFLOOR_TEST_RUN_SECRET"
+    monkeypatch.delenv(key, raising=False)
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+    second_entered = asyncio.Event()
+
+    async def first_run():
+        assert os.environ[key] == "secret-a"
+        first_entered.set()
+        await release_first.wait()
+        assert os.environ[key] == "secret-a"
+        return "first"
+
+    async def second_run_without_patch():
+        second_entered.set()
+        assert os.environ.get(key) is None
+        return "second"
+
+    first_task = asyncio.create_task(_run_with_process_env({key: "secret-a"}, first_run))
+    await first_entered.wait()
+
+    second_task = asyncio.create_task(_run_with_process_env({}, second_run_without_patch))
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(second_entered.wait(), timeout=0.05)
+
+    release_first.set()
+    assert await first_task == "first"
+    assert await second_task == "second"
+    assert os.environ.get(key) is None
+
+
+@pytest.mark.asyncio
+async def test_process_env_patch_snapshots_previous_values_after_lock(monkeypatch):
+    import asyncio
+    import os
+
+    from app.services.trading_agent_runner import _run_with_process_env
+
+    key = "AGENTFLOOR_TEST_RUN_SECRET"
+    monkeypatch.setenv(key, "base")
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def first_run():
+        assert os.environ[key] == "secret-a"
+        first_entered.set()
+        await release_first.wait()
+        return "first"
+
+    async def second_run():
+        assert os.environ[key] == "secret-b"
+        return "second"
+
+    first_task = asyncio.create_task(_run_with_process_env({key: "secret-a"}, first_run))
+    await first_entered.wait()
+    second_task = asyncio.create_task(_run_with_process_env({key: "secret-b"}, second_run))
+
+    release_first.set()
+    assert await first_task == "first"
+    assert await second_task == "second"
+    assert os.environ[key] == "base"
