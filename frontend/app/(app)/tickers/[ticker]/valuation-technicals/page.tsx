@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import { resolveEarningsPricedIn } from "@/lib/pricedIn";
 import { useTickerMetadata } from "@/lib/useTickerMetadata";
 import type { ValuationMetric } from "@/lib/valuationTypes";
 
-export default function ValuationTechnicalsPage() {
+function ValuationTechnicalsContent() {
   const { ticker } = useParams<{ ticker: string }>();
   const searchParams = useSearchParams();
   const symbol = decodeURIComponent(ticker).toUpperCase();
@@ -150,5 +150,19 @@ export default function ValuationTechnicalsPage() {
         </>
       )}
     </PageShell>
+  );
+}
+
+export default function ValuationTechnicalsPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageShell gap="6">
+          <div className="h-40 animate-pulse rounded-lg border border-border bg-elevated" />
+        </PageShell>
+      }
+    >
+      <ValuationTechnicalsContent />
+    </Suspense>
   );
 }
