@@ -1,5 +1,8 @@
 """Unit tests for trading_agent_runner / provider runtime wiring."""
 
+import asyncio
+import os
+
 import pytest
 
 from app.services.tauric_run_adapter import (
@@ -114,6 +117,50 @@ async def test_data_vendor_env_patch_maps_stored_keys(monkeypatch):
         "ALPHA_VANTAGE_API_KEY": "av-secret",
         "SEC_EDGAR_USER_AGENT": "AgentFloor Dev contact@example.com",
     }
+
+
+@pytest.mark.asyncio
+async def test_run_with_env_patch_serializes_empty_patch(monkeypatch):
+    from app.services import trading_agent_runner as runner
+
+    env_name = "AGENTFLOOR_ENV_LOCK_TEST"
+    monkeypatch.setattr(runner, "_env_fallback_lock", asyncio.Lock())
+    monkeypatch.delenv(env_name, raising=False)
+
+    patched_started = asyncio.Event()
+    release_patched = asyncio.Event()
+    observations: list[tuple[str, str | None]] = []
+
+    async def patched_run():
+        observations.append(("patched-start", os.environ.get(env_name)))
+        patched_started.set()
+        await release_patched.wait()
+        observations.append(("patched-end", os.environ.get(env_name)))
+        return "patched"
+
+    async def empty_run():
+        observations.append(("empty", os.environ.get(env_name)))
+        return "empty"
+
+    patched_task = asyncio.create_task(
+        runner._run_with_env_patch({env_name: "user-a-secret"}, patched_run)
+    )
+    await patched_started.wait()
+    empty_task = asyncio.create_task(runner._run_with_env_patch({}, empty_run))
+    await asyncio.sleep(0)
+
+    assert not empty_task.done()
+
+    release_patched.set()
+    assert await patched_task == "patched"
+    assert await empty_task == "empty"
+
+    assert observations == [
+        ("patched-start", "user-a-secret"),
+        ("patched-end", "user-a-secret"),
+        ("empty", None),
+    ]
+    assert os.environ.get(env_name) is None
 
 
 def test_data_provider_env_catalog_matches_tradingagents():
