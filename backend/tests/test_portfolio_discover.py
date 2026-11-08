@@ -1,8 +1,11 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -17,6 +20,17 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 MOCK_RECOMMENDATIONS = json.dumps([
     {"ticker": "XYZ", "tag": "Trending", "sector": "", "reason": "Strong momentum today."},
 ])
+
+
+@pytest.fixture(autouse=True)
+def _clear_discover_state():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    yield
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
@@ -48,6 +62,124 @@ def _market_patches():
         patch.object(market_module, "get_big_mover_tickers", new=AsyncMock(return_value=[])),
     ):
         yield
+
+
+class _FakeScalars:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def all(self):
+        return self._rows
+
+
+class _FakeExecuteResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return _FakeScalars(self._rows)
+
+
+class _FakeDb:
+    async def execute(self, *_args, **_kwargs):
+        return _FakeExecuteResult([SimpleNamespace(ticker="AAPL")])
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_legacy_cache_unit():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(
+        llm_provider="openai",
+        llm_model="gpt-4o-mini",
+        response_language="en-US",
+    )
+    old_cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_cache[old_cache_key] = (
+        [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "cached"}],
+        9_999_999_999.0,
+    )
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(side_effect=HTTPException(status_code=404, detail="Portfolio not found")),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock()) as get_key,
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body=body,
+                db=_FakeDb(),
+                user=SimpleNamespace(id=uuid4()),
+            )
+
+    assert exc.value.status_code == 404
+    get_key.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_duplicate_uncached_in_flight_returns_409_unit():
+    import app.routers.portfolio as portfolio_module
+
+    user_id = uuid4()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+    cache_key = f"{user_id}:{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_in_flight.add(cache_key)
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(return_value=SimpleNamespace(id=uuid4())),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body=body,
+                db=_FakeDb(),
+                user=SimpleNamespace(id=user_id),
+            )
+
+    assert exc.value.status_code == 409
+    assert "already in progress" in exc.value.detail
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_after_sector_gap_error_unit():
+    import app.routers.portfolio as portfolio_module
+
+    user_id = uuid4()
+    portfolio_id = uuid4()
+    body = portfolio_module.DiscoverRequest(llm_provider="openai", llm_model="gpt-4o-mini")
+
+    with (
+        patch.object(
+            portfolio_module,
+            "_get_latest_snapshot",
+            new=AsyncMock(return_value=SimpleNamespace(id=uuid4())),
+        ),
+        patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+        patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
+    ):
+        with pytest.raises(RuntimeError, match="boom"):
+            await portfolio_module.discover_stocks(
+                portfolio_id,
+                body=body,
+                db=_FakeDb(),
+                user=SimpleNamespace(id=user_id),
+            )
+
+    assert portfolio_module._discover_in_flight == set()
 
 
 @pytest.mark.asyncio
@@ -82,6 +214,95 @@ async def test_discover_rejects_unknown_provider():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_discover_checks_portfolio_access_before_cache():
+    import app.routers.portfolio as portfolio_module
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        owner_token = await _register_and_token(c, "discover-owner@test.com")
+        intruder_token = await _register_and_token(c, "discover-intruder@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, owner_token)
+        body = {
+            "llm_provider": "openai",
+            "llm_model": "gpt-4o-mini",
+            "response_language": "en-US",
+        }
+
+        # Seed the old vulnerable cache shape. Unauthorized users must still be
+        # denied before any cache lookup can return another user's recommendations.
+        old_cache_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+        portfolio_module._discover_cache[old_cache_key] = (
+            [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "cached"}],
+            9_999_999_999.0,
+        )
+
+        with patch(
+            "app.services.portfolio_insight_runner._get_api_key",
+            new=AsyncMock(return_value="sk-test"),
+        ):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json=body,
+                headers={"Authorization": f"Bearer {intruder_token}"},
+            )
+
+        assert r.status_code == 404
+        assert "LEAK" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_discover_duplicate_uncached_in_flight_returns_409():
+    import app.routers.portfolio as portfolio_module
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-inflight@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+
+    async with AsyncSessionLocal() as db:
+        user = (
+            await db.execute(select(User).where(User.email == "discover-inflight@test.com"))
+        ).scalar_one()
+
+    cache_key = f"{user.id}:{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_in_flight.add(cache_key)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        with patch(
+            "app.services.portfolio_insight_runner._get_api_key",
+            new=AsyncMock(return_value="sk-test"),
+        ):
+            r = await c.post(
+                f"/portfolio/{portfolio_id}/discover",
+                json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+    assert r.status_code == 409
+    assert "already in progress" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_discover_cleans_in_flight_after_sector_gap_error():
+    import app.routers.portfolio as portfolio_module
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _register_and_token(c, "discover-cleanup@test.com")
+        portfolio_id = await _create_portfolio_with_holding(c, token)
+
+        with (
+            patch("app.services.portfolio_insight_runner._get_api_key", new=AsyncMock(return_value="sk-test")),
+            patch("app.routers.portfolio.get_sector_gaps", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        ):
+            with pytest.raises(RuntimeError, match="boom"):
+                await c.post(
+                    f"/portfolio/{portfolio_id}/discover",
+                    json={"llm_provider": "openai", "llm_model": "gpt-4o-mini"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+
+    assert portfolio_module._discover_in_flight == set()
 
 
 @pytest.mark.asyncio
