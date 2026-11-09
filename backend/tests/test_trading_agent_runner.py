@@ -1,5 +1,7 @@
 """Unit tests for trading_agent_runner / provider runtime wiring."""
 
+import asyncio
+
 import pytest
 
 from app.services.tauric_run_adapter import (
@@ -114,6 +116,67 @@ async def test_data_vendor_env_patch_maps_stored_keys(monkeypatch):
         "ALPHA_VANTAGE_API_KEY": "av-secret",
         "SEC_EDGAR_USER_AGENT": "AgentFloor Dev contact@example.com",
     }
+
+
+@pytest.mark.asyncio
+async def test_patched_tradingagents_env_serializes_empty_patch(monkeypatch):
+    """A run without env vars must not execute while another run's key is patched."""
+    from app.services import trading_agent_runner as runner
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+    observed: dict[str, str | None] = {}
+
+    async def patched_run():
+        async with runner._patched_tradingagents_env({"OPENAI_API_KEY": "user-a-key"}):
+            first_entered.set()
+            await release_first.wait()
+
+    async def empty_patch_run():
+        await first_entered.wait()
+        async with runner._patched_tradingagents_env({}):
+            observed["key"] = runner.os.environ.get("OPENAI_API_KEY")
+
+    first = asyncio.create_task(patched_run())
+    await first_entered.wait()
+    second = asyncio.create_task(empty_patch_run())
+    await asyncio.sleep(0)
+
+    assert not second.done()
+    release_first.set()
+    await asyncio.gather(first, second)
+    assert observed["key"] is None
+
+
+@pytest.mark.asyncio
+async def test_patched_tradingagents_env_snapshots_after_lock(monkeypatch):
+    """Queued runs restore the real baseline env, not another run's temporary value."""
+    from app.services import trading_agent_runner as runner
+
+    monkeypatch.setenv("OPENAI_API_KEY", "baseline-key")
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def first_run():
+        async with runner._patched_tradingagents_env({"OPENAI_API_KEY": "user-a-key"}):
+            first_entered.set()
+            await release_first.wait()
+
+    async def second_run():
+        await first_entered.wait()
+        async with runner._patched_tradingagents_env({"OPENAI_API_KEY": "user-b-key"}):
+            assert runner.os.environ["OPENAI_API_KEY"] == "user-b-key"
+
+    first = asyncio.create_task(first_run())
+    await first_entered.wait()
+    second = asyncio.create_task(second_run())
+    await asyncio.sleep(0)
+
+    assert not second.done()
+    release_first.set()
+    await asyncio.gather(first, second)
+    assert runner.os.environ["OPENAI_API_KEY"] == "baseline-key"
 
 
 def test_data_provider_env_catalog_matches_tradingagents():
