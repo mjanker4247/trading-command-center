@@ -131,6 +131,53 @@ export async function deleteApiKey(provider: string): Promise<void> {
   await fetchWithAuth(`/api-keys/${provider}`, { method: "DELETE" });
 }
 
+export async function getNewsProviders(): Promise<import("@/lib/newsProviders").NewsProviderConfig[]> {
+  const r = await fetchWithAuth("/api/news-providers");
+  if (!r.ok) throw new Error("Failed to fetch news providers");
+  return r.json();
+}
+
+export async function updateNewsProviders(
+  providers: import("@/lib/newsProviders").NewsProviderUpdateItem[],
+): Promise<import("@/lib/newsProviders").NewsProviderConfig[]> {
+  const r = await fetchWithAuth("/api/news-providers", {
+    method: "PUT",
+    body: JSON.stringify({ providers }),
+  });
+  if (!r.ok) throw new Error("Failed to update news providers");
+  return r.json();
+}
+
+export async function testNewsProvider(
+  providerId: string,
+): Promise<import("@/lib/newsProviders").TestConnectionResponse> {
+  const r = await fetchWithAuth("/api/news-providers/test", {
+    method: "POST",
+    body: JSON.stringify({ provider_id: providerId }),
+  });
+  if (!r.ok) throw new Error("Failed to test news provider");
+  return r.json();
+}
+
+export async function createCustomNewsProvider(
+  payload: import("@/lib/newsProviders").CustomNewsProviderPayload,
+): Promise<import("@/lib/newsProviders").NewsProviderConfig> {
+  const r = await fetchWithAuth("/api/news-providers/custom", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    throw new Error(body?.detail ?? "Failed to create custom news source");
+  }
+  return r.json();
+}
+
+export async function deleteNewsProvider(providerId: string): Promise<void> {
+  const r = await fetchWithAuth(`/api/news-providers/${providerId}`, { method: "DELETE" });
+  if (!r.ok) throw new Error("Failed to delete news provider");
+}
+
 export async function getUsers(): Promise<User[]> {
   const r = await fetchWithAuth("/users");
   if (!r.ok) throw new Error("Failed to fetch users");
