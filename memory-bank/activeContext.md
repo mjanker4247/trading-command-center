@@ -2,12 +2,16 @@
 
 ## Current Focus
 
-[No active task — ready for `/van`]
+**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2.
 
-## Recently Completed
+Retrospective PLAN (2026-11-10) confirms shipped policy matches decisions:
 
-**fix-node22-ebadengine** (2026-11-10) — Node 22 frontend Docker/CI/engines for mapbox jsonlint EBADENGINE. Archive: `memory-bank/archive/archive-fix-node22-ebadengine.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/88 → `b49ef69`.
+- eslint → `^10.14.0` (EOL clear)
+- `@plotly/mapbox-gl` documented as plotly.js 3.x transitive; plotly 4 deferred
+- Creative: none
 
 ## Status
 
-Idle. Start next work with `/van`.
+BUILD complete · PLAN refreshed · awaiting **merge #90** and **`/reflect`**.
+
+PR: https://github.com/mjanker4247/trading-command-center/pull/90 · `cursor/clear-eslint-mapbox-deprecations-40b1`

@@ -1,5 +1,17 @@
 # Progress
 
+## In Progress
+
+### clear-eslint-mapbox-deprecations (TCC-15)
+
+| Phase | Status |
+|---|---|
+| VAN | Complete — Level 2 |
+| PLAN | Complete — retrospective refresh confirms shipped policy |
+| BUILD | Complete — PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
+| REFLECT | Pending (`/reflect`) |
+| ARCHIVE | Pending after reflect + merge |
+
 ## Completed Milestones
 
 - **fix-node22-ebadengine** completed 2026-11-10. See [archive](archive/archive-fix-node22-ebadengine.md). PR #88 → `b49ef69`.
