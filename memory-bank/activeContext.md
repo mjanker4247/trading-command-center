@@ -2,16 +2,14 @@
 
 ## Focus
 
-**market-priced-in-indicator** — REFLECT complete.
+**news-data-unavailable** — fix TradingAgents news `DATA_UNAVAILABLE` caused by locked yfinance 1.7.0.
 
 ## Mode
 
-REFLECT complete. **Next: commit/push (recommended) → `/archive`.**
+VAN complete → BUILD (Level 1).
 
-## Reflection
+## Key facts
 
-See `memory-bank/reflection/reflection-market-priced-in-indicator.md`.
-
-## Note
-
-Feature implementation is still **uncommitted** on the working tree.
+- Sentinel from `vendor/TradingAgents/.../router.py`, not Finnhub portfolio news.
+- Fix: pin `yfinance>=1.8.0` in AgentFloor backend + lock refresh.
+- Upstream #1663 / #1671 confirm 1.8.0 restores `Ticker.get_news()`.
