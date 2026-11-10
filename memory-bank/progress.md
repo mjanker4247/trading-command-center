@@ -8,7 +8,8 @@
 | PLAN | N/A (Level 1) — mini-plan recorded retrospectively on `/plan` |
 | CREATIVE | N/A |
 | BUILD | Complete — yfinance floor `>=1.8.0`, lock → 1.8.0, 4 unit tests + live smoke |
-| REFLECT | Pending — run `/reflect` next |
+| REFLECT | Complete — `reflection/reflection-news-data-unavailable.md` |
+| ARCHIVE | Pending |
 | PR | https://github.com/mjanker4247/trading-command-center/pull/86 |
 
 ### Evidence

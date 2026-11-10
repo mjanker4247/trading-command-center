@@ -2,14 +2,17 @@
 
 ## Focus
 
-**news-data-unavailable** — Level 1 fix shipped; PLAN formally N/A.
+**news-data-unavailable** — REFLECT complete.
 
 ## Mode
 
-PLAN invoked → recorded as skipped (Level 1). **Next: `/reflect`.**
+REFLECT complete. **Next: `/archive`** (after PR lifecycle as desired).
+
+## Reflection
+
+See `memory-bank/reflection/reflection-news-data-unavailable.md`.
 
 ## State
 
-- BUILD complete; PR [#86](https://github.com/mjanker4247/trading-command-center/pull/86)
+- PR [#86](https://github.com/mjanker4247/trading-command-center/pull/86)
 - Branch: `cursor/fix-news-data-unavailable-c36c`
-- Internal report: Project store `internal/tcc-11-news-data-unavailable.md`

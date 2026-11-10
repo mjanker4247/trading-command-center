@@ -5,7 +5,7 @@
 **ID:** news-data-unavailable  
 **Title:** Fix news DATA_UNAVAILABLE (yfinance 1.7.0 get_news break)  
 **Created:** 2026-11-10  
-**Status:** BUILD + PR complete — PLAN formally N/A (Level 1); next `/reflect`  
+**Status:** REFLECT complete → next `/archive`  
 **Complexity:** Level 1 (Quick Bug Fix)
 
 ### Goal
@@ -52,7 +52,8 @@ Invoked `/plan` after BUILD: record the mini-plan already used (no creative phas
 - [x] BUILD — bump + lock + tests + live smoke
 - [x] PR opened — https://github.com/mjanker4247/trading-command-center/pull/86
 - [x] Memory Bank progress updated
-- [ ] REFLECT
+- [x] REFLECT — `memory-bank/reflection/reflection-news-data-unavailable.md`
+- [ ] ARCHIVE
 
 ### BUILD results
 
@@ -63,4 +64,4 @@ Invoked `/plan` after BUILD: record the mini-plan already used (no creative phas
 
 ### Next Mode
 
-**`/reflect`** — BUILD and PR already complete.
+**`/archive`**
