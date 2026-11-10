@@ -1461,6 +1461,23 @@ _news_cache: dict[str, tuple[list, float, FinnhubError | None]] = {}
 _NEWS_TTL = 3600  # 1 hour
 
 
+def _is_reuters_source(source: str | None) -> bool:
+    """True when Finnhub's source label refers to Reuters (case-insensitive)."""
+    return "reuters" in (source or "").casefold()
+
+
+def _prefer_reuters_articles(articles: list[dict]) -> list[dict]:
+    """Rank Reuters-sourced articles first, then by datetime descending."""
+    return sorted(
+        articles,
+        key=lambda x: (
+            _is_reuters_source(x.get("source")),
+            x.get("datetime") or 0,
+        ),
+        reverse=True,
+    )
+
+
 async def _fetch_news(ticker: str, api_key: str, days: int) -> tuple[list[dict], FinnhubError | None]:
     cache_key = f"{ticker}:{days}"
     now = time.time()
@@ -1540,11 +1557,11 @@ async def get_portfolio_news(
         all_articles.extend(articles)
         errors.append(error)
 
-    all_articles.sort(key=lambda x: x.get("datetime") or 0, reverse=True)
+    preferred = _prefer_reuters_articles(all_articles)
     return {
         "price_unavailable_reason": None,
         "news_unavailable_reason": aggregate_unavailable_reason(errors),
-        "articles": all_articles[:limit],
+        "articles": preferred[:limit],
     }
 
 
