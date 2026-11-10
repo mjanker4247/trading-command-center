@@ -1,5 +1,26 @@
 # Progress
 
+## news-data-unavailable
+
+| Phase | Status |
+|---|---|
+| VAN | Complete |
+| PLAN | N/A (Level 1) — mini-plan recorded retrospectively on `/plan` |
+| CREATIVE | N/A |
+| BUILD | Complete — yfinance floor `>=1.8.0`, lock → 1.8.0, 4 unit tests + live smoke |
+| REFLECT | Complete — `reflection/reflection-news-data-unavailable.md` |
+| ARCHIVE | Complete — `archive/archive-news-data-unavailable.md` |
+| PR | https://github.com/mjanker4247/trading-command-center/pull/86 |
+
+### Evidence
+
+- `pytest tests/test_news_yfinance_floor.py` — 4 passed
+- Live: `yf.Ticker("AAPL").get_news(count=5)` → 5 articles under yfinance 1.8.0; `get_news_yfinance` has no `DATA_UNAVAILABLE`
+
+### Archive
+
+See `memory-bank/archive/archive-news-data-unavailable.md`.
+
 ## market-priced-in-indicator
 
 | Phase | Status |

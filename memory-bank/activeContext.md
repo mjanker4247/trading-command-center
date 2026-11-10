@@ -2,16 +2,13 @@
 
 ## Focus
 
-**market-priced-in-indicator** — REFLECT complete.
+[Idle] Last task archived: **news-data-unavailable**.
 
 ## Mode
 
-REFLECT complete. **Next: commit/push (recommended) → `/archive`.**
+ARCHIVE complete. Ready for `/van` on the next task.
 
-## Reflection
+## Last archive
 
-See `memory-bank/reflection/reflection-market-priced-in-indicator.md`.
-
-## Note
-
-Feature implementation is still **uncommitted** on the working tree.
+`memory-bank/archive/archive-news-data-unavailable.md`  
+PR: https://github.com/mjanker4247/trading-command-center/pull/86

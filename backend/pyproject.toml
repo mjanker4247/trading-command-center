@@ -24,7 +24,10 @@ dependencies = [
     "pandas>=2.2.2",
     "numpy>=1.26.4",
     "scipy>=1.13.1",
-    "yfinance>=0.2.54",
+    # >=1.8.0: Ticker.get_news() uses Yahoo's current GraphQL feed.
+    # 1.7.0 hits a retired /xhr/ncp endpoint → YFDataException → TradingAgents
+    # DATA_UNAVAILABLE for get_news (TauricResearch/TradingAgents#1663).
+    "yfinance>=1.8.0",
     "pykalman>=0.11.2",
     "pyportfolioopt>=1.5,<2",
 ]
