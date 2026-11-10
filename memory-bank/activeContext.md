@@ -1,18 +1,13 @@
 # Active Context
 
-## Focus
+## Current Focus
 
-**update-dependencies** — REFLECT complete.
+[No active task — ready for `/van`]
 
-## Mode
+## Recently Completed
 
-REFLECT complete. **Next: `/archive`.**
+**update-dependencies** (2026-11-10) — safe frontend/backend lock refresh. Archive: `memory-bank/archive/archive-update-dependencies.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/87
 
-## Reflection
+## Status
 
-See `memory-bank/reflection/reflection-update-dependencies.md`.
-
-## Delivery
-
-- PR: https://github.com/mjanker4247/trading-command-center/pull/87
-- Branch: `cursor/update-dependencies-eeae`
+Idle. Start next work with `/van`.
