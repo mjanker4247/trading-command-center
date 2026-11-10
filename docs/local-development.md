@@ -5,7 +5,7 @@ How to run AgentFloor against a local Postgres and log in with a known admin acc
 ## Prerequisites
 
 - Docker (for Postgres): `docker compose -f docker-compose.dev.yml up db -d`
-- Python 3.12+ with [uv](https://docs.astral.sh/uv/), Node 20+
+- Python 3.12+ with [uv](https://docs.astral.sh/uv/), Node 22+
 - Git submodules (TradingAgents): `git submodule update --init --recursive`
 
 ## Start the stack
