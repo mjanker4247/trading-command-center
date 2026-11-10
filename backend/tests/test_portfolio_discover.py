@@ -1,8 +1,12 @@
 import json
+import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch, AsyncMock
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from main import app
@@ -17,6 +21,17 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 MOCK_RECOMMENDATIONS = json.dumps([
     {"ticker": "XYZ", "tag": "Trending", "sector": "", "reason": "Strong momentum today."},
 ])
+
+
+@pytest.fixture(autouse=True)
+def _clear_discover_state():
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
+    yield
+    portfolio_module._discover_cache.clear()
+    portfolio_module._discover_in_flight.clear()
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
@@ -69,6 +84,41 @@ async def test_pick_llm_for_user_prefers_user_default():
 
         picked = await pick_llm_for_user(db, user)
         assert picked == ("anthropic", "claude-sonnet-4-6")
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_discover_authorizes_before_cache_or_provider(monkeypatch):
+    import app.routers.portfolio as portfolio_module
+
+    portfolio_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    old_vulnerable_key = f"{portfolio_id}:openai:gpt-4o-mini:en-US"
+    portfolio_module._discover_cache[old_vulnerable_key] = (
+        [{"ticker": "LEAK", "tag": "Trending", "sector": "", "reason": "cached"}],
+        time.time() + 60,
+    )
+    get_key = AsyncMock(return_value="sk-test")
+    latest_snapshot = AsyncMock(
+        side_effect=HTTPException(status_code=404, detail="Portfolio not found")
+    )
+    monkeypatch.setattr("app.services.portfolio_insight_runner._get_api_key", get_key)
+    monkeypatch.setattr(portfolio_module, "_get_latest_snapshot", latest_snapshot)
+
+    with pytest.raises(HTTPException) as exc:
+        await portfolio_module.discover_stocks(
+            portfolio_id,
+            portfolio_module.DiscoverRequest(
+                llm_provider="openai",
+                llm_model="gpt-4o-mini",
+            ),
+            db=object(),
+            user=SimpleNamespace(id=user_id),
+        )
+
+    assert exc.value.status_code == 404
+    latest_snapshot.assert_awaited_once()
+    get_key.assert_not_awaited()
 
 
 @pytest.mark.asyncio
