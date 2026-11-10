@@ -2,13 +2,13 @@
 
 ## Focus
 
-[Idle] Last task archived: **news-data-unavailable**.
+**update-dependencies** — rebasing onto `main` after #86 (news DATA_UNAVAILABLE) merge; then merge PR #87.
 
 ## Mode
 
-ARCHIVE complete. Ready for `/van` on the next task.
+BUILD / merge closeout.
 
-## Last archive
+## Related
 
-`memory-bank/archive/archive-news-data-unavailable.md`  
-PR: https://github.com/mjanker4247/trading-command-center/pull/86
+- Last archive on main: `memory-bank/archive/archive-news-data-unavailable.md` (PR #86)
+- Branch: `cursor/update-dependencies-eeae`
