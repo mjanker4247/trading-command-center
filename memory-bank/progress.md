@@ -8,8 +8,8 @@
 |---|---|
 | VAN | Complete — Level 2 |
 | PLAN | Complete — eslint 10 bump; document mapbox pin |
-| BUILD | In progress — eslint `^10.14.0`; lint/tsc/build green |
-| REFLECT / ARCHIVE | Pending |
+| BUILD | Complete — PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
+| REFLECT / ARCHIVE | Pending after merge |
 
 ## Completed Milestones
 

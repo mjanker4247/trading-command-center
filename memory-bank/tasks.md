@@ -52,7 +52,7 @@
 - [x] Confirm `eslint@9` deprecation gone; `@plotly/mapbox-gl` still present/documented
 - [x] Update `memory-bank/techContext.md` + progress/activeContext
 - [x] lint / tsc / build smoke
-- [ ] Commit, push, open PR
+- [x] Commit, push, open PR — https://github.com/mjanker4247/trading-command-center/pull/90
 
 ## Completed (recent)
 

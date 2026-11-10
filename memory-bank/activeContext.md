@@ -10,4 +10,4 @@
 
 ## Status
 
-BUILD verified (lint 0 errors, tsc, next build). Committing / PR next.
+BUILD complete. PR: https://github.com/mjanker4247/trading-command-center/pull/90 (`cursor/clear-eslint-mapbox-deprecations-40b1`).
