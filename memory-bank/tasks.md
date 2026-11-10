@@ -5,7 +5,7 @@
 **ID:** news-data-unavailable  
 **Title:** Fix news DATA_UNAVAILABLE (yfinance 1.7.0 get_news break)  
 **Created:** 2026-11-10  
-**Status:** BUILD complete — awaiting PR  
+**Status:** BUILD + PR complete — PLAN formally N/A (Level 1); next `/reflect`  
 **Complexity:** Level 1 (Quick Bug Fix)
 
 ### Goal
@@ -29,19 +29,30 @@ Find why AgentFloor/TradingAgents news returns `DATA_UNAVAILABLE`, fix root caus
 | Run News analyst / `get_news` tool | `DATA_UNAVAILABLE: no configured vendor could serve get_news…` | **Bug/dep pin** — yfinance 1.7.0 |
 | Portfolio News tab | `news_unavailable_reason` + UI message | Config/entitlement (Finnhub key/plan) |
 
-### Fix plan (Level 1)
+### PLAN (Level 1 — skipped by complexity)
 
-1. Raise AgentFloor `backend/pyproject.toml` floor: `yfinance>=1.8.0`.
-2. Refresh `backend/uv.lock` so resolved yfinance is ≥1.8.0.
-3. Focused test: assert resolved/installed floor + news path does not surface `DATA_UNAVAILABLE` when Yahoo feed returns articles (mocked).
-4. Do **not** invent API keys; no Finnhub/AV config changes.
+PLAN mode map applies to Levels 2–4 only. Level 1 workflow is **VAN → BUILD → REFLECT**.
+Invoked `/plan` after BUILD: record the mini-plan already used (no creative phase, no tech POC).
+
+| Step | Action | Status |
+|---|---|---|
+| 1 | Pin `backend/pyproject.toml` → `yfinance>=1.8.0` | Done |
+| 2 | Refresh `backend/uv.lock` → `yfinance==1.8.0` | Done |
+| 3 | Add focused tests (`test_news_yfinance_floor.py`) | Done |
+| 4 | No API keys; no Finnhub/AV config changes | Done |
+| Creative | None | N/A |
+| Tech validation | Existing stack; live smoke under 1.8.0 | Done |
+
+**Out of scope:** Portfolio Finnhub News panel entitlement reasons; vendoring upstream TradingAgents#1671 (still open).
 
 ### Status checklist
 
 - [x] VAN complete — complexity Level 1
+- [x] PLAN — N/A for Level 1 (mini-plan recorded retrospectively)
 - [x] BUILD — bump + lock + tests + live smoke
-- [x] PR opened
+- [x] PR opened — https://github.com/mjanker4247/trading-command-center/pull/86
 - [x] Memory Bank progress updated
+- [ ] REFLECT
 
 ### BUILD results
 
@@ -52,4 +63,4 @@ Find why AgentFloor/TradingAgents news returns `DATA_UNAVAILABLE`, fix root caus
 
 ### Next Mode
 
-Open PR → optional `/reflect`.
+**`/reflect`** — BUILD and PR already complete.
