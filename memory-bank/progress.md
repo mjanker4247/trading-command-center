@@ -4,18 +4,16 @@
 
 | Phase | Status |
 |---|---|
-| VAN / PLAN | Complete (Level 2) |
-| BUILD | Complete — frontend floors + locks; backend `uv.lock` upgrade |
-| REFLECT / ARCHIVE | Pending after PR merge |
-| PR | https://github.com/mjanker4247/trading-command-center/pull/87 |
+| VAN | Complete — Level 2 |
+| PLAN | Complete — safe-bump policy |
+| BUILD | Complete — locks + PR #87 |
+| REFLECT | Complete — `reflection/reflection-update-dependencies.md` |
+| ARCHIVE | Pending |
 
-## news-data-unavailable
+### BUILD notes — 2026-11-10
 
-| Phase | Status |
-|---|---|
-| ARCHIVE | Complete — `archive/archive-news-data-unavailable.md` |
-| PR | https://github.com/mjanker4247/trading-command-center/pull/86 (merged) |
+Frontend/backends locks refreshed; unit tests 191 passed; full DB pytest residual.
 
-## market-priced-in-indicator
+### REFLECT notes — 2026-11-10
 
-Archived previously.
+Safe-only policy worked; watch transitive majors from `uv lock --upgrade` (google-genai 3.0); prefer unit marker when Postgres unavailable.

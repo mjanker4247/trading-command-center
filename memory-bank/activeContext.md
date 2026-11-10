@@ -2,13 +2,17 @@
 
 ## Focus
 
-**update-dependencies** — rebasing onto `main` after #86 (news DATA_UNAVAILABLE) merge; then merge PR #87.
+**update-dependencies** — REFLECT complete.
 
 ## Mode
 
-BUILD / merge closeout.
+REFLECT complete. **Next: `/archive`.**
 
-## Related
+## Reflection
 
-- Last archive on main: `memory-bank/archive/archive-news-data-unavailable.md` (PR #86)
+See `memory-bank/reflection/reflection-update-dependencies.md`.
+
+## Delivery
+
+- PR: https://github.com/mjanker4247/trading-command-center/pull/87
 - Branch: `cursor/update-dependencies-eeae`
