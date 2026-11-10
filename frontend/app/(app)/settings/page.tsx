@@ -8,7 +8,6 @@ import {
   getUsers,
   inviteUser,
   updateProfile,
-  getSmtpStatus,
   getMe,
   downloadDbBackup,
   restoreDbBackup,
@@ -44,13 +43,6 @@ export default function SettingsPage() {
     queryKey: ["apiKeys"],
     queryFn: getApiKeys,
     enabled: isAdmin,
-  });
-
-  const { data: smtpStatus, isPending: smtpLoading, isError: smtpError } = useQuery({
-    queryKey: ["smtpStatus"],
-    queryFn: getSmtpStatus,
-    enabled: isAdmin,
-    retry: false,
   });
 
   const { data: users = [] } = useQuery({
@@ -235,13 +227,7 @@ export default function SettingsPage() {
             <DataProvidersSection apiKeys={apiKeys} onKeysChanged={refetchKeys} />
           )}
 
-          {isAdmin && (
-            <NotificationsSection
-              isLoading={smtpLoading}
-              isError={smtpError}
-              smtpStatus={smtpStatus}
-            />
-          )}
+          {isAdmin && <NotificationsSection />}
 
           {isAdmin && (
             <TeamSection

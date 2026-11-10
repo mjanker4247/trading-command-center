@@ -113,6 +113,9 @@ async def send_brief_email(
     import aiosmtplib
     from email.message import EmailMessage
 
+    from app.database import AsyncSessionLocal
+    from app.services.smtp_settings_service import get_smtp_runtime
+
     frontend_url = getattr(settings, "frontend_url", "http://localhost:3000")
     html = _build_email_html(
         portfolio_name=portfolio_name,
@@ -125,12 +128,14 @@ async def send_brief_email(
         frontend_url=frontend_url,
     )
 
-    if not settings.smtp_host:
+    async with AsyncSessionLocal() as db:
+        runtime = await get_smtp_runtime(db)
+    if runtime is None:
         logger.info("[email stub] Morning brief for %s → %s", portfolio_name, to_address)
         return
 
     msg = EmailMessage()
-    msg["From"] = settings.smtp_from
+    msg["From"] = runtime.from_address
     msg["To"] = to_address
     msg["Subject"] = f"AgentFloor Morning Brief — {portfolio_name} · {date_str}"
     msg.set_content(f"Morning Brief for {portfolio_name} — {date_str}\n\nHealth: {health}/10 · {stance}\n\n{summary}")
@@ -138,11 +143,12 @@ async def send_brief_email(
 
     await aiosmtplib.send(
         msg,
-        hostname=settings.smtp_host,
-        port=settings.smtp_port,
-        username=settings.smtp_user or None,
-        password=settings.smtp_password or None,
-        start_tls=True,
+        hostname=runtime.host,
+        port=runtime.port,
+        username=runtime.user or None,
+        password=runtime.password or None,
+        start_tls=runtime.effective_start_tls,
+        use_tls=runtime.use_tls,
     )
 
 

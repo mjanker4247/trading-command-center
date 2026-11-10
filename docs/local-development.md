@@ -58,6 +58,7 @@ If the `users` table is empty and you prefer not to seed:
 1. Open http://localhost:3000/register
 2. Create any account — the first user automatically becomes `admin`
 3. Later users need an invite from **Settings → Team**
+4. Optional outbound email: **Settings → Email Notifications** (DB-backed SMTP — not `.env`). Local smtp-relay: host `smtp-relay`, port `25`, empty credentials, STARTTLS off; backend must be on Docker network `mail` (see `docker-compose.traefik.yml`)
 
 ## Choosing an LLM (tool calling)
 

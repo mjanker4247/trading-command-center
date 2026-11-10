@@ -218,9 +218,51 @@ export async function getRunStats(): Promise<RunStats> {
   return r.json();
 }
 
+export type SmtpSettings = {
+  configured: boolean;
+  host: string;
+  port: number;
+  user: string;
+  password_set: boolean;
+  from_address: string;
+  start_tls: boolean;
+};
+
+export type SmtpSettingsUpdate = {
+  host: string;
+  port: number;
+  user: string;
+  from_address: string;
+  start_tls: boolean;
+  password?: string;
+  clear_password?: boolean;
+};
+
+export async function getSmtpSettings(): Promise<SmtpSettings> {
+  const r = await fetchWithAuth("/settings/smtp");
+  if (!r.ok) throw new Error("Failed to fetch SMTP settings");
+  return r.json();
+}
+
+/** @deprecated Prefer getSmtpSettings — kept for status-only callers. */
 export async function getSmtpStatus(): Promise<{ configured: boolean; from_address: string | null }> {
-  const r = await fetchWithAuth("/auth/smtp-status");
-  if (!r.ok) throw new Error("Failed to fetch SMTP status");
+  const cfg = await getSmtpSettings();
+  return {
+    configured: cfg.configured,
+    from_address: cfg.configured ? cfg.from_address : null,
+  };
+}
+
+export async function updateSmtpSettings(body: SmtpSettingsUpdate): Promise<SmtpSettings> {
+  const r = await fetchWithAuth("/settings/smtp", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}));
+    throw new Error(detail.detail || "Failed to update SMTP settings");
+  }
   return r.json();
 }
 

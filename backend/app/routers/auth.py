@@ -54,11 +54,17 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/invite")
-async def invite(req: InviteRequest, _admin: User = Depends(require_admin)):
+async def invite(
+    req: InviteRequest,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    from app.services.smtp_settings_service import get_smtp_runtime
+
     token = create_invite_token(req.email)
     invite_url = f"{settings.frontend_url}/register?token={token}"
     await send_invite_email(req.email, invite_url)
-    smtp_configured = bool(settings.smtp_host)
+    smtp_configured = await get_smtp_runtime(db) is not None
     return {
         "message": f"Invite sent to {req.email}" if smtp_configured else f"Invite created for {req.email}",
         "invite_url": None if smtp_configured else invite_url,
@@ -82,10 +88,17 @@ async def me(user: User = Depends(get_current_user)):
 
 
 @router.get("/smtp-status")
-async def smtp_status(_user: User = Depends(require_admin)):
+async def smtp_status(
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(require_admin),
+):
+    """Deprecated alias — prefer GET /settings/smtp."""
+    from app.services.smtp_settings_service import get_smtp_settings
+
+    cfg = await get_smtp_settings(db)
     return {
-        "configured": bool(settings.smtp_host),
-        "from_address": settings.smtp_from if settings.smtp_host else None,
+        "configured": cfg["configured"],
+        "from_address": cfg["from_address"] if cfg["configured"] else None,
     }
 
 

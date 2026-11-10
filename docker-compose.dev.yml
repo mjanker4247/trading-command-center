@@ -40,11 +40,6 @@ services:
       JWT_SECRET: "${JWT_SECRET}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      SMTP_HOST: "${SMTP_HOST:-}"
-      SMTP_PORT: "${SMTP_PORT:-587}"
-      SMTP_USER: "${SMTP_USER:-}"
-      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
-      SMTP_FROM: "${SMTP_FROM:-noreply@agentfloor.local}"
       FRONTEND_URL: "${NEXTAUTH_URL:-http://localhost}"
       LOGO_CACHE_DIR: /data/logos
       TRADINGAGENTS_RESULTS_DIR: /data/tradingagents/logs

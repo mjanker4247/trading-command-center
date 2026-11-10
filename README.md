@@ -242,7 +242,25 @@ Once holdings are loaded, each row shows the current price, market value, and un
 
 Go to **Watchlist**, add tickers, and set a schedule. The scheduler runs in the background — you'll have fresh analysis waiting every morning.
 
-### Step 5 — Invite your team
+### Step 5 — Configure email (optional)
+
+Outbound mail (invites, run-complete notices, morning briefs) is configured in **Settings → Email Notifications** (admin only) — not via `.env`. Leave host blank to keep email off; invite links then appear inline under **Settings → Team**.
+
+**House Traefik deploy (`docker-compose.traefik.yml`) with local smtp-relay:**
+
+1. Ensure the smarthost is up (`apps/smtp-relay`) and the Docker network exists: `docker network create mail`.
+2. Backend already joins external network `mail` in the Traefik compose file.
+3. In **Settings → Email Notifications** set:
+   - Host `smtp-relay`
+   - Port `25`
+   - Username / password empty (relay from `mail` is unauthenticated)
+   - STARTTLS **off**
+   - From address on your mail domain (e.g. `noreply@ululuu.de`) — upstream 1blu only accepts local-domain Froms
+4. Save. No backend restart required.
+
+Public / Gmail-style SMTP still works the same form (host + port `587` + STARTTLS on + app password).
+
+### Step 6 — Invite your team
 
 Go to **Settings → Team** (admin only). Enter an email and click **Invite Member**. Without SMTP configured, the invite URL is shown inline to copy and send manually.
 
@@ -405,11 +423,9 @@ DATABASE_URL=postgresql://agentfloor:agentfloor@localhost:5433/agentfloor \
 | `OPENAI_API_KEY` | | Pre-seed OpenAI key for all users (optional) |
 | `GOOGLE_CLIENT_ID` | | Enables Google OAuth on the login page |
 | `GOOGLE_CLIENT_SECRET` | | Enables Google OAuth on the login page |
-| `SMTP_HOST` | | Outbound email for invite links |
-| `SMTP_USER` | | |
-| `SMTP_PASSWORD` | | |
-| `SMTP_FROM` | | From address for invite emails |
 | `VLLM_BASE_URL` | | Base URL for a local vLLM server (default `http://localhost:8080`) |
+
+SMTP host/port/user/password/from/STARTTLS live in the database and are edited under **Settings → Email Notifications** (admin). Traefik house deploys should join Docker network `mail` and point at `smtp-relay:25` (see Step 5).
 
 </details>
 
