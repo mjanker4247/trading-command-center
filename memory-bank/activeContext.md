@@ -1,14 +1,13 @@
 # Active Context
 
-## Focus
+## Current Focus
 
-[Idle] Last task archived: **news-data-unavailable**.
+[No active task — ready for `/van`]
 
-## Mode
+## Recently Completed
 
-ARCHIVE complete. Ready for `/van` on the next task.
+**update-dependencies** (2026-11-10) — safe frontend/backend lock refresh. Archive: `memory-bank/archive/archive-update-dependencies.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/87
 
-## Last archive
+## Status
 
-`memory-bank/archive/archive-news-data-unavailable.md`  
-PR: https://github.com/mjanker4247/trading-command-center/pull/86
+Idle. Start next work with `/van`.
