@@ -7,9 +7,10 @@
 | Phase | Status |
 |---|---|
 | VAN | Complete — Level 2 |
-| PLAN | Complete — eslint 10 bump; document mapbox pin |
+| PLAN | Complete — retrospective refresh confirms shipped policy |
 | BUILD | Complete — PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
-| REFLECT / ARCHIVE | Pending after merge |
+| REFLECT | Pending (`/reflect`) |
+| ARCHIVE | Pending after reflect + merge |
 
 ## Completed Milestones
 

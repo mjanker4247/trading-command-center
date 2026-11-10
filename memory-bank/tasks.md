@@ -6,53 +6,109 @@
 
 ## Complexity
 
-**Level 2 (Simple Enhancement)** — VAN → PLAN → BUILD → REFLECT
+**Level 2 (Simple Enhancement)** — VAN → PLAN → BUILD → REFLECT → ARCHIVE
 
 | Factor | Assessment |
 |---|---|
 | Scope | Frontend `package.json` / lock + Memory Bank docs |
 | Risk | Medium for eslint 10 peer noise; low for mapbox (document-only) |
 | Effort | One major bump (eslint), verify lint/tsc/build; document plotly pin |
-| Creative | Not required — options are upgrade vs document |
+| Creative | **Not required** — binary policy (upgrade vs document), no UX/design |
 
 ## Status
 
 - [x] Task definition (VAN)
-- [x] Implementation plan (PLAN)
-- [x] Execution (BUILD) — eslint → 10.14.0; mapbox documented; lint 0 errors / tsc / build pass
-- [ ] Documentation / reflection
+- [x] Implementation plan (PLAN) — retrospective refresh 2026-11-10 confirms shipped policy
+- [x] Execution (BUILD) — eslint → `^10.14.0`; mapbox documented; lint 0 errors / tsc / build pass
+- [ ] Documentation / reflection (`/reflect`)
+- [ ] Archive (after merge)
+
+**PR:** [#90](https://github.com/mjanker4247/trading-command-center/pull/90) · `cursor/clear-eslint-mapbox-deprecations-40b1` · OPEN
+
+---
+
+## Level 2 PLAN (retrospective vs shipped)
+
+### Enhancement
+
+**Status:** BUILD complete / PLAN confirmed  
+**Priority:** Medium (install-noise + EOL tooling)  
+**Effort:** Small
+
+### Requirements (satisfied)
+
+1. Identify direct vs transitive pull for both deprecated packages — **done**
+2. Smallest safe mitigation (upgrade or document) — **done**
+3. Keep Next/React/plotly Wave charts working — **done** (no plotly code change)
+4. lint / tsc / build smoke — **done**
+5. Open PR if lock/code changes — **#90**
+
+### Policy (locked & matched shipped)
+
+| Decision | Policy | Shipped | Match |
+|---|---|---|---|
+| eslint | Bump direct dep to `^10.14.0`; keep `eslint-config-next` + flat `eslint.config.mjs`; do **not** replace Next ESLint stack | `frontend/package.json` has `"eslint": "^10.14.0"`; config unchanged | YES |
+| mapbox | Document unavoidable transitive pin under `plotly.js@3.x`; **defer** plotly.js 4 | `techContext.md` documents pin; no plotly major | YES |
+| Creative | Skip | Skipped | YES |
+| Verify | install + lint + tsc + build | All green on BUILD | YES |
+
+### Why eslint 10 was re-evaluated (was deferred in update-dependencies)
+
+Prior dep refresh deferred eslint 10 as an intentional major. For TCC-15 the warn is no longer optional noise: npm marks `eslint@<10` deprecated because **v9 EOL 2026-08-06**. Node 22 + flat config + `eslint-config-next@16.4.6` (`peer: eslint >= 9`) make the bump the smallest clear path.
+
+### Why plotly.js 4 stayed deferred
+
+`@plotly/mapbox-gl@1.13.4` only clears on plotly.js **v4** (MapLibre-only). Wave usage is candlestick/overlays via `react-plotly.js` + full `plotly.js` 3.7.0 — no mapbox traces, but the full bundle still installs the fork. Chart major was previously deferred; TCC-15 constraint “do not break plotly WavePanel” → document-only is correct.
+
+### Subtasks (BUILD — complete)
+
+- [x] Branch `cursor/clear-eslint-mapbox-deprecations-40b1`
+- [x] Raise `eslint` → `^10.14.0`; regenerate lock
+- [x] Confirm eslint 9 deprecate warn gone; mapbox warn residual
+- [x] Document pin in `memory-bank/techContext.md`
+- [x] Smoke: lint / tsc / build
+- [x] Push + PR #90
+- [x] Retrospective PLAN refresh (this section)
+
+### Residuals (accepted)
+
+1. **`@plotly/mapbox-gl@1.13.4` npm deprecate** on every `npm install` until a dedicated plotly.js 4 (+ likely react-plotly.js 4) task
+2. **ERESOLVE peer overrides** — `eslint-plugin-react` / `import` / `jsx-a11y` still advertise peers ≤9; lint exits 0; Next docs acknowledge this lag
+3. Pre-existing lint **warnings** (37) unchanged — not in scope
+
+### Technology validation
+
+| Check | Result |
+|---|---|
+| Node engines | `>=22` — satisfies eslint 10 (`^20.19 \|\| ^22.13 \|\| >=24`) |
+| Flat config | Already migrated — no eslintrc work |
+| eslint-config-next | 16.4.6 peers include eslint 10 |
+| plotly charts | Untouched; candlestick path only |
+
+### Creative phases
+
+**None.** No `/creative` — proceed (already proceeded) BUILD; next is reflect/archive.
+
+### Next steps
+
+1. **Human/coordinator:** review + **merge #90** when CI/policy OK  
+2. **Agent:** run **`/reflect`** (insights + action items; can run now or post-merge)  
+3. **`/archive`** after reflect + merge known  
+4. **Follow-up (optional, separate task):** plotly.js 4 + react-plotly.js 4 to clear mapbox warn; optionally revisit when eslint plugins widen peers to 10
+
+---
 
 ## Root Cause (VAN)
 
 ### `eslint@9.39.5` — **direct** `devDependency`
 
-- Declared as `"eslint": "^9.39.5"` in `frontend/package.json`.
-- npm deprecated message: *"This version is no longer supported"* — ESLint v9 line reached **EOL 2026-08-06**; only v10.x is Current ([version support](https://eslint.org/version-support/)).
-- Already on flat config (`eslint.config.mjs` + `eslint-config-next` / core-web-vitals + typescript).
-- `eslint-config-next@16.4.6` peers `eslint: '>=9.0.0'` (includes 10). Bundled plugins (`eslint-plugin-react` / `import` / `jsx-a11y`) still advertise peers ≤9; npm may warn but config runs on eslint 10 (Next docs note this).
+- Was `"eslint": "^9.39.5"`; now `"eslint": "^10.14.0"`.
+- npm: *"This version is no longer supported"* — ESLint v9 EOL 2026-08-06 ([version support](https://eslint.org/version-support/)).
 
 ### `@plotly/mapbox-gl@1.13.4` — **transitive** via `plotly.js@3.7.0`
 
-- Locked under `node_modules/plotly.js` → `"@plotly/mapbox-gl": "1.13.4"`.
-- Deprecated Aug 2026: *"plotly.js v4 uses MapLibre"* — only one published version of `@plotly/mapbox-gl` (`1.13.4`).
-- App usage (`AnalysisChart` / `buildChartFigure`) is **candlestick + overlays only**; no mapbox traces. Full `plotly.js` 3.x still pulls the deprecated fork.
-- Clearing the warn requires **plotly.js ^4** (drops `@plotly/mapbox-gl`, keeps `maplibre-gl`). Previously deferred in `update-dependencies`.
-
-## PLAN Decisions
-
-1. **eslint:** Bump direct dep to `^10.14.0` (latest 10.x). Keep `eslint-config-next` and existing flat config. Do **not** replace the Next ESLint stack. Accept possible peer warnings from lagged plugins.
-2. **mapbox / plotly:** **Do not** bump plotly.js to 4 in this task (chart major risk; WavePanel constraint). Document unavoidable transitive pin while on plotly.js 3.x; note plotly.js 4 as the clear path.
-3. **Verification:** `npm install` → capture deprecation warnings → `npm run lint` → `npx tsc --noEmit` → `npm run build`.
-4. **PR:** Open if lock/`package.json`/docs change.
-
-## BUILD Checklist
-
-- [x] Branch `cursor/clear-eslint-mapbox-deprecations-40b1`
-- [x] Raise `eslint` to `^10.14.0`; regenerate lock
-- [x] Confirm `eslint@9` deprecation gone; `@plotly/mapbox-gl` still present/documented
-- [x] Update `memory-bank/techContext.md` + progress/activeContext
-- [x] lint / tsc / build smoke
-- [x] Commit, push, open PR — https://github.com/mjanker4247/trading-command-center/pull/90
+- Locked dependency of plotly.js 3.7.0; only published fork version.
+- Deprecated Aug 2026 — plotly.js v4 uses MapLibre.
 
 ## Completed (recent)
 
@@ -60,10 +116,3 @@
 - [x] **update-dependencies** (2026-11-10) — Level 2 — [archive](archive/archive-update-dependencies.md) — [PR #87](https://github.com/mjanker4247/trading-command-center/pull/87)
 - [x] **news-data-unavailable** (2026-11-10) — Level 1 — [archive](archive/archive-news-data-unavailable.md) — [PR #86](https://github.com/mjanker4247/trading-command-center/pull/86)
 - [x] **market-priced-in-indicator** — Level 3 — [archive](archive/archive-market-priced-in-indicator.md)
-
-## Requirements
-
-1. Find why packages are pulled (direct vs transitive)
-2. Clear or mitigate deprecations with smallest safe change
-3. Keep Next/React/plotly charts working; lint/tsc/build smoke
-4. Open PR if code/lock changes; else report upstream-only

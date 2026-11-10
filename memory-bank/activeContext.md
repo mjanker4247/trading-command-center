@@ -4,10 +4,14 @@
 
 **clear-eslint-mapbox-deprecations** (TCC-15) — Level 2.
 
-- VAN complete: eslint 9 EOL deprecation (direct); `@plotly/mapbox-gl` via plotly.js 3 (transitive).
-- PLAN locked: bump eslint → 10; document mapbox pin (no plotly 4 in this PR).
-- BUILD next: branch, bump, verify, PR.
+Retrospective PLAN (2026-11-10) confirms shipped policy matches decisions:
+
+- eslint → `^10.14.0` (EOL clear)
+- `@plotly/mapbox-gl` documented as plotly.js 3.x transitive; plotly 4 deferred
+- Creative: none
 
 ## Status
 
-BUILD complete. PR: https://github.com/mjanker4247/trading-command-center/pull/90 (`cursor/clear-eslint-mapbox-deprecations-40b1`).
+BUILD complete · PLAN refreshed · awaiting **merge #90** and **`/reflect`**.
+
+PR: https://github.com/mjanker4247/trading-command-center/pull/90 · `cursor/clear-eslint-mapbox-deprecations-40b1`
