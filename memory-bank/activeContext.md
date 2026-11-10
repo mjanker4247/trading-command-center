@@ -2,16 +2,12 @@
 
 ## Current Focus
 
-**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2.
+[No active task — ready for `/van`]
 
-Retrospective PLAN (2026-11-10) confirms shipped policy matches decisions:
+## Recently Completed
 
-- eslint → `^10.14.0` (EOL clear)
-- `@plotly/mapbox-gl` documented as plotly.js 3.x transitive; plotly 4 deferred
-- Creative: none
+**clear-eslint-mapbox-deprecations** (TCC-15, 2026-11-10) — eslint → `^10.14.0`; documented `@plotly/mapbox-gl` under plotly.js 3.x. Archive: `memory-bank/archive/archive-clear-eslint-mapbox-deprecations.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/90 → `ed7464e`.
 
 ## Status
 
-BUILD complete · PLAN refreshed · awaiting **merge #90** and **`/reflect`**.
-
-PR: https://github.com/mjanker4247/trading-command-center/pull/90 · `cursor/clear-eslint-mapbox-deprecations-40b1`
+Idle. Start next work with `/van`.
