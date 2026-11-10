@@ -7,3 +7,4 @@ from app.models.portfolio_thesis_crossref import PortfolioThesisCrossRef  # noqa
 from app.models.ticker_metadata import TickerMetadata  # noqa: F401
 from app.models.settings import AppSettings  # noqa: F401
 from app.models.llm_provider_catalog import LlmProviderCatalog  # noqa: F401
+from app.models.news_provider import NewsProviderConfig  # noqa: F401

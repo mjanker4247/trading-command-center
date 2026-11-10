@@ -28,6 +28,7 @@ import { InvestorDnaSummarySection } from "@/components/settings/sections/Invest
 import { StrategySection } from "@/components/settings/sections/StrategySection";
 import { LlmProvidersSection } from "@/components/settings/sections/LlmProvidersSection";
 import { DataProvidersSection } from "@/components/settings/sections/DataProvidersSection";
+import { NewsSourcesSection } from "@/components/settings/sections/NewsSourcesSection";
 import { NotificationsSection } from "@/components/settings/sections/NotificationsSection";
 import { TeamSection } from "@/components/settings/sections/TeamSection";
 import { DatabaseSection } from "@/components/settings/sections/DatabaseSection";
@@ -234,6 +235,8 @@ export default function SettingsPage() {
           {isAdmin && (
             <DataProvidersSection apiKeys={apiKeys} onKeysChanged={refetchKeys} />
           )}
+
+          {isAdmin && <NewsSourcesSection />}
 
           {isAdmin && (
             <NotificationsSection

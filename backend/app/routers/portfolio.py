@@ -1457,45 +1457,16 @@ async def get_portfolio_fundamentals(
 
 # ── News Feed ─────────────────────────────────────────────────────────────────
 
-_news_cache: dict[str, tuple[list, float, FinnhubError | None]] = {}
-_NEWS_TTL = 3600  # 1 hour
+# Re-exported for entitlement tests that clear / inspect the Finnhub news cache.
+from app.services.news.finnhub import _news_cache, fetch_finnhub_news, articles_to_legacy_dicts  # noqa: E402,F401
+from app.services.news.aggregator import fetch_for_tickers  # noqa: E402
+from app.services.news.registry import build_providers  # noqa: E402
 
 
 async def _fetch_news(ticker: str, api_key: str, days: int) -> tuple[list[dict], FinnhubError | None]:
-    cache_key = f"{ticker}:{days}"
-    now = time.time()
-    if cache_key in _news_cache:
-        data, expiry, cached_error = _news_cache[cache_key]
-        if now < expiry:
-            return data, cached_error
-    today = date.today()
-    from_date = today - timedelta(days=days)
-    raw, error = await fetch_json(
-        "/company-news",
-        api_key,
-        FinnhubCapability.COMPANY_NEWS,
-        params={"symbol": ticker, "from": from_date, "to": today},
-    )
-    if error:
-        if not should_cache_error(error):
-            return [], error
-        _news_cache[cache_key] = ([], now + 120, error)
-        return [], error
-    data = [
-        {
-            "ticker": ticker,
-            "datetime": item.get("datetime"),
-            "headline": item.get("headline", ""),
-            "summary": (item.get("summary") or "")[:300],
-            "url": item.get("url", ""),
-            "source": item.get("source", ""),
-            "image": item.get("image", ""),
-        }
-        for item in (raw if isinstance(raw, list) else [])
-        if item.get("headline")
-    ]
-    _news_cache[cache_key] = (data, now + _NEWS_TTL, None)
-    return data, None
+    """Legacy Finnhub-only fetch used by entitlement tests and callers."""
+    articles, error = await fetch_finnhub_news(ticker, api_key, days)
+    return articles_to_legacy_dicts(articles), error
 
 
 @router.get("/portfolio/{portfolio_id}/news")
@@ -1523,28 +1494,35 @@ async def get_portfolio_news(
             "articles": [],
         }
 
+    providers = await build_providers(db, enabled_only=True)
+    finnhub_enabled = any(p.provider_id == "finnhub" for p in providers)
     av_key = await _get_finnhub_key(db)
-    if not av_key:
+
+    if not providers:
+        return {
+            "price_unavailable_reason": None if av_key else ("no_finnhub_key" if finnhub_enabled else None),
+            "news_unavailable_reason": "no_finnhub_key" if (finnhub_enabled and not av_key) else None,
+            "articles": [],
+        }
+
+    if finnhub_enabled and not av_key and len(providers) == 1:
         return {
             "price_unavailable_reason": "no_finnhub_key",
             "news_unavailable_reason": "no_finnhub_key",
             "articles": [],
         }
 
-    all_articles: list[dict] = []
-    errors: list[FinnhubError | None] = []
-    results = await asyncio.gather(
-        *[_fetch_news(h.ticker, av_key, days) for h in snapshot.holdings]
+    tickers = [h.ticker for h in snapshot.holdings]
+    articles, news_reason = await fetch_for_tickers(
+        providers,
+        tickers,
+        days=days,
+        limit=limit,
     )
-    for articles, error in results:
-        all_articles.extend(articles)
-        errors.append(error)
-
-    all_articles.sort(key=lambda x: x.get("datetime") or 0, reverse=True)
     return {
-        "price_unavailable_reason": None,
-        "news_unavailable_reason": aggregate_unavailable_reason(errors),
-        "articles": all_articles[:limit],
+        "price_unavailable_reason": None if av_key else ("no_finnhub_key" if finnhub_enabled else None),
+        "news_unavailable_reason": news_reason,
+        "articles": articles_to_legacy_dicts(articles),
     }
 
 

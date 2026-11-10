@@ -149,7 +149,7 @@ async def clean_db(request, temporary_database):
             "TRUNCATE users, runs, agent_events, reports, api_keys, run_outcomes, "
             "watchlists, watchlist_items, portfolios, portfolio_snapshots, portfolio_holdings, "
             "investor_profiles, portfolio_thesis_crossrefs, portfolio_delivery_settings, "
-            "ticker_metadata, settings, llm_provider_catalogs "
+            "ticker_metadata, settings, llm_provider_catalogs, news_provider_configs "
             "RESTART IDENTITY CASCADE"
         ))
     yield

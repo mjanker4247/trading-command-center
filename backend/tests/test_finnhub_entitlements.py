@@ -7,8 +7,9 @@ from app.services.finnhub_client import FinnhubCapability, FinnhubError, Finnhub
 @pytest.mark.asyncio
 async def test_fetch_news_returns_premium_required_reason():
     from app.routers import portfolio as portfolio_router
+    from app.services.news import finnhub as finnhub_news
 
-    portfolio_router._news_cache.clear()
+    finnhub_news.clear_news_cache()
     premium_error = FinnhubError(
         capability=FinnhubCapability.COMPANY_NEWS,
         reason=FinnhubReason.PREMIUM_REQUIRED,
@@ -16,7 +17,7 @@ async def test_fetch_news_returns_premium_required_reason():
     )
 
     with patch(
-        "app.routers.portfolio.fetch_json",
+        "app.services.news.finnhub.fetch_json",
         new=AsyncMock(return_value=([], premium_error)),
     ):
         articles, error = await portfolio_router._fetch_news("AAPL", "test-key", 7)
@@ -24,23 +25,29 @@ async def test_fetch_news_returns_premium_required_reason():
     assert articles == []
     assert error is not None
     assert error.reason == FinnhubReason.PREMIUM_REQUIRED
-    assert "AAPL:7" not in portfolio_router._news_cache
+    assert "AAPL:7" not in finnhub_news._news_cache
 
 
 @pytest.mark.asyncio
 async def test_get_portfolio_news_surfaces_unavailable_reason(monkeypatch):
+    from app.routers import portfolio as portfolio_router
+    from app.services.news.finnhub import FinnhubNewsProvider
+
     premium_error = FinnhubError(
         capability=FinnhubCapability.COMPANY_NEWS,
         reason=FinnhubReason.PREMIUM_REQUIRED,
         message="premium required",
     )
 
-    async def fake_fetch_news(ticker, api_key, days):
-        return [], premium_error
+    class FailingFinnhub(FinnhubNewsProvider):
+        async def fetch_news(self, ticker, start_date, end_date, limit):
+            self.last_error = premium_error
+            return []
 
-    from app.routers import portfolio as portfolio_router
+    async def fake_build_providers(db, enabled_only=True):
+        return [FailingFinnhub(api_key="test-key")]
 
-    monkeypatch.setattr(portfolio_router, "_fetch_news", fake_fetch_news)
+    monkeypatch.setattr(portfolio_router, "build_providers", fake_build_providers)
     monkeypatch.setattr(portfolio_router, "_get_finnhub_key", AsyncMock(return_value="test-key"))
     monkeypatch.setattr(portfolio_router, "_verify_portfolio_access", AsyncMock())
 
