@@ -2,10 +2,12 @@
 
 ## Current Focus
 
-**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2 — REFLECT complete.
+[No active task — ready for `/van`]
 
-PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) merged (`ed7464e`). Reflection: `memory-bank/reflection/reflection-clear-eslint-mapbox-deprecations.md`.
+## Recently Completed
+
+**clear-eslint-mapbox-deprecations** (TCC-15, 2026-11-10) — eslint → `^10.14.0`; documented `@plotly/mapbox-gl` under plotly.js 3.x. Archive: `memory-bank/archive/archive-clear-eslint-mapbox-deprecations.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/90 → `ed7464e`.
 
 ## Status
 
-Awaiting `/archive`. Docs bookkeeping on [#91](https://github.com/mjanker4247/trading-command-center/pull/91).
+Idle. Start next work with `/van`.
