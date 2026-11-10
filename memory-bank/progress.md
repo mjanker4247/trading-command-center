@@ -1,5 +1,16 @@
 # Progress
 
+## In Progress
+
+### clear-eslint-mapbox-deprecations (TCC-15)
+
+| Phase | Status |
+|---|---|
+| VAN | Complete — Level 2 |
+| PLAN | Complete — eslint 10 bump; document mapbox pin |
+| BUILD | In progress — eslint `^10.14.0`; lint/tsc/build green |
+| REFLECT / ARCHIVE | Pending |
+
 ## Completed Milestones
 
 - **fix-node22-ebadengine** completed 2026-11-10. See [archive](archive/archive-fix-node22-ebadengine.md). PR #88 → `b49ef69`.

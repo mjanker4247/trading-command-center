@@ -2,12 +2,12 @@
 
 ## Current Focus
 
-[No active task — ready for `/van`]
+**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2.
 
-## Recently Completed
-
-**fix-node22-ebadengine** (2026-11-10) — Node 22 frontend Docker/CI/engines for mapbox jsonlint EBADENGINE. Archive: `memory-bank/archive/archive-fix-node22-ebadengine.md`. PR: https://github.com/mjanker4247/trading-command-center/pull/88 → `b49ef69`.
+- VAN complete: eslint 9 EOL deprecation (direct); `@plotly/mapbox-gl` via plotly.js 3 (transitive).
+- PLAN locked: bump eslint → 10; document mapbox pin (no plotly 4 in this PR).
+- BUILD next: branch, bump, verify, PR.
 
 ## Status
 
-Idle. Start next work with `/van`.
+BUILD verified (lint 0 errors, tsc, next build). Committing / PR next.

@@ -19,7 +19,12 @@
 - Backend: lock near-current; small bumps (fastapi 0.162.2, yfinance 1.8, pandas 3.1.1, langchain-core 1.7.7); keep apscheduler 4.0.0a*
 - Vendor TradingAgents: out of this task (see TCC-10)
 
+## npm deprecation mitigations (TCC-15 / 2026-11-10)
+
+- **eslint:** direct `devDependency` raised to `^10.14.0` (v9 EOL / npm-deprecated). Flat config + `eslint-config-next@16.4.6` retained. Expect ERESOLVE peer overrides from `eslint-plugin-react` / `import` / `jsx-a11y` (peer ranges still ≤9); lint still exits 0.
+- **`@plotly/mapbox-gl@1.13.4`:** unavoidable **transitive** of `plotly.js@3.7.0` (Wave candlestick charts via `react-plotly.js`). Only published version of the fork; plotly.js **v4** drops it for `maplibre-gl`. Intentionally **not** bumped here — chart major deferred; document pin until a dedicated plotly 4 task.
+
 ## Gaps vs today
 
-- Dep install not present in cloud env until BUILD (`npm install` / `uv sync`)
-- Major frontend chart/PDF/upload libs may lag Latest by design until PLAN decides
+- Major frontend chart/PDF/upload libs may lag Latest by design (plotly.js 4 still deferred)
+- Residual install warn: `@plotly/mapbox-gl@1.13.4` until plotly.js 4
