@@ -40,7 +40,7 @@ Find why AgentFloor/TradingAgents news returns `DATA_UNAVAILABLE`, fix root caus
 
 - [x] VAN complete — complexity Level 1
 - [x] BUILD — bump + lock + tests + live smoke
-- [ ] PR opened
+- [x] PR opened
 - [x] Memory Bank progress updated
 
 ### BUILD results
