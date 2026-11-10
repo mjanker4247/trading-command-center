@@ -15,6 +15,8 @@ from app.services.allocation_service import (
     optimize_holdings,
 )
 
+pytestmark = [pytest.mark.unit]
+
 
 @pytest.fixture(autouse=True)
 def _clear_cache():
@@ -34,6 +36,19 @@ def test_weights_from_holdings():
     assert weights["AAPL"] == pytest.approx(0.5)
     assert weights["MSFT"] == pytest.approx(0.5)
     assert skipped == ["BAD"]
+
+
+def test_weights_from_holdings_aggregates_duplicate_tickers():
+    holdings = [
+        HoldingInput("AAPL", 10, 100.0),
+        HoldingInput("AAPL", 5, 100.0),
+        HoldingInput("MSFT", 5, 200.0),
+    ]
+    weights, nav, skipped = _weights_from_holdings(holdings)
+    assert nav == pytest.approx(2500.0)
+    assert weights["AAPL"] == pytest.approx(0.6)
+    assert weights["MSFT"] == pytest.approx(0.4)
+    assert skipped == []
 
 
 def test_build_views_from_verdicts():
@@ -197,3 +212,36 @@ async def test_optimize_holdings_with_concentration(monkeypatch):
     # Tradable tickers only in holdings
     tickers = {r["ticker"] for r in result["holdings"]}
     assert tickers == {"SPY", "QQQ", "AAPL"}
+
+
+@pytest.mark.asyncio
+async def test_optimize_holdings_aggregates_duplicate_ticker_rows(monkeypatch):
+    prices, _latest, _shares, _cw, _nav = _sample_prices(n_assets=2)
+    prices = prices.rename(columns={"T0": "AAPL", "T1": "MSFT"})
+
+    async def fake_history(tickers, lookback_days):
+        cols = [c for c in prices.columns if c in tickers]
+        return prices[cols], []
+
+    async def fake_funds(tickers):
+        return {}
+
+    monkeypatch.setattr("app.services.allocation_service._load_price_history", fake_history)
+    monkeypatch.setattr("app.services.etf_lookthrough.fetch_funds_for_tickers", fake_funds)
+
+    result = await optimize_holdings(
+        [
+            HoldingInput("AAPL", 10, 100.0),
+            HoldingInput("AAPL", 5, 100.0),
+            HoldingInput("MSFT", 5, 200.0),
+        ],
+        objective="volatility",
+        max_pos=1.0,
+        max_concentration=0,
+    )
+
+    aapl = next(r for r in result["holdings"] if r["ticker"] == "AAPL")
+    assert result["nav"] == pytest.approx(2500.0)
+    assert aapl["current_shares"] == pytest.approx(15.0)
+    assert aapl["current_value"] == pytest.approx(1500.0)
+    assert aapl["current_weight"] == pytest.approx(0.6)

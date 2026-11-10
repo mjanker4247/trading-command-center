@@ -81,19 +81,38 @@ def _param_hash(
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def _weights_from_holdings(holdings: list[HoldingInput]) -> tuple[dict[str, float], float, list[str]]:
-    """Return current weight fractions, NAV, and skipped tickers (no price)."""
+def _aggregate_priced_holdings(
+    holdings: list[HoldingInput],
+) -> tuple[dict[str, float], float, list[str], dict[str, float], dict[str, float]]:
+    """Return weights/NAV plus summed shares and blended latest prices per ticker."""
     values: dict[str, float] = {}
-    skipped: list[str] = []
+    shares: dict[str, float] = {}
+    skipped_candidates: list[str] = []
     for h in holdings:
         if h.current_price is None or h.current_price <= 0 or h.shares <= 0:
-            skipped.append(h.ticker)
+            skipped_candidates.append(h.ticker)
             continue
-        values[h.ticker] = h.shares * h.current_price
+        shares[h.ticker] = shares.get(h.ticker, 0.0) + h.shares
+        values[h.ticker] = values.get(h.ticker, 0.0) + h.shares * h.current_price
+
+    skipped: list[str] = []
+    seen_skipped: set[str] = set()
+    for ticker in skipped_candidates:
+        if ticker not in values and ticker not in seen_skipped:
+            skipped.append(ticker)
+            seen_skipped.add(ticker)
+
     nav = sum(values.values())
     if nav <= 0:
-        return {}, 0.0, skipped
+        return {}, 0.0, skipped, {}, {}
     weights = {t: v / nav for t, v in values.items()}
+    latest = {t: values[t] / shares[t] for t in values}
+    return weights, nav, skipped, shares, latest
+
+
+def _weights_from_holdings(holdings: list[HoldingInput]) -> tuple[dict[str, float], float, list[str]]:
+    """Return current weight fractions, NAV, and skipped tickers (no price)."""
+    weights, nav, skipped, _shares, _latest = _aggregate_priced_holdings(holdings)
     return weights, nav, skipped
 
 
@@ -371,15 +390,13 @@ async def optimize_holdings(
     conc = None if max_concentration is None or max_concentration <= 0 else float(max_concentration)
 
     verdicts = verdicts or {}
-    current_weights, nav, price_skipped = _weights_from_holdings(holdings)
+    current_weights, nav, price_skipped, shares_map, latest = _aggregate_priced_holdings(holdings)
     if len(current_weights) < 2:
         raise AllocationError("Need at least 2 holdings with valid prices to optimize")
     if len(current_weights) > _MAX_UNIVERSE:
         raise AllocationError(f"Universe capped at {_MAX_UNIVERSE} priced holdings")
 
     tickers = list(current_weights.keys())
-    shares_map = {h.ticker: h.shares for h in holdings if h.ticker in current_weights}
-    latest = {h.ticker: float(h.current_price) for h in holdings if h.ticker in current_weights}
 
     full_key = cache_key or _param_hash(
         holdings,
