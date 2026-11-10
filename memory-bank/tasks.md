@@ -20,8 +20,8 @@
 - [x] Task definition (VAN)
 - [x] Implementation plan (PLAN) — retrospective refresh 2026-11-10 confirms shipped policy
 - [x] Execution (BUILD) — eslint → `^10.14.0`; mapbox documented; lint 0 errors / tsc / build pass
-- [ ] Documentation / reflection (`/reflect`)
-- [ ] Archive (after merge)
+- [x] Documentation / reflection — [reflection](reflection/reflection-clear-eslint-mapbox-deprecations.md)
+- [ ] Archive (`/archive`)
 
 **PR:** [#90](https://github.com/mjanker4247/trading-command-center/pull/90) · MERGED `ed7464e` (2026-11-10)
 
@@ -91,9 +91,9 @@ Prior dep refresh deferred eslint 10 as an intentional major. For TCC-15 the war
 
 ### Next steps
 
-1. **Human/coordinator:** review + **merge #90** when CI/policy OK  
-2. **Agent:** run **`/reflect`** (insights + action items; can run now or post-merge)  
-3. **`/archive`** after reflect + merge known  
+1. [x] Merge #90 (`ed7464e`)
+2. [x] `/reflect` — `reflection/reflection-clear-eslint-mapbox-deprecations.md`
+3. [ ] `/archive`
 4. **Follow-up (optional, separate task):** plotly.js 4 + react-plotly.js 4 to clear mapbox warn; optionally revisit when eslint plugins widen peers to 10
 
 ---

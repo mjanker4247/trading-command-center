@@ -9,8 +9,8 @@
 | VAN | Complete — Level 2 |
 | PLAN | Complete — retrospective refresh confirms shipped policy |
 | BUILD | Complete — PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
-| REFLECT | Pending (`/reflect`) |
-| ARCHIVE | Pending after reflect |
+| REFLECT | Complete — [reflection](reflection/reflection-clear-eslint-mapbox-deprecations.md) |
+| ARCHIVE | Pending (`/archive`) |
 | MERGE | Complete — `ed7464e` via [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
 
 ## Completed Milestones

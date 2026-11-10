@@ -2,10 +2,10 @@
 
 ## Current Focus
 
-**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2 — **MERGED**.
+**clear-eslint-mapbox-deprecations** (TCC-15) — Level 2 — REFLECT complete.
 
-PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) merged to `main` at 2026-11-10 07:57 Europe/Berlin (`ed7464e`).
+PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) merged (`ed7464e`). Reflection: `memory-bank/reflection/reflection-clear-eslint-mapbox-deprecations.md`.
 
 ## Status
 
-Awaiting `/reflect` then `/archive`.
+Awaiting `/archive`. Docs bookkeeping on [#91](https://github.com/mjanker4247/trading-command-center/pull/91).
