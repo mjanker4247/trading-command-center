@@ -23,7 +23,7 @@
 - [ ] Documentation / reflection (`/reflect`)
 - [ ] Archive (after merge)
 
-**PR:** [#90](https://github.com/mjanker4247/trading-command-center/pull/90) · `cursor/clear-eslint-mapbox-deprecations-40b1` · OPEN
+**PR:** [#90](https://github.com/mjanker4247/trading-command-center/pull/90) · MERGED `ed7464e` (2026-11-10)
 
 ---
 

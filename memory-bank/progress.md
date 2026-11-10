@@ -10,7 +10,8 @@
 | PLAN | Complete — retrospective refresh confirms shipped policy |
 | BUILD | Complete — PR [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
 | REFLECT | Pending (`/reflect`) |
-| ARCHIVE | Pending after reflect + merge |
+| ARCHIVE | Pending after reflect |
+| MERGE | Complete — `ed7464e` via [#90](https://github.com/mjanker4247/trading-command-center/pull/90) |
 
 ## Completed Milestones
 
