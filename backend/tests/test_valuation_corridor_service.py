@@ -1,5 +1,7 @@
 """Unit tests for valuation corridor assembly (mocked I/O)."""
 
+import json
+import math
 from unittest.mock import AsyncMock, patch
 
 import pandas as pd
@@ -65,6 +67,56 @@ async def test_get_valuation_corridor_builds_eps_fair_series():
     assert payload["corridors"]["eps"]["median_multiple"] is not None
     assert len(payload["series"]["fair_eps"]) >= 3
     assert payload["pricedIn"]["growth"]["consensusCagr"] == pytest.approx(0.08)
+
+
+@pytest.mark.asyncio
+async def test_get_valuation_corridor_sanitizes_non_finite_info_values():
+    fundamentals = {
+        "source": "yfinance",
+        "eps": {
+            "2019-12-31": 1.0,
+            "2020-12-31": 1.2,
+            "2021-12-31": 1.4,
+            "2022-12-31": 1.6,
+        },
+        "ocfps": {},
+        "fcfps": {},
+        "salesps": {},
+        "estimates": {"source": "yfinance", "forward_eps": [], "growth": math.nan},
+        "info": {
+            "currency": "USD",
+            "currentPrice": math.inf,
+            "trailingPE": math.nan,
+            "forwardPE": math.inf,
+            "dividendYield": -math.inf,
+        },
+    }
+    history = pd.DataFrame(
+        {"Close": [10.0, 12.0, 14.0, 16.0, 17.0]},
+        index=pd.to_datetime(
+            ["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31", "2024-01-02"]
+        ),
+    )
+
+    with (
+        patch(
+            "app.services.valuation_corridor_service._sync_fetch_fundamentals",
+            return_value=fundamentals,
+        ),
+        patch(
+            "app.services.valuation_corridor_service.fetch_history_period",
+            new=AsyncMock(return_value=history),
+        ),
+    ):
+        payload = await get_valuation_corridor("AMC", lookback=3)
+
+    assert payload is not None
+    assert payload["summary"]["price"] == pytest.approx(17.0)
+    assert payload["summary"]["trailing_pe"] is None
+    assert payload["summary"]["forward_pe"] is None
+    assert payload["summary"]["dividend_yield"] is None
+    assert payload["pricedIn"]["growth"]["consensusCagr"] is None
+    json.dumps(payload, allow_nan=False)
 
 
 @pytest.mark.asyncio
