@@ -82,6 +82,14 @@ def _per_share_from_total(
     return out
 
 
+def _finite_float_or_none(value: Any) -> float | None:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if math.isfinite(num) else None
+
+
 def _sync_fetch_fundamentals(ticker: str) -> dict[str, Any]:
     """Pull annual EPS / OCFPS / FCFPS / sales-per-share from yfinance statements."""
     import yfinance as yf
@@ -120,17 +128,19 @@ def _sync_fetch_fundamentals(ticker: str) -> dict[str, Any]:
         logger.debug("yfinance info failed for %s", ticker)
 
     estimates: dict[str, Any] = {"source": "none", "forward_eps": [], "growth": None}
-    try:
-        # Best-effort: earnings growth + forward PE style fields from info
-        if info.get("earningsGrowth") is not None:
-            estimates["growth"] = float(info["earningsGrowth"])
-            estimates["source"] = "yfinance"
-        fwd = info.get("forwardEps")
-        if fwd is not None and math.isfinite(float(fwd)):
-            estimates["forward_eps"] = [{"period": "FY+1", "eps_avg": float(fwd)}]
-            estimates["source"] = "yfinance"
-    except (TypeError, ValueError):
-        pass
+    # Best-effort: yfinance frequently uses NaN/inf sentinels for unavailable fields.
+    growth = _finite_float_or_none(info.get("earningsGrowth"))
+    if growth is not None:
+        estimates["growth"] = growth
+        estimates["source"] = "yfinance"
+    fwd = _finite_float_or_none(info.get("forwardEps"))
+    if fwd is not None:
+        estimates["forward_eps"] = [{"period": "FY+1", "eps_avg": fwd}]
+        estimates["source"] = "yfinance"
+
+    current_price = _finite_float_or_none(info.get("currentPrice"))
+    if current_price is None:
+        current_price = _finite_float_or_none(info.get("regularMarketPrice"))
 
     return {
         "source": "yfinance",
@@ -140,11 +150,11 @@ def _sync_fetch_fundamentals(ticker: str) -> dict[str, Any]:
         "salesps": salesps,
         "estimates": estimates,
         "info": {
-            "trailingPE": info.get("trailingPE"),
-            "forwardPE": info.get("forwardPE"),
-            "dividendYield": info.get("dividendYield"),
+            "trailingPE": _finite_float_or_none(info.get("trailingPE")),
+            "forwardPE": _finite_float_or_none(info.get("forwardPE")),
+            "dividendYield": _finite_float_or_none(info.get("dividendYield")),
             "currency": info.get("currency"),
-            "currentPrice": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "currentPrice": current_price,
         },
     }
 
@@ -258,11 +268,18 @@ async def get_valuation_corridor(ticker: str, lookback: int = 5) -> dict[str, An
 
     latest_price = daily[-1][1] if daily else None
     info = fundamentals.get("info") or {}
-    if info.get("currentPrice") is not None:
-        try:
-            latest_price = float(info["currentPrice"])
-        except (TypeError, ValueError):
-            pass
+    current_price = _finite_float_or_none(info.get("currentPrice"))
+    if current_price is not None:
+        latest_price = current_price
+    estimates = dict(fundamentals.get("estimates") or {})
+    estimates["growth"] = _finite_float_or_none(estimates.get("growth"))
+    estimates["forward_eps"] = [
+        {**item, "eps_avg": eps_avg}
+        for item in estimates.get("forward_eps") or []
+        if isinstance(item, dict)
+        for eps_avg in [_finite_float_or_none(item.get("eps_avg"))]
+        if eps_avg is not None
+    ]
 
     payload: dict[str, Any] = {
         "ticker": symbol,
@@ -272,22 +289,22 @@ async def get_valuation_corridor(ticker: str, lookback: int = 5) -> dict[str, An
         "summary": {
             "price": latest_price,
             "currency": info.get("currency") or "USD",
-            "trailing_pe": info.get("trailingPE"),
-            "forward_pe": info.get("forwardPE"),
-            "dividend_yield": info.get("dividendYield"),
+            "trailing_pe": _finite_float_or_none(info.get("trailingPE")),
+            "forward_pe": _finite_float_or_none(info.get("forwardPE")),
+            "dividend_yield": _finite_float_or_none(info.get("dividendYield")),
         },
         "series": {
             "price": [{"date": d, "value": v} for d, v in daily],
         },
         "corridors": corridors,
-        "estimates": fundamentals["estimates"],
+        "estimates": estimates,
         "pricedIn": {
             "growth": {
                 "impliedCagr": None,
-                "consensusCagr": fundamentals["estimates"].get("growth"),
+                "consensusCagr": estimates.get("growth"),
                 "gapPp": None,
                 "method": "reverse_multiple",
-                "source": fundamentals["estimates"].get("source", "none"),
+                "source": estimates.get("source", "none"),
             }
         },
     }
